@@ -1,0 +1,35 @@
+{
+  "name": "community-seasons-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "setup": "npm ci --ignore-scripts && npm ci --prefix outputs/community-seasons",
+    "dev": "npm --prefix outputs/community-seasons run dev",
+    "build": "npm --prefix outputs/community-seasons run build",
+    "test": "node scripts/test.mjs",
+    "test:fuzz": "node run.mjs quick",
+    "test:stress": "node run.mjs full --forever",
+    "test:types": "tsc -p work/property-tests/typed-arbitraries.tsconfig.json",
+    "qa:licenses:serve": "vite work/licenses-ui-qa --config work/licenses-ui-qa/vite.config.ts",
+    "qa:licenses": "node work/licenses-ui-qa/check.mjs",
+    "qa:android:serve": "vite work/android-large-text-qa --config work/android-large-text-qa/vite.config.ts",
+    "qa:android": "node work/android-large-text-qa/check.mjs",
+    "qa:phone:build": "vite build work/phone-cart-fix-qa --config work/phone-cart-fix-qa/vite.config.ts",
+    "qa:iphone:build": "vite build work/iphone-qa --config work/iphone-qa/vite.config.ts"
+  },
+  "devDependencies": {
+    "fast-check": "4.9.0",
+    "typescript": "5.9.3",
+    "vite": "8.0.13",
+    "@vitejs/plugin-react": "6.0.2",
+    "@tailwindcss/postcss": "4.2.1",
+    "tailwindcss": "4.2.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "playwright": "1.62.1"
+  }
+}

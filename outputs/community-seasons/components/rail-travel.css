@@ -1,0 +1,162 @@
+.rail-travel {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+    ellipse at center,
+    var(--travel-background, #21534a),
+    var(--travel-edge, #092e29) 75%
+  );
+  pointer-events: none;
+  transition: opacity 75ms linear;
+}
+.rail-travel-inner {
+  width: min(420px, calc(100% - 48px));
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 10px;
+  color: var(--travel-ink, #f3dfad);
+}
+.rail-travel-return {
+  background: transparent;
+}
+.rail-travel-resume {
+  margin-top: 16px;
+  pointer-events: auto;
+  border: 1px solid #edcf8e;
+  border-radius: 7px;
+  background: #edcf8e;
+  color: #163f37;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rail-travel-resume:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 3px;
+}
+.rail-travel-art {
+  width: 110px;
+  height: 55px;
+  overflow: hidden;
+}
+.rail-travel-preview {
+  position: relative;
+  width: min(230px, 58vw);
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 3px solid var(--travel-accent, #edd391);
+  border-radius: 120px 120px 14px 14px;
+  box-shadow:
+    0 0 0 7px #d4e9c319,
+    0 15px 35px #00191466;
+  background: var(--travel-panel, #296458);
+}
+.rail-travel-preview canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center bottom;
+}
+.rail-travel-preview > span {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 10px 6px;
+  background: var(--travel-panel, #0b302e);
+  color: var(--travel-ink, #f3dfad);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.6px;
+}
+.rail-travel-inner > span {
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+.rail-travel-inner > strong {
+  font-size: clamp(24px, 4vw, 36px);
+  line-height: 1.2;
+}
+.rail-travel-inner > p {
+  margin: 0;
+  color: var(--travel-muted, #c3d8c7);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.rail-travel-inner > button {
+  pointer-events: auto;
+  border: 1px solid #edcf8e;
+  border-radius: 7px;
+  background: #edcf8e;
+  color: #163f37;
+  padding: 10px 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.rail-travel-inner > button:focus-visible {
+  outline: 3px solid white;
+  outline-offset: 3px;
+}
+.rail-travel-cart {
+  animation: rail-travel-roll 480ms ease-in-out infinite alternate;
+}
+.rail-travel-sleepers {
+  animation: rail-travel-track 360ms linear infinite;
+}
+.rail-travel[data-paused="true"] * {
+  animation-play-state: paused;
+}
+@keyframes rail-travel-roll {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-3px);
+  }
+}
+@keyframes rail-travel-track {
+  to {
+    transform: translateX(-28px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-travel-cart,
+  .rail-travel-sleepers {
+    animation: none;
+  }
+}
+@media (max-height: 740px), (max-width: 360px) {
+  .rail-travel-inner {
+    gap: 7px;
+  }
+  .rail-travel-preview {
+    width: 180px;
+    aspect-ratio: 3 / 4;
+    border-radius: 80px 80px 10px 10px;
+  }
+  .rail-travel-art {
+    width: 85px;
+    height: 40px;
+  }
+  .rail-travel-inner > strong {
+    font-size: 24px;
+  }
+  .rail-travel-inner > p {
+    font-size: 12px;
+  }
+}
+@media (max-width: 360px) {
+  .rail-travel-preview {
+    width: 150px;
+  }
+}
+/* A dark seasonal panel keeps instructions readable over every blended sky. */
+.rail-travel-inner {
+  border-radius: 18px;
+  background: var(--travel-panel, #10352f);
+  box-shadow: 0 0 0 10px var(--travel-panel, #10352f);
+}

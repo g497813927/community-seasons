@@ -1,0 +1,216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Community Seasons railway question bank",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "version",
+    "contentNote",
+    "questions"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./rail-questions.schema.json"
+    },
+    "version": {
+      "const": 1
+    },
+    "contentNote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "en",
+        "zh"
+      ],
+      "properties": {
+        "en": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "zh": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 150
+        }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "topic",
+          "prompt",
+          "correctIndex",
+          "options"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+          },
+          "topic": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$"
+          },
+          "prompt": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "en",
+              "zh"
+            ],
+            "properties": {
+              "en": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 180
+              },
+              "zh": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 90
+              }
+            }
+          },
+          "correctIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "0 = first, 1 = second, 2 = third option; lanes shuffle in game."
+          },
+          "options": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "label",
+                "why"
+              ],
+              "properties": {
+                "label": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "en",
+                    "zh"
+                  ],
+                  "properties": {
+                    "en": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 72
+                    },
+                    "zh": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 36
+                    }
+                  }
+                },
+                "why": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "en",
+                    "zh"
+                  ],
+                  "properties": {
+                    "en": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 240
+                    },
+                    "zh": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "source": {
+            "type": "object",
+            "description": "Review only: excluded from the generated game bank and share cards. Scenarios shown to players are fictional adaptations.",
+            "additionalProperties": false,
+            "required": [
+              "accountName",
+              "accountUrl",
+              "url",
+              "publishedDate",
+              "dateType",
+              "title",
+              "section",
+              "note"
+            ],
+            "properties": {
+              "accountName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "accountUrl": {
+                "type": "string",
+                "pattern": "^https://space\\.bilibili\\.com/[0-9]+$"
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^https://(www\\.bilibili\\.com/opus|t\\.bilibili\\.com)/[0-9]+$"
+              },
+              "publishedDate": {
+                "type": "string",
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              },
+              "dateType": {
+                "enum": [
+                  "published",
+                  "edited"
+                ]
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "section": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 240
+              },
+              "note": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "en",
+                  "zh"
+                ],
+                "properties": {
+                  "en": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 400
+                  },
+                  "zh": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

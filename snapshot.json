@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "createdAt": "2026-09-10T23:31:21.431306+00:00",
+  "description": "Workspace import baseline; fuzz runner always tests the current main source and records its hashes.",
+  "sourceHashes": {
+    "outputs/community-seasons/lib/game/scenes.ts": "9527078fd2ae559d2456ca03a583f762fe61423a8675403dd194526f86a15aa2",
+    "outputs/community-seasons/lib/game/boosts.ts": "2c08dfc77c36426df376fd06593165c17d411743d26f43ff67d225c8fd63f99f",
+    "outputs/community-seasons/lib/game/railway.ts": "a34955de3249ae3fef85992198ec4c03c9fdaa8972c2a560a4f1e6022fb2f582",
+    "outputs/community-seasons/lib/game/engine.ts": "f5e936a56443ad7c00f24d84f435aeb10ca5bf6109c6e3af6a95fc2a0865dd26",
+    "outputs/community-seasons/lib/game/rail-transition.ts": "7fe53ce6d0d93b5ab14d89165c55b271702d21ce23be2a154b8e8d6dd57d9a9d",
+    "outputs/community-seasons/lib/game/travel-colors.ts": "7438cf6d5d519cc0bc226ec8631d0775d62b7de798c625a1736376a4f344fa3b",
+    "outputs/community-seasons/lib/game/store.ts": "e98c8fe81cb53b514a1a22552b33fec3801a1f991097d63e7d042cd0db4b2f8d",
+    "outputs/community-seasons/lib/game/community.ts": "57c1eed08815b99d2ab42e634a779eccd37eb9dc345070599afb09f116143fd6",
+    "outputs/community-seasons/lib/game/render.ts": "21474fdcd17c4112adef22690b7c8feb8d179bac1065678a3827ff83a96e993a",
+    "outputs/community-seasons/lib/game/cloud-save.ts": "dc0e3669f1c4d052162ce9f6028b66d837806cf8c39db2aae0fdeb546750e394"
+  },
+  "testFiles": {
+    "work/renderer-fuzz.mjs": "9f6792e6a1c8f5d6199fbdd8b297f86c9dc8041916483a5bb3403ed9f52063b5",
+    "work/community-tests/compile.mjs": "8f3d10da6362b915b21357e46682478759a4c6ec0d3f32b67f9b14d8c56b16f8",
+    "work/community-tests/engine-state-fuzz.test.mjs": "f0ca385a3826513adf90ae70b6deffd9548ac9cf7d4b4331d7ca24a0a2f68767",
+    "work/community-tests/store-economy-fuzz.test.mjs": "b629993fff85692709402e73c1d7280252ed3617bfcbaeb58059bd18f620c5a2",
+    "work/property-tests/engine-invalid.test.mjs": "345980ff3eddda7bd9905d97575fb36922f16a80ee893375f04f909a7550becc",
+    "work/property-tests/save-invalid.test.mjs": "332b01bcddff13c36c9da5dafd427a2b08bbb0efa8ea43d32a16a134a6e64fbc",
+    "work/property-tests/typed-arbitraries.ts": "338b1771c827bbd117d9db25f79a6d1e280d138aecf9a270f04f69f225e2dabb",
+    "work/property-tests/typed-arbitraries.tsconfig.json": "bd9b363b229e9a906f350e6096e1717d548562b3e0d3ca32360b4c91dcdb06bc",
+    "work/property-tests/typed-arbitraries.test.mjs": "7e9a6f0aef010e4fb73fc085adb0d0d0947561016aee166650ecb52c8a33d2a6",
+    "work/property-tests/typed-arbitraries.md": "c3ab96a7600ad738c11289e1e8a38549d741f7351ad3dc46f947bc757e3e0bbf",
+    "work/community-tests/rail-approach-warmup.test.mjs": "6aa2e96113cdcbca3b6d9773f38058a1364e3a9249c87d5335d82fca6f3b7dc2",
+    "work/community-tests/boost-fork-assist.test.mjs": "98cc2b46e96df09081120e6104e04860f06da61bd29289122b197c0b10eb2340",
+    "work/community-tests/railway-forks.test.mjs": "39417fe2624656b42c1f9a4cf4c7e6c68b229507a18c5fadd49b216cf7c1c0fc",
+    "work/community-tests/cottage-roof-visibility.test.mjs": "94d0d14905c867f00c4228aa4f047ad0969b5bb681ab0489a31752f3512fa125",
+    "work/community-tests/summer-boardwalk-supports.test.mjs": "476fcb3812256972ef220f6d1c9300c727d72e1f1cb684696b487b46833798d5",
+    "work/community-tests/boost-barrier-protection.test.mjs": "ea4f727ef01598072f53554eab96c3accec8e63544fc8cec0b6ff2b342af4fbc"
+  },
+  "runnerFiles": {
+    "run.mjs": "66db5a62d050f0689af0472f5a95e743a00a46c4bd5ff60786a1f559cba2225c",
+    "run.sh": "109c44d6b8bdc3ea0fd3f612d954eaf56175d7f30076c973704c77618579530a",
+    "fuzz_game.py": "c5bd6f062be181d482334ecbaf04e29944283dbc8710b599d638a8f475c765eb",
+    "package.json": "8c589f4eb74e36637615255f5e43ad1cc01bc0a5a33c79a16fecf5f31105acc4",
+    "package-lock.json": "371a36178ede85cff57b3ec27bb6dea5c8cdf66e98758cfe88555322599e8db6",
+    "README.md": "0e80d1f9ae178580d27ec39cf27f22248cdb12c090e39973a2375f0ea6f363c4",
+    "terminal-dashboard.mjs": "75ec7c7ac8b780d1120a3c28eda19067751f7b07aed59b7be3e294dbb4b3a8ed"
+  }
+}

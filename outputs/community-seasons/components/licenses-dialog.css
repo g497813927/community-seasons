@@ -1,0 +1,86 @@
+.credits-footer {
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 0 0 max(16px, env(safe-area-inset-bottom));
+}
+.licenses-launcher,
+.licenses-error button,
+.licenses-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  border: 1px solid #afc39855;
+  border-radius: 7px;
+  background: #173c33;
+  color: #eed398;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+.licenses-launcher { background: transparent; border-color: transparent; color: #b9cbbd; }
+.licenses-launcher:hover,
+.licenses-error button:hover,
+.licenses-close:hover { background: #254d41; color: #ffe2a4; }
+.licenses-dialog[data-slot="dialog-content"] {
+  width: min(780px, calc(100% - 24px));
+  max-width: none;
+  max-height: calc(100svh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 26px;
+  gap: 20px;
+  border: 1px solid #aec79c66;
+  background: #102e2b;
+  color: #d5e1d5;
+  box-shadow: 0 24px 80px #001a1799;
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.licenses-dialog > * { min-width: 0; }
+.licenses-header { position: relative; gap: 12px; }
+.licenses-close { position: absolute; right: 0; top: 0; padding: 8px; }
+.licenses-eyebrow { display: flex; align-items: center; gap: 9px; padding-right: 52px; color: #dfc486; font-size: 11px; letter-spacing: 1px; }
+.licenses-eyebrow svg { flex-shrink: 0; }
+.licenses-title[data-slot="dialog-title"] { padding-right: 52px; color: #f0dcaf; font-size: clamp(23px, 5vw, 32px); line-height: 1.3; }
+.licenses-title:focus { outline: none; }
+.licenses-description[data-slot="dialog-description"] { color: #bdcec2; font-size: 15px; line-height: 1.6; }
+.licenses-tools { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+.licenses-search { display: flex; flex-direction: column; flex: 1 1 250px; min-width: 0; gap: 6px; font-size: 13px; color: #c7d8cd; }
+.licenses-search input { width: 100%; min-width: 0; min-height: 44px; padding: 10px 12px; border: 1px solid #9ebdaa88; border-radius: 6px; background: #09221f; color: #f4ebd3; font: inherit; font-size: 16px; line-height: 1.5; }
+.licenses-search input::placeholder { color: #a6bbb0; }
+.licenses-search input:focus-visible { outline: 2px solid #edb95d; outline-offset: 2px; }
+.licenses-count { margin: 0; color: #b2c8b9; font-size: 13px; }
+.licenses-list { display: grid; gap: 8px; min-width: 0; }
+.license-entry { min-width: 0; border: 1px solid #a4c0ab44; border-radius: 8px; background: #163a34; }
+.license-entry summary { min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.license-entry summary::-webkit-details-marker { display: none; }
+.license-entry summary:focus-visible { outline: 2px solid #edb95d; outline-offset: -2px; border-radius: 8px; }
+.license-package-name { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; column-gap: 10px; align-items: baseline; }
+.license-package-name strong { font-size: 15px; color: #f0dfbd; }
+.license-package-name small { font-size: 12px; color: #b2c8b9; }
+.license-type { color: #b9d9cf; font-size: 12px; max-width: 40%; }
+.license-chevron { flex-shrink: 0; color: #dec485; }
+.license-entry[open] .license-chevron { transform: rotate(180deg); }
+.license-entry-content { padding: 0 14px 16px; min-width: 0; }
+.license-package-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding-block: 10px; border-top: 1px solid #a4c0ab33; font-size: 12px; color: #b2c8b9; }
+.license-entry h3 { margin: 10px 0 6px; font-size: 13px; color: #c4d8cb; }
+.license-entry pre { max-width: 100%; margin: 0; padding: 14px; border-radius: 5px; background: #092622; color: #d8e2d7; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.licenses-error p { margin-top: 0; }
+@media (max-width: 600px) {
+  .licenses-dialog[data-slot="dialog-content"] { padding: 18px; gap: 16px; }
+  .licenses-eyebrow { font-size: 10px; }
+  .license-entry summary { gap: 8px; padding: 12px; }
+  .license-package-name { flex-direction: column; }
+  .license-entry-content { padding-inline: 12px; }
+}

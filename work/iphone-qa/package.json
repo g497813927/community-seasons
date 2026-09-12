@@ -1,0 +1,1 @@
+{"name":"community-seasons-iphone-qa","private":true,"type":"module","scripts":{"build":"vite build","preview":"vite preview --host 0.0.0.0 --port 3005 --strictPort"}}

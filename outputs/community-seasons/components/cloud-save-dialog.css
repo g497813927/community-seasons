@@ -1,0 +1,240 @@
+.cloud-save-dialog[data-slot="dialog-content"] {
+  width: min(600px, calc(100vw - 24px));
+  max-width: min(600px, calc(100vw - 24px));
+  max-height: calc(100svh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 26px;
+  gap: 18px;
+  border: 1px solid #b0be885e;
+  border-radius: 14px;
+  background: #0a2b24;
+  color: #eeeede;
+  box-shadow: 0 28px 120px #001c19bd;
+}
+.cloud-save-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #d8c58f;
+  font-size: 11px;
+  letter-spacing: 1.8px;
+}
+.cloud-save-title[data-slot="dialog-title"] {
+  margin-top: 4px;
+  font-family: Georgia, serif;
+  font-size: 29px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #f0ddb5;
+  outline: none;
+}
+.cloud-save-description[data-slot="dialog-description"] {
+  color: #b5cab4;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.cloud-save-comparison {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.cloud-save-comparison th,
+.cloud-save-comparison td {
+  padding: 9px 8px;
+  border-bottom: 1px solid #a6bf8030;
+  text-align: center;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+.cloud-save-comparison thead th {
+  background: #183b30;
+  color: #f0ddb5;
+  font-weight: 600;
+}
+.cloud-save-comparison thead th svg {
+  display: block;
+  margin: 0 auto 5px;
+  color: #a4d2bb;
+}
+.cloud-save-comparison thead th:first-child {
+  width: 36%;
+  border-radius: 7px 0 0;
+}
+.cloud-save-comparison thead th:last-child {
+  border-radius: 0 7px 0 0;
+}
+.cloud-save-comparison tbody th {
+  color: #b5cab4;
+  font-weight: 400;
+  text-align: left;
+}
+.cloud-save-comparison td {
+  font-weight: 600;
+}
+.cloud-save-details > summary {
+  cursor: pointer;
+  color: #d8c58f;
+  font-size: 13px;
+  padding: 3px 0;
+}
+.cloud-save-details > summary:focus-visible {
+  outline: 2px solid #edbc6b;
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+.cloud-save-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 14px;
+  margin-top: 13px;
+}
+.cloud-save-detail-grid section {
+  min-width: 0;
+  padding: 13px;
+  border-radius: 7px;
+  background: #12382d;
+  border: 1px solid #a6bf8030;
+}
+.cloud-save-detail-grid h3 {
+  color: #f0ddb5;
+  font-size: 15px;
+  font-weight: 600;
+}
+.cloud-save-detail-grid h4 {
+  margin: 13px 0 6px;
+  font-size: 12px;
+  color: #bdd3c3;
+}
+.cloud-save-detail-grid ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.cloud-save-detail-grid li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.cloud-save-detail-grid li > span:last-child {
+  flex-shrink: 0;
+  color: #c5d4b8;
+  text-align: right;
+}
+.cloud-save-detail-grid p {
+  margin: 12px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #c5d4b8;
+}
+.cloud-save-consequence,
+.cloud-save-error,
+.cloud-save-dialog-status,
+.cloud-save-dismiss-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.cloud-save-consequence {
+  padding: 11px 13px;
+  border-left: 2px solid #d8bd7d;
+  border-radius: 0 5px 5px 0;
+  color: #ecd8ad;
+  background: #d8bd7d0d;
+}
+.cloud-save-error {
+  color: #ffd0b9;
+}
+.cloud-save-actions {
+  display: grid;
+  gap: 9px;
+}
+.cloud-save-dialog .cloud-save-choice,
+.cloud-save-dialog .cloud-save-local-only {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: 65px;
+  justify-content: flex-start;
+  gap: 13px;
+  padding: 12px 15px;
+  white-space: normal;
+  text-align: left;
+  border-radius: 7px;
+}
+.cloud-save-dialog .cloud-save-choice {
+  border: 1px solid #8db59870;
+  background: #214435;
+  color: #f0ddb5;
+}
+.cloud-save-dialog .cloud-save-choice:hover {
+  background: #2c5340;
+}
+.cloud-save-dialog .cloud-save-local-only {
+  color: #c2d2be;
+  background: transparent;
+  border: 1px solid transparent;
+}
+.cloud-save-dialog .cloud-save-local-only:hover {
+  background: #17392e;
+  border-color: #8db59840;
+}
+.cloud-save-actions strong,
+.cloud-save-actions small {
+  display: block;
+}
+.cloud-save-actions strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.cloud-save-actions small {
+  margin-top: 2px;
+  color: #b2c8b0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.cloud-save-dialog-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #c5d4b8;
+}
+.cloud-save-spinner {
+  animation: cloud-save-spin 1s linear infinite;
+}
+.cloud-save-dismiss-note {
+  color: #a3bba7;
+  font-size: 11px;
+}
+@keyframes cloud-save-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 420px) {
+  .cloud-save-dialog[data-slot="dialog-content"] {
+    padding: 18px;
+    gap: 15px;
+  }
+  .cloud-save-title[data-slot="dialog-title"] {
+    font-size: 25px;
+  }
+  .cloud-save-comparison {
+    font-size: 12px;
+  }
+  .cloud-save-comparison th,
+  .cloud-save-comparison td {
+    padding: 9px 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cloud-save-spinner {
+    animation: none;
+  }
+}
