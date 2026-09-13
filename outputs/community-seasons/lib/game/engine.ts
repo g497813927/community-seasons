@@ -287,13 +287,13 @@ export function act(s: RunState, action: Action): boolean {
     return true;
   }
   // The latest different motion takes over immediately. Repeating the current
-  // motion does not restart its timer or extend it indefinitely.
-  if (action === "jump" && s.jump <= 0) {
+  // motion restarts its timer for more flexible chained actions.
+  if (action === "jump") {
     s.slide = 0;
     s.jump = JUMP_DURATION;
     return true;
   }
-  if (action === "slide" && s.slide <= 0) {
+  if (action === "slide") {
     s.jump = 0;
     s.slide = SLIDE_DURATION;
     return true;
@@ -1111,8 +1111,12 @@ export function advancePreview(s: RunState, seconds: number) {
       } else {
         if (trail) s.lane = trail.lane;
         const secondsToRow = (next.at - s.distance) / Math.max(INITIAL_SPEED, s.speed);
-        if (secondsToRow < 0.36 && secondsToRow > 0)
-          act(s, next.kind === "arch" ? "slide" : "jump");
+        if (secondsToRow < 0.36 && secondsToRow > 0) {
+          const action = next.kind === "arch" ? "slide" : "jump";
+          // Preview decisions run every substep. Let the chosen motion finish;
+          // only a new player input should restart an active jump or slide.
+          if (s[action] <= 0) act(s, action);
+        }
       }
     }
     const relic = s.relics.find((r) => !r.taken && r.at > s.distance && r.lane === s.lane);
@@ -1124,7 +1128,7 @@ export function advancePreview(s: RunState, seconds: number) {
           o.lane === s.lane &&
           Math.abs(o.at - relic.at) < s.speed * JUMP_DURATION,
       );
-      if (!lowBeam) act(s, "jump");
+      if (!lowBeam && s.jump <= 0) act(s, "jump");
     }
     const dt = Math.min(remaining, 1 / 120);
     update(s, dt);

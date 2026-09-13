@@ -4,6 +4,8 @@
 
 The first click on Start opens a two-page guide before skill selection; reopen it with **How to play** on the home screen. Swipe instructions and keyboard keys appear together, and both control methods work at any time without switching modes. The second page illustrates obstacles, transport gates, boosters, and coins. Swipe left/right or use A/D and the arrow keys to change lanes. Swipe up or press W/Up/Space to jump; swipe down or press S/Down to slide. Double-tap the path or press E to activate a charged skill.
 
+Repeating a jump or slide input restarts that motion. Switching between them immediately cancels the previous motion.
+
 The home screen shows the saved best score. Current-run score, distance, and coin counters appear when the run starts. Home autoplay stays in the saved starting season and never enters or displays transport gates.
 
 Short screens use a smaller home title and compact layout; long guides and store dialogs scroll within the viewport. Cramped phone landscape views ask the player to rotate to portrait. This pauses an active run, blocks game input, and keeps it paused after rotation until the player explicitly resumes. Usable tablet and desktop landscape views remain playable. Toy’s embedded viewport also checks physical screen orientation without reading the host page.

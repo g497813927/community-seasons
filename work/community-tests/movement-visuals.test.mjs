@@ -11,6 +11,8 @@ const {
   finishReview,
   MAX_SPEED,
   INITIAL_SPEED,
+  JUMP_DURATION,
+  SLIDE_DURATION,
   LANE_WIDTH,
   CHASE_APPROACH_DURATION,
   CHASE_DURATION,
@@ -19,6 +21,7 @@ const {
 const { Renderer } = await import("./compiled/render.mjs");
 const { getLesson } = await import("./compiled/community.mjs");
 const { createProgress, bankRunRewards } = await import("./compiled/store.mjs");
+const { createRailRide } = await import("./compiled/railway.mjs");
 function run(distance = 9000) {
   const s = createRun();
   Object.assign(s, {
@@ -221,6 +224,53 @@ test("66-speed collisions, jumps, slides and shield reviews stay consistent acro
     }
 });
 
+test("explicit repeated motion inputs restart jump and slide while switching cancels the other motion", () => {
+  for (const [motion, other, duration] of [
+    ["jump", "slide", JUMP_DURATION],
+    ["slide", "jump", SLIDE_DURATION],
+  ]) {
+    const s = run();
+    assert.equal(act(s, motion), true);
+    advance(s, duration / 3);
+    assert.ok(s[motion] > 0 && s[motion] < duration);
+    assert.equal(act(s, motion), true, `${motion}: an explicit repeat must be accepted`);
+    assert.equal(s[motion], duration, `${motion}: an explicit repeat must restart the motion`);
+    assert.equal(s[other], 0);
+    advance(s, duration / 3);
+    assert.equal(act(s, other), true);
+    assert.equal(s[motion], 0, `${other}: switching must cancel the previous motion`);
+    assert.ok(s[other] > 0);
+    assert.equal(act(s, motion), true);
+    assert.equal(s[motion], duration);
+    assert.equal(s[other], 0);
+    advance(s, duration + 0.05);
+    assert.equal(s[motion], 0, `${motion}: motion must finish after the last explicit input`);
+  }
+});
+
+test("motion input repeats remain blocked outside a running road segment", () => {
+  const states = ["ready", "paused", "over"].map((mode) => {
+    const s = run();
+    act(s, "jump");
+    advance(s, 0.2);
+    s.mode = mode;
+    return [mode, s];
+  });
+  for (const phase of ["boarding", "question", "feedback", "falling", "complete"]) {
+    const s = run();
+    s.rail = createRailRide(() => 0.5);
+    s.rail.phase = phase;
+    states.push([`rail-${phase}`, s]);
+  }
+  for (const [label, s] of states) {
+    const frozen = structuredClone(s);
+    for (const motion of ["jump", "jump", "slide", "slide"]) {
+      assert.equal(act(s, motion), false, `${label}: ${motion} was accepted`);
+      assert.deepEqual(s, frozen, `${label}: a blocked input changed the run`);
+    }
+  }
+});
+
 test("132-speed dashes do not tunnel, double-credit coins or skip later unprotected reviews", () => {
   for (const step of [1 / 30, 1 / 60, 1 / 144, 0.25]) {
     const s = run();
@@ -296,6 +346,39 @@ test("chasers enter smoothly while outer-edge mistakes recover without instant f
   act(s, "left");
   assert.equal(s.mode, "running", "quick repeated edge inputs remain recoverable");
   assert.equal(s.stumbles, 1);
+});
+
+test("preview completes obstacle and relic motions without restarting them every simulation step", () => {
+  for (const target of ["block", "roots", "arch", "relic"]) {
+    const s = run();
+    const at = s.distance + s.speed * 0.3;
+    if (target === "relic") {
+      s.relics = [{ id: 1, lane: 0, at, kind: "magnet", taken: false }];
+    } else {
+      s.obstacles = [-1, 0, 1].map((lane, id) => ({
+        id, lane, at, kind: target, resolved: false,
+      }));
+    }
+    const targets = [...s.obstacles, ...s.relics];
+    const motion = target === "arch" ? "slide" : "jump";
+    const duration = motion === "slide" ? SLIDE_DURATION : JUMP_DURATION;
+    advancePreview(s, 0.05);
+    const remaining = s[motion];
+    assert.ok(remaining > 0 && remaining < duration, `${target}: preview did not begin its motion`);
+    advancePreview(s, 0.05);
+    assert.ok(
+      Math.abs(remaining - s[motion] - 0.05) < 1e-8,
+      `${target}: autopilot restarted an active ${motion}`,
+    );
+    advancePreview(s, 0.25);
+    assert.equal(s.mode, "running", `${target}: preview failed at its target`);
+    assert.equal(s.review, null);
+    assert.equal(s.stumbles, 0);
+    assert.equal(s.shieldAbsorbed, 0);
+    assert.ok(targets.every((item) => target === "relic" ? item.taken : item.resolved));
+    for (let i = 0; i < 4; i++) advancePreview(s, 0.25);
+    assert.equal(s[motion], 0, `${target}: preview motion did not finish`);
+  }
 });
 
 test("preview follows guide trails and survives sustained maximum-speed running without shield masking", () => {
