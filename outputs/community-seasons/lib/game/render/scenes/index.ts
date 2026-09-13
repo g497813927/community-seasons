@@ -1,0 +1,102 @@
+import { LANE_WIDTH } from "../../engine";
+import type { Renderer } from "../../render";
+import type { SceneKind } from "../../scenes";
+import type { V } from "../types";
+import { springBackdrop, springScenery } from "./spring";
+import { summerBackdrop, summerScenery } from "./summer";
+import { autumnBackdrop, autumnScenery } from "./autumn";
+import { winterBackdrop, winterScenery } from "./winter";
+
+const sceneryComponents = {
+  spring: springScenery,
+  summer: summerScenery,
+  autumn: autumnScenery,
+  winter: winterScenery,
+} satisfies Record<SceneKind, (renderer: Renderer, variant: number, side: number) => void>;
+
+const backdropComponents = {
+  spring: springBackdrop,
+  summer: summerBackdrop,
+  autumn: autumnBackdrop,
+  winter: winterBackdrop,
+} satisfies Record<SceneKind, (renderer: Renderer) => void>;
+
+export function scenery(renderer: Renderer, scene: SceneKind, row: number, z: number) {
+  const variant = ((row % 6) + 6) % 6;
+  for (const side of [-1, 1]) {
+    const key = `${scene}:${variant}:${side}`;
+    let template = renderer.sceneryTemplates.get(key);
+    if (!template) {
+      const saved = renderer.faces,
+        layer = renderer.layer;
+      renderer.faces = [];
+      renderer.layer = 1;
+      renderer.captureScenery = true;
+      sceneryComponents[scene](renderer, variant, side);
+      template = renderer.faces;
+      renderer.captureScenery = false;
+      renderer.faces = saved;
+      renderer.layer = layer;
+      renderer.sceneryTemplates.set(key, template);
+    }
+    // Both sides of both outgoing streets exist before choosing a turn.
+    // Keep the rejected street in the same world until it leaves the view.
+    const junction = renderer.sceneryForkAt;
+    const branches = junction !== null && row * 14 - junction > 14 ? [-1, 1] : [side];
+    for (const branch of branches)
+      for (const face of template) {
+        const cameraSpace = junction !== null;
+        const points: V[] = face.points.map(([x, y, pz]) => {
+          if (cameraSpace && face.boardwalk && Math.abs(x) < 2.321) {
+            const along = pz + z - (renderer.forkDepth ?? -renderer.curveAlong);
+            x *= renderer.turnRoadWidth(along);
+          }
+          return cameraSpace ? sceneryViewPoint(renderer, branch, x, y, pz + z) : [x, y, pz + z];
+        });
+        const view = cameraSpace ? points : points.map((point) => renderer.cameraPoint(point));
+        if ((face.cull && !renderer.frontFacing(view)) || view.every((p) => p[2] < -9)) continue;
+        renderer.faces.push({
+          ...face,
+          points,
+          cameraSpace,
+          z: view.reduce((sum, point) => sum + point[2], 0) / view.length,
+        });
+      }
+  }
+}
+
+export function sceneryViewPoint(
+  renderer: Renderer,
+  branch: number,
+  x: number,
+  y: number,
+  z: number,
+): V {
+  if (renderer.forkDepth !== null) return renderer.cameraPoint(renderer.forkWorldPoint(branch, x, y, z));
+  const along = renderer.curveAlong;
+  const direction = renderer.curveDirection;
+  // Express each branch in the junction's original world coordinates, then
+  // move/rotate that world around the selected road's camera origin.
+  const point = renderer.turnPoint(along + z, branch);
+  const origin = renderer.turnPoint(along);
+  const wx =
+    point[0] + branch * LANE_WIDTH - origin[0] - direction * LANE_WIDTH + x * Math.cos(point[2]);
+  const wz = point[1] - origin[1] - x * Math.sin(point[2]);
+  const yaw = renderer.curveTail ? (direction * Math.PI) / 2 : renderer.cameraYaw;
+  return [
+    wx * Math.cos(yaw) - wz * Math.sin(yaw) - renderer.cameraShift,
+    y,
+    wx * Math.sin(yaw) + wz * Math.cos(yaw) + renderer.cameraDepthOffset,
+  ];
+}
+
+export function backdrop(renderer: Renderer, scene: SceneKind) {
+  // This distant panorama surrounds the whole route. Keep it independent
+  // of the local fork coordinate frame, which changes at the junction.
+  renderer.layer = 1;
+  const firstBackdrop = renderer.faces.length;
+  renderer.captureBackdrop = true;
+  backdropComponents[scene]?.(renderer);
+  renderer.captureBackdrop = false;
+  for (let i = firstBackdrop; i < renderer.faces.length; i++) renderer.faces[i].cameraSpace = true;
+}
