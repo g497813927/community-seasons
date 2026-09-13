@@ -1,19 +1,10 @@
 import fs from 'node:fs';
-import crypto from 'node:crypto';
 import assert from 'node:assert/strict';
 import { performance } from 'node:perf_hooks';
-import ts from "typescript";
+import { compileGameModules } from './compile-game-modules.mjs';
 
 const out = new URL('./renderer-fuzz/', import.meta.url);
-fs.mkdirSync(new URL('compiled/', out), { recursive: true });
-const modules = ['scenes','boosts','railway','engine','rail-transition','travel-colors','store','community','render'];
-const sourceHashes = {};
-for (const name of modules) {
-  const source = fs.readFileSync(new URL(`../outputs/community-seasons/lib/game/${name}.ts`, import.meta.url),'utf8');
-  sourceHashes[name] = crypto.createHash('sha256').update(source).digest('hex');
-  const result = ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace(/from ["'](\.\/[a-z-]+)["']/g,"from '$1.mjs'");
-  fs.writeFileSync(new URL(`compiled/${name}.mjs`,out),result);
-}
+const sourceHashes = compileGameModules(new URL('compiled/', out));
 const { Renderer } = await import('./renderer-fuzz/compiled/render.mjs');
 const E = await import('./renderer-fuzz/compiled/engine.mjs');
 const Store = await import('./renderer-fuzz/compiled/store.mjs');

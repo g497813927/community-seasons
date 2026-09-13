@@ -101,7 +101,12 @@ setting(baseEnv,'STORE_FUZZ_ACTIONS',opts.actions);
 for(const key of ['FC_RUNS','FC_SAVE_RUNS','FC_TYPED_RUNS'])setting(baseEnv,key,opts.runs??baseEnv[key]??(mode==='quick'?200:undefined));
 setting(baseEnv,'RENDERER_FUZZ_BUDGET_MS',opts['budget-seconds']!==undefined?opts['budget-seconds']*1000:undefined);
 const manifest=JSON.parse(fs.readFileSync('snapshot.json','utf8'));
-const readSourceHashes=()=>Object.fromEntries(Object.keys(manifest.sourceHashes).map(file=>{try{return [file,crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')];}catch(error){return [file,`unreadable:${error.code}`];}}));
+const readSourceHashes=()=>{
+  const gameDir='outputs/community-seasons/lib/game/';
+  const files=new Set(Object.keys(manifest.sourceHashes));
+  for(const file of fs.readdirSync(gameDir,{recursive:true}).sort())if(/\.(?:ts|json)$/.test(file))files.add(gameDir+file.split(path.sep).join('/'));
+  return Object.fromEntries([...files].map(file=>{try{return [file,crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex')];}catch(error){return [file,`unreadable:${error.code}`];}}));
+};
 const hashes=readSourceHashes();
 const changedInputs=()=>{const current=readSourceHashes();return JSON.stringify(current)===JSON.stringify(hashes)?null:current;};
 const baseSeed=seeded?(opts.seed??crypto.randomBytes(4).readUInt32LE()):null;
