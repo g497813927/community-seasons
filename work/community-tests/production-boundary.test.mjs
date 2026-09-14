@@ -155,11 +155,19 @@ test("public production source and built assets contain no QA entry points or UR
 });
 
 test("production artifact includes the complete current project license", () => {
+  const notice = fs.readFileSync(new URL("../../LICENSE", root));
   assert.deepEqual(
     fs.readFileSync(new URL("dist/LICENSE", root)),
-    fs.readFileSync(new URL("../../LICENSE", root)),
+    notice,
     "distributed MIT notice must match the repository license verbatim",
   );
+  const html = fs.readFileSync(new URL("dist/index.html", root), "utf8");
+  const blocks = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
+    .filter((match) => /\bid="project-license"/.test(match[1]));
+  assert.equal(blocks.length, 1, "HTML must retain the notice when a host omits standalone files");
+  assert.match(blocks[0][1], /\btype="text\/plain"/);
+  assert.doesNotMatch(blocks[0][1], /\bsrc\s*=/);
+  assert.equal(blocks[0][2], notice.toString("utf8"), "embedded notice must be complete and verbatim");
 });
 
 test("legitimate purchased travel still charges coins and consumes a pass; missing passes cannot teleport", () => {
