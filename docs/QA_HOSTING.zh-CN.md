@@ -23,9 +23,11 @@ vercel deploy --cwd /tmp/community-seasons-qa-bootstrap --prod
 
 | 变量 | 内容 |
 | --- | --- |
-| `VERCEL_TOKEN` | 限定于 QA 项目、设有过期时间的 Vercel API 令牌 |
+| `VERCEL_TOKEN` | 限定于 QA 项目所属团队、设有过期时间的 Vercel API 令牌 |
 | `VERCEL_PROJECT_ID` | QA 项目的 `prj_…` 标识符 |
 | `VERCEL_ORG_ID` | 所属团队的 `team_…` 标识符 |
+
+Vercel 访问令牌[按团队限定范围](https://vercel.com/kb/guide/how-do-i-use-a-vercel-api-access-token)。脚本会核对指定的 QA 项目，但这一检查不会缩小令牌本身对团队中其他项目的访问权限。
 
 不要将令牌放入命令参数、受版本控制的文件、截图、Issue 或 PR。脚本使用 Node 内置的 HTTP 客户端，无须安装 Vercel CLI。安装 CLI 并登录可用于管理账户，但不能替代这里明确指定的部署变量。
 

@@ -23,9 +23,11 @@ For local execution, make these environment variables available through your pre
 
 | Variable | Value |
 | --- | --- |
-| `VERCEL_TOKEN` | An expiring Vercel API token scoped to the QA project |
+| `VERCEL_TOKEN` | An expiring Vercel API token scoped to the team containing the QA project |
 | `VERCEL_PROJECT_ID` | The QA project's `prj_…` identifier |
 | `VERCEL_ORG_ID` | Its `team_…` identifier |
+
+Vercel access tokens are [scoped to teams](https://vercel.com/kb/guide/how-do-i-use-a-vercel-api-access-token). The script checks the exact QA project, but that check does not restrict the token’s underlying access to other projects in its team.
 
 Never put a token in a command argument, tracked file, screenshot, issue, or PR. The script uses Node's built-in HTTP client; the Vercel CLI is not required. Installing and signing into Vercel CLI is a separate option for managing the account, not a substitute for these explicit deployment variables.
 
