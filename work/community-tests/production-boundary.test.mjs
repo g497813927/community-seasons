@@ -162,12 +162,17 @@ test("production artifact includes the complete current project license", () => 
     "distributed MIT notice must match the repository license verbatim",
   );
   const html = fs.readFileSync(new URL("dist/index.html", root), "utf8");
-  const blocks = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
-    .filter((match) => /\bid="project-license"/.test(match[1]));
-  assert.equal(blocks.length, 1, "HTML must retain the notice when a host omits standalone files");
-  assert.match(blocks[0][1], /\btype="text\/plain"/);
-  assert.doesNotMatch(blocks[0][1], /\bsrc\s*=/);
-  assert.equal(blocks[0][2], notice.toString("utf8"), "embedded notice must be complete and verbatim");
+  const singleQuoted = html
+    .replace('id="project-license"', "id='project-license'")
+    .replace('type="text/plain"', "type='text/plain'");
+  for (const document of [html, singleQuoted]) {
+    const blocks = [...document.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
+      .filter((match) => /(?:^|\s)id\s*=\s*(["'])project-license\1(?=\s|$)/.test(match[1]));
+    assert.equal(blocks.length, 1, "HTML must retain the notice when a host omits standalone files");
+    assert.match(blocks[0][1], /(?:^|\s)type\s*=\s*(["'])text\/plain\1(?=\s|$)/);
+    assert.doesNotMatch(blocks[0][1], /(?:^|\s)src\s*=/);
+    assert.equal(blocks[0][2], notice.toString("utf8"), "embedded notice must be complete and verbatim");
+  }
 });
 
 test("legitimate purchased travel still charges coins and consumes a pass; missing passes cannot teleport", () => {
