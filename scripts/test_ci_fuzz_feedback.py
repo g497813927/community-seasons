@@ -8,7 +8,7 @@ import unittest
 import urllib.error
 import zipfile
 
-from ci_fuzz_feedback import GitHub, collect, decode_prepared, format_comment, prepare, publish, unpack_report, validate_report
+from ci_fuzz_feedback import GitHub, collect, decode_prepared, format_comment, format_details, prepare, publish, unpack_report, validate_report
 
 
 def report():
@@ -20,7 +20,7 @@ def report():
 
 
 def prepared():
-    return {"repo": "owner/game", "pr": 7, "head": "b" * 40, "report": report()}
+    return {"repo": "owner/game", "pr": 7, "head": "b" * 40, "artifactId": 5, "report": report()}
 
 
 class FakeAPI:
@@ -56,12 +56,22 @@ def api_fixture(fork=False):
 
 
 class FeedbackTests(unittest.TestCase):
-    def test_comment_has_seed_path_hashes_and_generated_replay(self):
+    def test_short_comment_links_artifact_without_copying_details(self):
         marker, body = format_comment(prepared())
         self.assertTrue(body.startswith(marker + "\n"))
+        for expected in ["Base seed: `20260914`", "engine-properties", "failing seeds: `1525155539`",
+                         "https://github.com/owner/game/actions/runs/42/attempts/1",
+                         "https://github.com/owner/game/actions/runs/42/artifacts/5"]:
+            self.assertIn(expected, body)
+        for details in ["2:1:0", "numeric-dt", "node run.mjs", "a" * 64]:
+            self.assertNotIn(details, body)
+        self.assertLess(len(body), 1000)
+
+    def test_markdown_artifact_retains_replay_paths_and_full_hashes(self):
+        body = format_details(report(), "owner/game")
         for expected in ["Base seed: `20260914`", "FC_SEED=1525155539", "`2:1:0`", "numeric-dt",
                          "1 files", "node run.mjs quick --rounds 1 --seed 20260914 --no-tui",
-                         "https://github.com/owner/game/actions/runs/42/attempts/1"]:
+                         "a" * 64 + "  src/lib/game/engine.ts"]:
             self.assertIn(expected, body)
 
     def test_malicious_markdown_and_shell_text_rejected(self):
@@ -91,13 +101,13 @@ class FeedbackTests(unittest.TestCase):
     def test_no_case_details_still_has_bounded_replay(self):
         data = prepared()
         data["report"]["suites"][0]["failures"] = []
-        self.assertIn("No per-case seed/shrink path was recorded", format_comment(data)[1])
+        self.assertIn("failing seeds: not recorded", format_comment(data)[1])
 
     def test_engine_case_seed_preserves_offset_plus_index_without_wrapping(self):
         data = prepared()
         data["report"]["suites"] = [{"name": "engine", "status": "failed", "derivedSeed": 4294967295,
                                     "failures": [{"seed": 4294968091, "case": None, "path": None}]}]
-        self.assertIn("Failing seed `4294968091`", format_comment(data)[1])
+        self.assertIn("failing seeds: `4294968091`", format_comment(data)[1])
         data["report"]["suites"][0]["failures"][0]["seed"] = 2**53
         with self.assertRaises(ValueError):
             validate_report(data["report"])
@@ -129,6 +139,20 @@ class FeedbackTests(unittest.TestCase):
             result = prepare(api, "owner/game", 42, 1, lambda _: report())
             self.assertEqual(result, prepared())
             self.assertTrue(all(method == "GET" for _, method, _ in api.calls))
+
+    def test_comment_prefers_verified_full_artifact_and_rejects_spoofed_details(self):
+        api = api_fixture()
+        listing = api.responses["/repos/owner/game/actions/runs/42/artifacts?per_page=100"]
+        details = copy.deepcopy(listing["artifacts"][0])
+        details.update(id=6, name="qa-failure-42-1")
+        listing["artifacts"].append(details)
+        listing["total_count"] = 2
+        result = prepare(api, "owner/game", 42, 1, lambda _: report())
+        self.assertEqual(result["artifactId"], 6)
+        self.assertIn("/artifacts/6", format_comment(result)[1])
+        details["workflow_run"]["head_repository_id"] = 3
+        with self.assertRaises(ValueError):
+            prepare(api, "owner/game", 42, 1, lambda _: self.fail("downloaded"))
 
     def test_stale_or_different_repository_pr_is_skipped_before_download(self):
         for change in [lambda pr: pr["head"].update(sha="c" * 40),
@@ -171,7 +195,7 @@ class FeedbackTests(unittest.TestCase):
         self.assertEqual(str(context.exception), "GitHub API request failed (HTTP 403)")
 
     def test_bot_identity_required_before_comments(self):
-        api = FakeAPI({"/user": {"login": "other", "id": 8}})
+        api = FakeAPI({"/users/github-actions%5Bbot%5D": {"login": "other", "id": 8}})
         with self.assertRaises(ValueError):
             publish(api, prepared())
         self.assertEqual(len(api.calls), 1)
@@ -179,8 +203,8 @@ class FeedbackTests(unittest.TestCase):
     def test_only_own_marked_comment_can_be_updated(self):
         marker, body = format_comment(prepared())
         comments = [{"id": 10, "user": {"login": "maintainer", "id": 7}, "body": marker + "\nuser text"},
-                    {"id": 11, "user": {"login": "techzjc-bot", "id": 8}, "body": marker + "\nold"}]
-        api = FakeAPI({"/user": {"login": "techzjc-bot", "id": 8},
+                    {"id": 11, "user": {"login": "github-actions[bot]", "type": "Bot", "id": 8}, "body": marker + "\nold"}]
+        api = FakeAPI({"/users/github-actions%5Bbot%5D": {"login": "github-actions[bot]", "type": "Bot", "id": 8},
                        "/repos/owner/game/issues/7/comments?per_page=100&page=1": comments})
         self.assertEqual(publish(api, prepared()), "Updated own bot comment")
         self.assertEqual(api.calls[-1], ("/repos/owner/game/issues/comments/11", "PATCH", {"body": body}))
@@ -190,9 +214,9 @@ class FeedbackTests(unittest.TestCase):
     def test_different_head_marker_never_edits_old_comment(self):
         old = prepared()
         old["head"] = "c" * 40
-        api = FakeAPI({"/user": {"login": "techzjc-bot", "id": 8},
+        api = FakeAPI({"/users/github-actions%5Bbot%5D": {"login": "github-actions[bot]", "type": "Bot", "id": 8},
                        "/repos/owner/game/issues/7/comments?per_page=100&page=1": [
-                           {"id": 11, "user": {"login": "techzjc-bot", "id": 8}, "body": format_comment(old)[1]}]})
+                           {"id": 11, "user": {"login": "github-actions[bot]", "type": "Bot", "id": 8}, "body": format_comment(old)[1]}]})
         self.assertEqual(publish(api, prepared()), "Created bot comment")
         self.assertEqual(api.calls[-1][1], "POST")
 

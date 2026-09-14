@@ -15,7 +15,7 @@ import urllib.request
 import zipfile
 
 LIMIT = 65536
-BOT = "techzjc-bot"
+BOT = "github-actions[bot]"
 FUZZ_STEP = "Run bounded fuzz tests"
 SUITES = {
     "engine": "ENGINE_FUZZ_SEED_OFFSET",
@@ -186,7 +186,7 @@ def matching_pr(run, pr, repo_id):
 
 
 def prepare(api, repo, run_id, attempt, downloader=download_report):
-    """All reads use GITHUB_TOKEN; PAT_COMMENTS is absent from this process."""
+    """Validate untrusted results with the read-only preparation job's token."""
     text(repo, r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
     prefix = "/repos/" + repo
     run = api.request(f"{prefix}/actions/runs/{run_id}/attempts/{attempt}")
@@ -230,22 +230,28 @@ def prepare(api, repo, run_id, attempt, downloader=download_report):
             and source["head_repository_id"] == run["head_repository"]["id"]
             and source["head_sha"] == run["head_sha"], "Artifact does not match the triggering run")
     artifact_id = integer(artifact["id"], 1, 2**53 - 1)
+    details = [item for item in artifacts["artifacts"] if item["name"] == f"qa-failure-{run_id}-{attempt}"]
+    require(len(details) <= 1, "Ambiguous detailed failure artifact")
+    details_id = artifact_id
+    if details and not details[0]["expired"]:
+        details_source = details[0]["workflow_run"]
+        require(all(details_source[key] == source[key] for key in ("id", "repository_id", "head_repository_id", "head_sha")),
+                "Detailed artifact does not match the triggering run")
+        details_id = integer(details[0]["id"], 1, 2**53 - 1)
     url = api.request(f"{prefix}/actions/artifacts/{artifact_id}/zip", redirect=True)
     report = validate_report(downloader(url))
     require(report["runId"] == run_id and report["runAttempt"] == attempt)
-    return {"repo": repo, "pr": matches[0], "head": run["head_sha"], "report": report}
+    return {"repo": repo, "pr": matches[0], "head": run["head_sha"], "artifactId": details_id, "report": report}
 
 
-def format_comment(prepared):
-    report = validate_report(prepared["report"])
-    repo = text(prepared["repo"], r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
-    integer(prepared["pr"], 1, 2**31 - 1)
-    head = text(prepared["head"], r"[0-9a-f]{40}")
+def format_details(report, repo):
+    """Human-readable artifact with the complete validated replay information."""
+    report = validate_report(report)
+    repo = text(repo, r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
     run_id, attempt = report["runId"], report["runAttempt"]
-    marker = f"<!-- community-seasons-fuzz:{head}:{run_id}:{attempt} -->"
     digest = hashlib.sha256(json.dumps(report["sourceHashes"], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    lines = [marker, "**Quick fuzz failed / 快速模糊测试失败**", "",
-             f"[Build and QA run {run_id}, attempt {attempt}](https://github.com/{repo}/actions/runs/{run_id}/attempts/{attempt}) · commit `{head}`",
+    lines = ["# Quick fuzz failure / 快速模糊测试失败", "",
+             f"[Build and QA run {run_id}, attempt {attempt}](https://github.com/{repo}/actions/runs/{run_id}/attempts/{attempt})",
              f"Base seed: `{report['masterSeed']}` · round 1 seed: `{report['roundSeed']}`", ""]
     for suite in report["suites"]:
         lines.append(f"- Suite `{suite['name']}`: `{suite['status']}`; derived `{SUITES[suite['name']]}={suite['derivedSeed']}`.")
@@ -256,17 +262,42 @@ def format_comment(prepared):
         if not suite["failures"]:
             lines.append("  - No per-case seed/shrink path was recorded; use the bounded round replay below.")
     lines += ["", f"Reported source hashes: {len(report['sourceHashes'])} files; SHA-256 of the sorted hash map: `{digest}`.",
-              "", "Replay on the commit above with Node.js 24.14.1 after `npm run setup`:", "", "```sh",
+              "", "Replay on the tested commit shown in that run, with Node.js 24.14.1 after `npm run setup`:", "", "```sh",
               f"node run.mjs quick --rounds 1 --seed {report['masterSeed']} --no-tui", "```", "",
               f"Download `qa-failure-{run_id}-{attempt}` from that run for the original logs, counterexamples and source hashes. Preserve those files before rerunning.",
-              "原始日志、反例和源码哈希保存在该运行的失败产物中；重新测试前请先保存。"]
+              "原始日志、反例和源码哈希保存在该运行的失败产物中；重新测试前请先保存。", "",
+              "## Source hashes / 源码哈希", "", "```text"]
+    lines.extend(f"{digest}  {name}" for name, digest in sorted(report["sourceHashes"].items()))
+    lines.append("```")
+    return "\n".join(lines) + "\n"
+
+
+def format_comment(prepared):
+    """Keep PR feedback short; retain detailed evidence in the run artifacts."""
+    report = validate_report(prepared["report"])
+    repo = text(prepared["repo"], r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
+    integer(prepared["pr"], 1, 2**31 - 1)
+    head = text(prepared["head"], r"[0-9a-f]{40}")
+    artifact_id = integer(prepared["artifactId"], 1, 2**53 - 1)
+    run_id, attempt = report["runId"], report["runAttempt"]
+    marker = f"<!-- community-seasons-fuzz:{head}:{run_id}:{attempt} -->"
+    lines = [marker, "**Quick fuzz failed / 快速模糊测试失败**", "", f"Base seed: `{report['masterSeed']}`."]
+    for suite in report["suites"]:
+        seeds = list(dict.fromkeys(failure["seed"] for failure in suite["failures"]))
+        seed_text = ", ".join(f"`{seed}`" for seed in seeds[:5]) if seeds else "not recorded"
+        if len(seeds) > 5:
+            seed_text += f" (+{len(seeds) - 5} in artifact)"
+        lines.append(f"- `{suite['name']}`: {suite['status']}; failing seeds: {seed_text}.")
+    lines += ["", f"[Run / 运行记录](https://github.com/{repo}/actions/runs/{run_id}/attempts/{attempt}) · "
+              f"[Failure details / 失败详情](https://github.com/{repo}/actions/runs/{run_id}/artifacts/{artifact_id})",
+              "Seeds, shrink paths, source hashes and replay instructions are retained in the artifacts for 7 days. / 详细报告与复现信息保留七天。"]
     return marker, "\n".join(lines) + "\n"
 
 
 def publish(api, prepared):
-    """PAT use is restricted to identity, comment listing, and own-comment upsert."""
-    actor = api.request("/user")
-    require(actor.get("login") == BOT, "PAT_COMMENTS must belong to techzjc-bot")
+    """The trusted workflow supplies its repository-scoped, automatic job token."""
+    actor = api.request("/users/github-actions%5Bbot%5D")
+    require(actor.get("login") == BOT and actor.get("type") == "Bot", "Could not identify the GitHub Actions bot")
     actor_id = integer(actor["id"], 1, 2**53 - 1)
     marker, body = format_comment(prepared)
     prefix = "/repos/" + prepared["repo"]
@@ -274,7 +305,7 @@ def publish(api, prepared):
     for page in range(1, 11):
         comments = api.request(f"{prefix}/issues/{prepared['pr']}/comments?per_page=100&page={page}")
         for comment in comments:
-            if (comment["user"]["id"] == actor_id and comment["user"]["login"] == BOT
+            if (comment["user"]["id"] == actor_id and comment["user"]["login"] == BOT and comment["user"].get("type") == "Bot"
                     and comment.get("body", "").startswith(marker + "\n")):
                 own.append(comment)
         if len(comments) < 100:
@@ -315,12 +346,14 @@ def main():
             return
     else:
         result = read_json(destination.read_bytes()) if destination else decode_prepared(os.environ["FEEDBACK_PAYLOAD"])
-        print(publish(GitHub(os.environ.get("PAT_COMMENTS")), result))
+        print(publish(GitHub(os.environ.get("GITHUB_TOKEN")), result))
         return
     data = json.dumps(result, sort_keys=True).encode()
     require(len(data) <= LIMIT)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(data)
+    if args.action == "collect":
+        destination.with_suffix(".md").write_text(format_details(result, os.environ["GITHUB_REPOSITORY"]), encoding="utf-8")
     print("Validated fuzz feedback saved")
 
 
