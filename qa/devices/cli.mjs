@@ -14,7 +14,9 @@ Use the externally configured iOS CDP bridge endpoint (often port 9223) for iOS.
 List reads matching target metadata only. Other actions require an explicit target ID
 and verify the exact QA frame, isolated storage prefix and disabled cloud provider.
 Measure runs for 1–60 seconds; keep the device unlocked, page visible/focused, and
-tap the real game first. It resets only QA metrics. No command navigates a page.
+tap the real game first. Its embedded build hashes must match this checkout;
+rebuild and reload after edits. Status/screenshot label unbuilt or stale pages.
+Measurement resets only QA metrics. No command navigates a page.
 Reports are saved under results/qa/device-*. Remote inspection does not establish
 that a browser is running on physical hardware; reports retain the observed UA.
 `;
@@ -64,7 +66,7 @@ export async function main(args = process.argv.slice(2)) {
     await mkdir(directory, { recursive: true });
     await writeFile(path.join(directory, 'report.json'), JSON.stringify(report, null, 2) + '\n');
     if (png) await writeFile(path.join(directory, 'screenshot.png'), png);
-    console.log(JSON.stringify({ report: path.join(directory, 'report.json'), ...(png ? { screenshot: path.join(directory, 'screenshot.png') } : {}), method: report.method, selectedPlatform: report.selectedPlatform, environment: report.environment }, null, 2));
+    console.log(JSON.stringify({ report: path.join(directory, 'report.json'), ...(png ? { screenshot: path.join(directory, 'screenshot.png') } : {}), method: report.method, selectedPlatform: report.selectedPlatform, provenance: report.provenance, environment: report.environment }, null, 2));
   } finally { session.close(); }
 }
 

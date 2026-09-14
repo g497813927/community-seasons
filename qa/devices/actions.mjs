@@ -1,4 +1,9 @@
 import { selectFrame } from './targets.mjs';
+import { fileURLToPath } from 'node:url';
+import { changedFiles, previewSourceHashes } from '../preview/build-info.mjs';
+import { validateBuildInfo } from '../preview/provenance.mjs';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
 
 export const QA_ID = 'community-seasons-qa-v1';
 export const QA_PREFIX = 'qa-community-seasons-v1:';
@@ -15,7 +20,10 @@ function guardedExpression(frameUrl, body, requireActive = false) {
   })()`;
 }
 
-export async function runAction(session, page, action, { seconds = 10, wait = ms => new Promise(resolve => setTimeout(resolve, ms)) } = {}) {
+export async function runAction(session, page, action, {
+  seconds = 10, wait = ms => new Promise(resolve => setTimeout(resolve, ms)),
+  getSourceHashes = () => previewSourceHashes(root),
+} = {}) {
   if (!['status', 'measure', 'screenshot'].includes(action)) throw Error('Unsupported selected-page action.');
   if (action === 'measure' && (!Number.isInteger(seconds) || seconds < 1 || seconds > 60))
     throw Error('Measurement duration must be an integer from 1 to 60 seconds.');
@@ -36,7 +44,21 @@ export async function runAction(session, page, action, { seconds = 10, wait = ms
     return response.result.value;
   }
   const environment = `({userAgent:navigator.userAgent,visible:document.visibilityState,focused:document.hasFocus(),activated:navigator.userActivation?.hasBeenActive === true,viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio}})`;
-  const report = () => evaluate(`return {environment:${environment},qa:qa.report()};`);
+  function provenance(build, current) {
+    if (!build) return { status: 'unbuilt', reason: 'This page has no embedded build provenance.' };
+    try { build = validateBuildInfo(build); }
+    catch { return { status: 'invalid', reason: 'The embedded build provenance is invalid.' }; }
+    const changedSourceFiles = changedFiles(build.sourceHashes, current);
+    return { status: changedSourceFiles.length ? 'stale' : 'current', changedSourceFiles };
+  }
+  const report = async () => {
+    const observed = await evaluate(`return {environment:${environment},qa:qa.report(),build:qa.build ?? null};`);
+    return { ...observed, provenance: provenance(observed.build, await getSourceHashes()) };
+  };
+  function requireCurrent(result) {
+    if (result.provenance.status !== 'current')
+      throw Error(`QA measurement requires current build provenance (${result.provenance.status}). Run \`npm run qa:build\`, serve the built preview, and reload the selected page.`);
+  }
   if (action === 'status') return report();
   if (action === 'screenshot') {
     const observed = await report();
@@ -47,13 +69,19 @@ export async function runAction(session, page, action, { seconds = 10, wait = ms
     if (!png.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])))
       throw Error('Inspector screenshot is not a PNG.');
     // Do not save an image if the selected frame changed while capturing it.
-    await report();
-    return { ...observed, png };
+    const final = await report();
+    if (JSON.stringify(observed.build) !== JSON.stringify(final.build)) throw Error('QA build changed while capturing the screenshot.');
+    return { ...final, png };
   }
+  const baseline = await report();
+  requireCurrent(baseline);
   await evaluate('qa.resetMetrics(); return true;', true);
   for (let elapsed = 0; elapsed < seconds; elapsed++) {
     await wait(1000);
-    await evaluate('return true;', true);
+    const build = await evaluate('return qa.build ?? null;', true);
+    requireCurrent({ provenance: provenance(build, baseline.build.sourceHashes) });
   }
-  return { ...await report(), seconds };
+  const result = await report();
+  requireCurrent(result);
+  return { ...result, seconds };
 }

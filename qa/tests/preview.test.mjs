@@ -15,6 +15,9 @@ test('general preview includes isolation and excludes the production Toy provide
   const root = new URL('../preview/dist/', import.meta.url);
   const html = fs.readFileSync(new URL('index.html', root), 'utf8');
   assert.match(html, /community-seasons-qa-v1/);
+  const embedded = html.match(/<script[^>]*id="community-seasons-qa-build"[^>]*>([\s\S]*?)<\/script>/);
+  assert.ok(embedded, 'Device provenance must be embedded in the loaded HTML');
+  assert.deepEqual(JSON.parse(embedded[1]), JSON.parse(fs.readFileSync(new URL('qa-build-info.json', root), 'utf8')));
   assert.doesNotMatch(html, /(?:src|href)="\//);
   const scripts = fs.readdirSync(new URL('assets/', root))
     .filter(name => name.endsWith('.js'))

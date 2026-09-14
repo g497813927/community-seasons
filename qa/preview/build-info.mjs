@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { BUILD_INFO_ELEMENT, validateBuildInfo } from './provenance.mjs';
 
 export const BUILD_INFO_FILE = 'qa-build-info.json';
 
@@ -38,6 +39,13 @@ export function previewBuildInfo(root) {
       sourceHashes = await previewSourceHashes(root);
       for (const file of Object.keys(sourceHashes)) this.addWatchFile(path.join(root, file));
     },
+    transformIndexHtml() {
+      return [{
+        tag: 'script', attrs: { id: BUILD_INFO_ELEMENT, type: 'application/json' },
+        children: JSON.stringify({ version: 1, sourceHashes }).replaceAll('<', '\\u003c'),
+        injectTo: 'head-prepend',
+      }];
+    },
     async generateBundle() {
       if (changedFiles(sourceHashes, await previewSourceHashes(root)).length)
         throw Error('QA source changed during the build. Finish edits and run `npm run qa:build` again.');
@@ -50,8 +58,8 @@ export async function assertPreviewBuildIsCurrent(root, previewDist) {
   let build;
   try { build = JSON.parse(await fs.readFile(path.join(previewDist, BUILD_INFO_FILE), 'utf8')); }
   catch { throw Error('QA preview has no readable build-source record. Run `npm run qa:build` first.'); }
-  if (build?.version !== 1 || !build.sourceHashes || typeof build.sourceHashes !== 'object' || Array.isArray(build.sourceHashes))
-    throw Error('QA preview has an invalid build-source record. Run `npm run qa:build` again.');
+  try { build = validateBuildInfo(build); }
+  catch { throw Error('QA preview has an invalid build-source record. Run `npm run qa:build` again.'); }
   const sources = await previewSourceHashes(root);
   const changed = changedFiles(build.sourceHashes, sources);
   if (changed.length) throw Error(`QA preview is stale (${changed.length} changed source files). Run \`npm run qa:build\` before browser QA.`);

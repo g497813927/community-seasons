@@ -71,7 +71,7 @@ async function swipeChromium(page, from, to) {
   } finally { await session.detach(); }
 }
 
-async function runFlow(page, platform, locale, row, reportDirectory) {
+async function runFlow(page, platform, locale, row, reportDirectory, sourceHashes) {
   const capture = name => page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-${name}.png`), fullPage: true, timeout: 10000 });
   const checkOverflow = async label => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
@@ -86,6 +86,8 @@ async function runFlow(page, platform, locale, row, reportDirectory) {
   assert.equal(row.qa?.id, markerId);
   assert.equal(row.qa?.storagePrefix, storagePrefix);
   assert.equal(row.qa?.cloud, 'disabled');
+  assert.deepEqual(row.qa?.build, { version: 1, sourceHashes }, 'Loaded preview must identify the validated build');
+  assert.equal(await page.evaluate(() => Object.isFrozen(window.__communitySeasonsQA.build) && Object.isFrozen(window.__communitySeasonsQA.build.sourceHashes)), true);
   await checkOverflow('home');
   await capture('home');
 
@@ -166,7 +168,7 @@ async function runFlow(page, platform, locale, row, reportDirectory) {
   await capture('complete');
 }
 
-async function runCase(browser, platform, locale, origin, reportDirectory) {
+async function runCase(browser, platform, locale, origin, reportDirectory, sourceHashes) {
   const config = platforms[platform];
   const row = { platform, locale, engine: config.engine, browserVersion: browser.version(), simulation: config.simulation, passed: false, errors: [], badResponses: [], failedRequests: [], blockedRequests: [], requests: [] };
   const context = await browser.newContext({ ...config.context, locale, serviceWorkers: 'block' });
@@ -201,7 +203,7 @@ async function runCase(browser, platform, locale, origin, reportDirectory) {
     });
     const flow = async () => {
       await page.goto(origin + previewPath);
-      await runFlow(page, platform, locale, row, reportDirectory);
+      await runFlow(page, platform, locale, row, reportDirectory, sourceHashes);
     };
     await Promise.race([
       flow(),
@@ -237,7 +239,7 @@ async function main() {
       try {
         browser = await platforms[platform].browser.launch({ headless: true });
         for (const locale of ['en', 'zh-CN']) {
-          const row = await runCase(browser, platform, locale, fixture.origin, reportDirectory);
+          const row = await runCase(browser, platform, locale, fixture.origin, reportDirectory, report.sourceHashes);
           report.rows.push(row);
           console.log(`${row.passed ? 'PASS' : 'FAIL'} ${platform} / ${locale}${row.error ? `: ${row.error}` : ''}`);
         }

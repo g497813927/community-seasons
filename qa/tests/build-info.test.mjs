@@ -35,8 +35,12 @@ async function fixture(t) {
 test('build provenance accepts its source snapshot and ignores generated files', async t => {
   const fixtureState = await fixture(t);
   const { root, dist, watched, build } = fixtureState;
-  await build();
+  const plugin = await build();
   const expected = await assertPreviewBuildIsCurrent(root, dist);
+  const [embedded] = plugin.transformIndexHtml();
+  assert.equal(embedded.attrs.id, 'community-seasons-qa-build');
+  assert.equal(embedded.attrs.type, 'application/json');
+  assert.deepEqual(JSON.parse(embedded.children), JSON.parse(await fs.readFile(path.join(dist, BUILD_INFO_FILE), 'utf8')));
   assert.deepEqual(Object.keys(expected).sort(), ['package-lock.json', 'package.json', 'qa/preview/bootstrap.ts', 'src/game.ts']);
   assert.ok(watched.includes(path.join(root, 'src/game.ts')));
   await fs.writeFile(path.join(dist, 'index.html'), '<html></html>');
