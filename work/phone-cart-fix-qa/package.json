@@ -1,1 +1,1 @@
-{"name":"community-cart-phone-qa","private":true,"type":"module","scripts":{"build":"vite build"}}
+{"name":"community-cart-phone-qa","private":true,"type":"module","scripts":{"build":"vite build"},"dependencies":{"@tailwindcss/postcss":"^4.3.3","@types/react":"^19.3.0","@types/react-dom":"^19.3.0","@vitejs/plugin-react":"^6.1.1","react":"^19.3.0","react-dom":"^19.3.0","typescript":"^7.0.2","vite":"^8.3.0"}}
