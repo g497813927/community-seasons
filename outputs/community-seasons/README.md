@@ -52,7 +52,7 @@ The railway draws from 47 bilingual teaching questions using a session deck that
 
 ## Project license
 
-The game's own source code is licensed under the repository's [MIT License](../../LICENSE). Every production build copies that notice verbatim into `dist/LICENSE`. Include this file when distributing the game; maintain the root `LICENSE` as the single source for the notice.
+The game's own source code is licensed under the repository's [MIT License](../../LICENSE). Every production build copies that notice verbatim into `dist/LICENSE` and embeds it as an inert text block in `dist/index.html`. The HTML copy preserves the notice on hosts such as Toy that do not serve standalone license files. Include the complete build when distributing the game; maintain the root `LICENSE` as the single source for both copies.
 
 ## Dependency licenses
 
