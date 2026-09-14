@@ -1,0 +1,61 @@
+name: Comment on failed quick fuzz
+
+on:
+  workflow_run:
+    workflows: [Build and QA]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: fuzz-feedback-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.feedback.outputs.ready }}
+      payload: ${{ steps.feedback.outputs.payload }}
+    steps:
+      - name: Check out trusted default-branch code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # workflow_run's SHA is on the default branch, never the tested PR.
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Validate run and bounded JSON artifact
+        id: feedback
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: python3 scripts/ci_fuzz_feedback.py prepare --file "$RUNNER_TEMP/fuzz-feedback.json"
+
+  publish:
+    needs: prepare
+    if: github.ref == 'refs/heads/main' && needs.prepare.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: ci-comments
+    permissions:
+      contents: read
+    steps:
+      - name: Check out trusted comment publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Publish techzjc-bot comment
+        env:
+          # Distinct name prevents fallback to the legacy repository PAT_COMMENTS.
+          PAT_COMMENTS: ${{ secrets.CI_COMMENT_TOKEN }}
+          FEEDBACK_PAYLOAD: ${{ needs.prepare.outputs.payload }}
+        run: python3 scripts/ci_fuzz_feedback.py publish

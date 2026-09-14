@@ -37,31 +37,52 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             src/package-lock.json
+            qa/archive/phone-cart-fix-qa/package-lock.json
 
       - name: Install locked dependencies
         run: |
           mkdir -p results/ci
           npm run setup 2>&1 | tee results/ci/setup.log
+          npm ci --prefix qa/archive/phone-cart-fix-qa --ignore-scripts 2>&1 | tee results/ci/archive-phone-setup.log
+
+      - name: Test fuzz feedback validation
+        run: python3 -m unittest discover -s scripts -p 'test_ci_fuzz_feedback.py'
 
       - name: Compile production and run regressions
         run: |
+          npm --prefix src run questions:validate 2>&1 | tee results/ci/questions-validation.log
           npm run build 2>&1 | tee results/ci/production-build.log
           npm test 2>&1 | tee results/ci/regressions.log
           npm run test:types 2>&1 | tee results/ci/types.log
 
       - name: Run bounded fuzz tests
+        id: fuzz
         run: node run.mjs quick --rounds 1 --seed 20260914 --no-tui 2>&1 | tee results/ci/fuzz.log
+
+      - name: Collect bounded fuzz feedback
+        id: fuzz_feedback
+        if: always() && steps.fuzz.outcome == 'failure'
+        run: python3 scripts/ci_fuzz_feedback.py collect --file results/fuzz-feedback/report.json
+
+      - name: Preserve bounded fuzz feedback
+        if: always() && steps.fuzz_feedback.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: fuzz-feedback-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 7
+          if-no-files-found: error
+          path: results/fuzz-feedback/report.json
 
       - name: Compile and test the general QA framework
         run: |
           npm run qa:build 2>&1 | tee results/ci/qa-build.log
           npm run qa:test 2>&1 | tee results/ci/qa-tests.log
 
-      - name: Compile and test archived phone harnesses
+      - name: Compile and test archived cart and iPhone harnesses
         run: |
-          npm run qa:archive:phone:build 2>&1 | tee results/ci/archive-phone-build.log
+          npm --prefix qa/archive/phone-cart-fix-qa run build 2>&1 | tee results/ci/archive-phone-build.log
           npm run qa:archive:iphone:build 2>&1 | tee results/ci/archive-iphone-build.log
-          node --test qa/archive/phone-cart-fix-qa/cart-helper.test.mjs qa/archive/iphone-qa/probe.test.mjs qa/archive/iphone-qa/suite.test.mjs 2>&1 | tee results/ci/archive-phone-tests.log
+          node --test qa/archive/phone-cart-fix-qa/cart-helper.test.mjs qa/archive/iphone-qa/probe.test.mjs qa/archive/iphone-qa/suite.test.mjs 2>&1 | tee results/ci/archive-harness-tests.log
 
       - name: Install browser engines and Linux dependencies
         run: npx --no-install playwright install --with-deps chromium webkit 2>&1 | tee results/ci/browser-install.log
@@ -85,3 +106,6 @@ jobs:
             qa/archive/**/*results*.json
             qa/archive/**/*-failures-*/
             work/**/*-failures-*/
+            work/**/*-failure*.json
+            work/renderer-fuzz/repro.json
+            work/renderer-fuzz/results.json
