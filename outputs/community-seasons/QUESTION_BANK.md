@@ -1,5 +1,7 @@
 # Review and edit the railway questions / 铁路题库审阅
 
+[English](QUESTION_BANK.md) | [简体中文](QUESTION_BANK.zh-CN.md)
+
 Edit **`lib/game/rail-questions.json`**. This JSON is the source for the question bank used by the game. All examples are fictional teaching scenarios; they do not quote real users or claim to reproduce official moderation decisions.
 
 编辑 **`lib/game/rail-questions.json`**，即可修改游戏使用的题库。题目均为虚构教学情境，并非真实用户原文或平台官方处罚结论。
@@ -17,17 +19,21 @@ Each question has:
 | `correctIndex` | **0 = first option, 1 = second, 2 = third.** / **0 为第一项，1 为第二项，2 为第三项。** |
 | `source` (optional / 可选) | Review-only source dynamic, account, date, section, and an adaptation note. Excluded from the game and share cards. / 仅供审阅的来源动态、账号、日期、段落及改编说明，不进入游戏及分享卡片。 |
 
-The bank has 41 questions: the original 8, 23 additional fictional scenarios, and 10 fictional adaptations inspired by public governance dynamics. For those 10, `source.dateType` distinguishes a publication date from a displayed edit date. Source accounts, real events, real names, and links stay in this review JSON; the generated game only contains the adapted questions and answers.
+The bank has 47 questions: the original 8, 23 additional fictional scenarios, and 16 fictional adaptations inspired by public governance dynamics. For those 16, `source.dateType` distinguishes a publication date from a displayed edit date. Source accounts, real events, real names, and links stay in this review JSON; the generated game only contains the adapted questions and answers.
 
-共 41 题：原有 8 题、新增 23 道虚构情境题，以及依据公开治理动态改编的 10 道虚构题。这 10 题的 `source.dateType` 区分发布时间与页面显示的编辑时间。来源账号、真实事件、真实姓名和链接仅保留在审阅 JSON 中，游戏只使用改编后的题目和答案。
+共 47 题：原有 8 题、新增 23 道虚构情境题，以及依据公开治理动态改编的 16 道虚构题。这 16 题的 `source.dateType` 区分发布时间与页面显示的编辑时间。来源账号、真实事件、真实姓名和链接仅保留在审阅 JSON 中，游戏只使用改编后的题目和答案。
 
 `correctIndex` is **not a fixed left/center/right lane**: the game shuffles the options for each question. A cart ride still draws 3–4 distinct questions. Adding questions expands the pool without lengthening a ride.
 
 `correctIndex` **不对应固定的左、中、右轨道**：游戏会打乱选项顺序。每次小列车仍随机抽取 3–4 道不重复的题；增加题库不会延长单次答题。
 
+The session deck protects recently shown questions across retries and refills. Preserve that protection when editing question selection or reshuffling: a retry must not discard recent-question history or consume questions the player has not yet seen.
+
+会话题组会在重试和补充题目时保留近期出题保护。修改抽题或重新洗牌逻辑时，必须保留这项保护：重试不得丢弃近期出题记录，也不得消耗玩家尚未看到的题目。
+
 After an answer is judged, **Share lesson** creates a card in the current language using the fictional question, its correct answer, and that answer’s explanation. Obstacle review dialogs offer the same feature with their redacted example and suggested response. Opening a railway card pauses the run; after closing it, press Resume when ready. Cards use Toy’s default game QR code and contain no real-case source links or account identities. Nothing is shared or saved automatically.
 
-答案判定后，可点击**分享这份提醒**，用当前语言将虚构题干、正确答案及其解析生成学习卡。障碍物观察站也可以分享脱敏示例和建议做法。打开铁路学习卡会暂停游戏，关闭后准备好再继续。卡片使用 Toy 默认游戏二维码，不包含真实案例链接或来源账号身份，也不会自动发送或保存。
+答案判定后，可点击**分享这道题**，用当前语言将虚构题干、正确答案及其解析生成学习卡。障碍物观察站也可以通过**分享这份提醒**分享脱敏示例和建议做法。打开铁路学习卡会暂停游戏，关闭后准备好再继续。卡片使用 Toy 默认游戏二维码，不包含真实案例链接或来源账号身份，也不会自动发送或保存。
 
 Keep both translations equivalent, exactly one defensible correct answer, and a reason specific to every choice. Keep labels short for phone screens. Use placeholders such as `[insult]` / `[侮辱词]` for sensitive content. Do not add real names or unverified case links.
 

@@ -1,16 +1,18 @@
-# Community Seasons — portable fuzz tests
+# Community Seasons — fuzz tests
 
-A separate test kit for 四季共建. It tests the included game-code snapshot locally. It needs no Toy/Vercel account, browser, phone, AI service, or API key and cannot publish anything.
+[English](FUZZING.md) | [简体中文](FUZZING.zh-CN.md)
+
+These tests run against the current game source in this repository. They need no Toy/Vercel account, browser, phone, AI service, or API key and cannot publish anything.
 
 ## Run
 
-Install **Node.js 22.13 or newer** (with npm), extract this folder, open a terminal in it, and run:
+Install **Node.js 22.13 or newer** (Node 24 recommended, with npm), open a terminal at the repository root, and run:
 
 ```sh
 node run.mjs quick
 ```
 
-The first run installs the exact locked dependencies: **fast-check 4.9.0**, **TypeScript 5.9.3**, and fast-check's locked dependency **pure-rand 8.4.2**. Installation uses `npm ci --ignore-scripts`; there are no package lifecycle scripts. After installation, the tests work offline. First-run download time is additional to the test timings below.
+If the root dependencies are missing or differ from the pinned versions, the runner installs them with `npm ci --ignore-scripts`. This includes the test tools (**fast-check 4.9.0**, **TypeScript 5.9.3**, and fast-check's locked dependency **pure-rand 8.4.2**) and the root's browser-fixture tools. After installation, fuzz tests work offline. First-run download time is additional to the test timings below. Use `npm run setup` for the complete workspace, including the separate game dependencies needed to build it.
 
 For the full bounded test set:
 
@@ -62,7 +64,7 @@ Each round uses fresh deterministic seeds for **every** test family: engine, eco
 
 The first failed suite stops further suites and rounds; the current Node test suite may finish its remaining properties. Its output and seed settings are retained in `results/failure/`; generated counterexamples, shrink paths, and deterministic traces remain under `work/`. Ctrl+C stops the active child process and saves an `interrupted` summary (exit code 130), rather than reporting a gameplay bug. Only completed successful rounds count as passed. `roundCounts` records passed, failed, interrupted, time-budget, and inputs-changed outcomes separately; `completedRounds` remains the passed-round total.
 
-Program-created success logs are overwritten each round and capped at 1 MiB per suite. Only the latest round and cumulative counts are kept, so a long successful stress session does not create a growing collection of result files. Preserve failure files elsewhere before beginning another investigation. Dependencies are installed once per extracted kit.
+Program-created success logs are overwritten each round and capped at 1 MiB per suite. Only the latest round and cumulative counts are kept, so a long successful stress session does not create a growing collection of result files. Preserve failure files elsewhere before beginning another investigation. Dependencies are checked before each session and reinstalled only when needed.
 
 Exact-replay environment variables cannot be combined with `--forever`, `--rounds`, or `--seed`; unset them first. Use the individual replay commands below for a shrunk case.
 
@@ -72,7 +74,7 @@ On the development Mac, quick mode is about 10–20 seconds; full mode is about 
 node run.mjs full --budget-seconds 300
 ```
 
-macOS/Linux also support `./run.sh quick` and `./run.sh full`. `npm test` and `npm run test:full` work after dependencies are installed.
+macOS/Linux also support `./run.sh quick` and `./run.sh full`. `npm run test:fuzz` runs the quick fuzz suite; `npm test` runs the separate deterministic regressions. Use `node run.mjs full` for a bounded full fuzz run. `npm run test:stress` explicitly starts an unbounded full run.
 
 ## What's tested
 
@@ -130,7 +132,7 @@ The defensive `activateBoost` level-normalization regression is included. It cov
 
 `work/property-tests/typed-arbitraries.ts` imports the game's actual TypeScript interfaces. Its exhaustive field maps are checked with `satisfies`, so missing fields or incompatible types fail compilation. It generates coherent valid saves, separately tagged invalid mutations, and structured commands with fast-check shrinkers. Cross-field rules (such as one portal with a matching destination) are preserved explicitly.
 
-This is a typechecked factory, not runtime reflection that guesses arbitrary data from any interface. See `work/property-tests/typed-arbitraries.md` for the exported helpers and examples.
+This is a typechecked factory, not runtime reflection that guesses arbitrary data from any interface. See [typed-arbitraries.md](../work/property-tests/typed-arbitraries.md) for the exported helpers and examples.
 
 ```sh
 node run.mjs quick --suite typed-generators
@@ -141,10 +143,8 @@ Typed-property failures include the exact `FC_TYPED_SEED`, `FC_TYPED_PATH`, and 
 
 ## Included code and reproducibility
 
-`snapshot.json` contains SHA-256 hashes for the exact game modules and test adapters included here. The test runner records current hashes in each summary. Source lives under `outputs/community-seasons/lib/game/`; the `work/` layout preserves the test imports. Only the test copies were adapted for standard dependency imports, workload controls and per-round seed offsets. The game modules are unchanged.
+`snapshot.json` contains historical SHA-256 hashes from the workspace import. The test runner records current hashes in each summary. Source lives under `outputs/community-seasons/lib/game/`; the `work/` layout preserves the test imports. Differences from the import baseline are expected after edits.
 
-This is a frozen source snapshot, not a connection to the live game. To test future changes, replace the corresponding modules with the newer source; the runner reports that they differ from the bundled snapshot and records their new hashes. Keep dependencies pinned when replaying a shrunk failure.
+Edit the canonical game source directly before starting a test session. There is no separate frozen game copy to synchronize. The runner hashes the baseline file list plus current TypeScript and JSON game modules, and checks for changes before and after each suite. Keep dependencies pinned when replaying a shrunk failure.
 
-No deployment configuration, passwords, user saves, logs, browser automation, instrumented phone builds, or precompiled game bundle are included. Test output, generated `.mjs` modules, `.npm-cache`, and `node_modules` are created locally by running the kit and are not game-deployment files.
-
-中文快速使用：安装 Node.js 22.13 或更高版本，解压后在目录中运行 `node run.mjs quick`；完整测试用 `node run.mjs full`；持续压力测试用 `node run.mjs full --forever`，按 Ctrl+C 停止。首次运行自动安装锁定版本的测试依赖，之后可离线运行。交互终端自动显示当前轮次、通过/失败轮数与运行状态，`--no-tui` 可关闭界面。结果保存在 `results/`，测试不会发布或修改线上游戏。
+The repository also contains deployment configuration and isolated browser/phone fixtures; fuzzing does not run or publish them. Test output, generated `.mjs` modules, `.npm-cache`, and `node_modules` are created locally and ignored by Git. Only `outputs/community-seasons/dist/` is a production artifact. See [QA.md](QA.md) for fixture isolation and [RELEASE.md](RELEASE.md) for release constraints.

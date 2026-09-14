@@ -1,5 +1,7 @@
 # Rendering components
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 `../render.ts` remains the public `Renderer` entry point. It owns per-canvas state,
 preview caches and frame composition, and delegates drawing to these modules.
 The components take that renderer explicitly; their `Renderer` imports are

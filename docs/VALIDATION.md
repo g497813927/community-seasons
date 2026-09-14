@@ -1,5 +1,7 @@
 # Workspace validation — 2026-09-11
 
+[English](VALIDATION.md) | [简体中文](VALIDATION.zh-CN.md)
+
 Validated in this folder after installing its own locked dependencies:
 
 - Production typecheck and build: passed.

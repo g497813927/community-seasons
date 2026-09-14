@@ -1,10 +1,43 @@
 # QA and test guide
 
+[English](QA.md) | [简体中文](QA.zh-CN.md)
+
 ## Automated regression and fuzzing
 
-After `npm run setup`, run `npm run build`, `npm test`, `npm run test:types`, and `npm run test:fuzz`. Test imports point at this workspace's single game source tree. The standalone original-project-preservation test was omitted because the unrelated Relic Rush project is intentionally outside this repository.
+Use Node.js 24 (see the root `.nvmrc`) and run these commands from the repository root:
 
-`npm test` runs deterministic regressions; the seed matrices and property tests are managed separately by `run.mjs`. See FUZZING.md. That document describes the original portable kit; in this workspace its source is live, not a frozen duplicate. Baseline hashes in snapshot.json are historical; edits are expected and current hashes are recorded. Never modify source during a stress session.
+```sh
+npm run setup
+npm run build
+npm test
+npm run test:types
+npm run test:fuzz
+```
+
+`npm test` runs deterministic regressions. `npm run test:types` checks the typed property generators, and `npm run test:fuzz` runs one bounded quick pass of the seed matrices, property tests and renderer checks. All tests import the current source under `outputs/community-seasons/`.
+
+For a reproducible, bounded run:
+
+```sh
+node run.mjs quick --rounds 2 --seed 3231321585 --no-tui
+```
+
+Read `results/summary.json` for the outcome, source hashes and each suite's seed settings; suite output is in `results/<suite>.log`. Failure reports and logs are also saved in `results/failure/`. Preserve the failing seed, shrink path, source hashes and dependency lockfile together before rerunning. Each invocation writes the same result paths, so run only one fuzz session at a time in this checkout.
+
+See [FUZZING.md](FUZZING.md) for workload settings and exact failure replay. `snapshot.json` is a historical import baseline; the runner records current source hashes and stops if source changes during a session. Finish source edits before starting tests. Continuous stress requires the explicit `--forever` flag and should only be run when requested.
+
+## Maintaining the QA runners
+
+| File / function | Responsibility |
+| --- | --- |
+| `scripts/test.mjs` | Find and sort deterministic `work/community-tests/*.test.mjs` files, excluding fuzz suites, then run Node's test runner. |
+| `run.mjs`: `parseOptions`, `createBaseEnvironment`, `createRoundEnvironment` | Validate CLI options, apply workload defaults and derive reproducible per-suite seeds. |
+| `run.mjs`: `runChild`, `ensureDependencies` | Install exact locked dependencies when needed, manage child processes, cap logs and enforce timeouts. |
+| `run.mjs`: `readSourceHashes`, `createReport`, `preserveFailure` | Record the tested source, maintain the report schema and retain failure artifacts. |
+| `run.mjs`: `runSuite`, `runRound`, `main` | Run the selected suites, stop on the first unsuccessful result and finalize the session summary. |
+| `terminal-dashboard.mjs` | Display progress; it does not select tests or change their execution. |
+
+Keep suite order, seed derivation constants, environment variable names and the report format stable when refactoring. Passed rounds, failed rounds, interruptions, runtime limits and changed source each have a separate counter; incomplete work must not count as passing.
 
 ## Browser layout checks
 

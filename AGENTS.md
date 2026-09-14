@@ -1,5 +1,7 @@
 # Working on Community Seasons
 
+[English](AGENTS.md) | [简体中文](AGENTS.zh-CN.md)
+
 - This is the canonical source tree for work started in this folder. Edit `outputs/community-seasons/`; do not reach back into the original Codex workspace or preserved Relic Rush project.
 - Read the root README, `docs/QA.md`, and the game README/GAMEPLAY.md before changing behavior.
 - Preserve English/Simplified Chinese, keyboard/WASD, touch/swipe/double-tap, accessibility and enlarged-text layouts.

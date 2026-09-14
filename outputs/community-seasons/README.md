@@ -1,5 +1,7 @@
 # Community Seasons / 四季共建
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 A bilingual, keyboard-and-swipe learning runner through four seasonal communities. Keep moving, collect coins, and learn how to recognize inappropriate posts.
 
 This is a separate adaptation of Relic Rush. The original Relic Rush copy is preserved outside this maintenance workspace. Browser saves use a separate `community-seasons-*` namespace.
@@ -54,6 +56,6 @@ The Open-source licenses button sits below the game and controls. Its searchable
 
 After `npm ci` or a dependency update, run `npm run licenses:generate`; `npm run licenses:check` verifies freshness. Production builds generate the inventory before type checking and bundling. Missing mandatory packages, unresolved licenses, changed pinned supplements, or stale output fail validation. Generation does not use the network and keeps copyright lines and nested third-party notices verbatim.
 
-The Rolldown 1.0.1 native package omits its license file, and the main package references a third-party notice not included in its npm archive. The exact upstream release files are retained under `scripts/license-supplements/rolldown-1.0.1/`, with their source URLs in the generated notices and SHA-256 checks in the generator. Review these supplements when upgrading Rolldown; do not substitute a generic license template.
+The Rolldown 1.0.3 native package omits its license file, and the main package references a third-party notice not included in its npm archive. The exact upstream release files are retained under `scripts/license-supplements/rolldown-1.0.3/`, with their source URLs in the generated notices and SHA-256 checks in the generator. Review these supplements when upgrading Rolldown; do not substitute a generic license template.
 
 The generator is reusable without installing additional tools. See [LICENSE_GENERATOR.md](scripts/LICENSE_GENERATOR.md) for standalone usage against another npm project, custom output folders, and validation in CI.

@@ -1,60 +1,74 @@
-# Community Seasons / 四季共建 — maintenance workspace
+# Community Seasons / 四季共建
 
-This folder is a self-contained source and QA workspace prepared on 2026-09-11. Open **this folder** in your editor or a future coding conversation. All game changes belong in `outputs/community-seasons/`; tests and QA import that same source. The original working folders remain untouched.
+[English](README.md) | [简体中文](README.zh-CN.md)
 
-## Setup
+A bilingual learning runner through four seasonal communities, built with React, TypeScript and Vite. Play in English or Simplified Chinese with keyboard/WASD or touch/swipe controls. Standalone gameplay needs no server account, API key or database.
 
-Install Node.js 24 (see `.nvmrc`) and Python 3.8+ if using the optional Python fuzz launcher.
+## Quick start
+
+Install **Node.js 24** (the version in [`.nvmrc`](.nvmrc)), then run:
 
 ```sh
+git clone https://github.com/g497813927/community-seasons.git
+cd community-seasons
 npm run setup
 npm run dev -- --port 3001
 ```
 
-`setup` installs exact locked dependencies in the workspace and the game. No symlink to the original machine is required. Run commands from this workspace root unless specified otherwise.
+Open [http://127.0.0.1:3001](http://127.0.0.1:3001). If you already have the repository, start with `npm run setup` from its root. Setup installs the exact locked dependencies for both the QA workspace and game.
 
-## Layout
+Run all commands below from the repository root. Edit the game in `outputs/community-seasons/`; every test and QA fixture imports that same source.
 
-- `outputs/community-seasons/` — complete production React/TypeScript/Vite game, translations, question bank, assets, license generator and deployment configuration.
-- `work/community-tests/` — deterministic engine, renderer, layout logic, question bank, licenses and production-boundary regressions.
-- `work/property-tests/` — fast-check generators and malformed gameplay/local/cloud-save tests.
-- `work/renderer-fuzz.mjs` — randomized canvas/scene checks.
-- `run.mjs`, `fuzz_game.py`, `terminal-dashboard.mjs` — bounded/infinite fuzz runner, optional Python launcher and live TUI.
-- `work/licenses-ui-qa/`, `work/android-large-text-qa/` — browser fixtures and automated layout checks.
-- `work/phone-cart-fix-qa/`, `work/iphone-qa/` — isolated phone/cart and extended-performance fixtures; see `docs/QA.md`.
-- `docs/` — maintenance, QA, fuzzing and release notes.
-- `snapshot.json` — import baseline for fuzz reproducibility; current source hashes are recorded on every run.
+For controls, saved progress and game rules, see the [game README](outputs/community-seasons/README.md) and [gameplay guide](outputs/community-seasons/GAMEPLAY.md).
 
-The `outputs/` and `work/` names preserve existing relative test imports. They are intentional source directories, not disposable build output. There is no duplicate frozen game source inside a separate fuzz kit.
-
-## Build and tests
+## Test and build
 
 ```sh
-npm run build
-npm test
-npm run test:types
-npm run test:fuzz
+npm test                # Deterministic regressions
+npm run test:types      # Typecheck property-test generators
+npm run test:fuzz       # One bounded round of quick fuzz tests
+npm run build           # Validate and build the production game
 ```
 
-Only `outputs/community-seasons/dist/` is a production artifact. QA code and URL switches must never be included in it.
+The build synchronizes the question bank, regenerates third-party notices, checks types and writes `outputs/community-seasons/dist/`. Preview that build locally with:
 
 ```sh
-# Repeat until stopped or a failure is found; shows a TUI in a suitable terminal.
-node run.mjs full --forever --tui
-# Reproducible bounded run
+npm --prefix outputs/community-seasons run preview -- --port 4173
+```
+
+Open [http://127.0.0.1:4173](http://127.0.0.1:4173). Only `outputs/community-seasons/dist/` is a production artifact; QA fixtures, debug controls and QA URL switches must stay out of releases.
+
+For a reproducible fuzz run or the full bounded suite:
+
+```sh
 node run.mjs quick --seed 3231321585
-# Optional Python wrapper with a time limit
-python3 fuzz_game.py quick --forever --duration 600 --tui
+node run.mjs full
 ```
 
-See `docs/FUZZING.md` for suites, workload controls, failure replay and limitations. Results and generated compilers are ignored by Git. Preserve a failure log, seed, shrink path and source hashes together before rerunning.
+See the [QA guide](docs/QA.md) for browser and physical-device checks, and the [fuzzing guide](docs/FUZZING.md) for suite options and failure replay. Browser QA uses dedicated fixture servers and isolated saves. Phone QA requires a connected, unlocked device and an explicitly selected test preview. Python 3.8+ is only needed for the optional `fuzz_game.py` launcher.
 
-## Future maintenance
+## Project layout
 
-Read `AGENTS.md`, `docs/QA.md` and `docs/RELEASE.md`. The editable question bank is `outputs/community-seasons/lib/game/rail-questions.json`; run the project's question synchronization command after edits (build/dev also synchronize it). The licenses panel generates from installed locked dependencies and has no hyperlinks.
+| Path | Contents |
+| --- | --- |
+| `outputs/community-seasons/` | Game source, translations, question bank, assets and build configuration |
+| `work/community-tests/` | Deterministic engine, renderer, layout, question-bank, license and production-boundary regressions |
+| `work/property-tests/` | Generated gameplay and local/cloud-save tests |
+| `work/renderer-fuzz.mjs` | Randomized canvas and scene checks |
+| `work/*-qa/` | Isolated browser and phone QA fixtures |
+| `run.mjs`, `fuzz_game.py`, `terminal-dashboard.mjs` | Fuzz runner, optional Python launcher and terminal dashboard |
+| `docs/` | QA, fuzzing, validation and release notes |
+| `snapshot.json` | Historical import baseline for reproducibility; runs record current source hashes |
 
-This import does not choose a license for your own game code. Third-party notices are retained separately. Before making the repository public, choose the license you want for your own work.
+`outputs/` and `work/` are source directories, not disposable build output. Their names preserve relative test imports. Generated builds, installed dependencies and QA results are ignored by Git.
 
-## Upload to GitHub later
+## Making changes
 
-This folder is ready to use as the repository root. No GitHub repository or remote has been created, and nothing has been pushed. `.gitignore` excludes installed dependencies, builds, local credentials, QA previews and device/test output. Authentication, the Toy access password, user saves, device identifiers and old raw recordings were not copied.
+Read [AGENTS.md](AGENTS.md), the [QA guide](docs/QA.md) and the game documentation before changing behavior. Preserve both languages, keyboard and touch controls, accessibility and enlarged-text layouts. Keep QA save namespaces separate from player and Toy cloud saves.
+
+- **Questions:** edit [`rail-questions.json`](outputs/community-seasons/lib/game/rail-questions.json), then run `npm --prefix outputs/community-seasons run questions:sync`. Dev and build also synchronize it. Follow the [question-bank guide](outputs/community-seasons/QUESTION_BANK.md), including recent-question protection across retries and reshuffles.
+- **Dependencies:** keep versions locked and run `npm --prefix outputs/community-seasons run licenses:generate` after updates. The in-game notices remain inline without hyperlinks; see the [license generator guide](outputs/community-seasons/scripts/LICENSE_GENERATOR.md).
+- **Failures:** keep the failure log, seed, shrink path and source hashes together before rerunning. Fuzz tests exercise the current source; do not edit it during a stress session.
+- **Releases:** follow the [release guide](docs/RELEASE.md). Deployment and GitHub pushes require authorization. Existing Toy releases use password access; content-only updates must preserve the existing password, and credentials must never be committed.
+
+Third-party notices are included separately. A license for the game's own source code has not been selected.
