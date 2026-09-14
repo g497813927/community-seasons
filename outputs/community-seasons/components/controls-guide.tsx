@@ -59,7 +59,7 @@ export function ControlsGuide({
     {
       id: "skill",
       title: l("Use your skill", "使用技能"),
-      detail: l("Double-tap when charged", "充能后双击跑道"),
+      detail: l("Tap the skill button or double-tap when charged", "充能后点击技能按钮或双击跑道"),
       keyboard: l("Press E when charged", "充能后按 E"),
     },
   ];
@@ -82,8 +82,8 @@ export function ControlsGuide({
           </DialogTitle>
           <DialogDescription className="controls-guide-description">
             {l(
-              "Swipe or use the keyboard. Both work at any time.",
-              "随时都可使用滑动手势或键盘，无需切换。",
+              "Swipe, tap the buttons, or use the keyboard.",
+              "滑动手势、点击按钮或使用键盘，无需切换。",
             )}
           </DialogDescription>
         </DialogHeader>
@@ -144,8 +144,8 @@ export function ControlsGuide({
               <Sparkles size={16} aria-hidden="true" />
               <span>
                 {l(
-                  "Tap booster cards at the start, or press 1–4. Jump to collect boosters on the path.",
-                  "开局点击道具卡片，或按 1–4 使用道具。跳跃拾取跑道上的道具。",
+                  "Tap booster buttons or press 1–4. Shield and Shared Rewards work anytime; Fresh Start and Season Pass only in the first 5 seconds. Jump to collect path boosters.",
+                  "点击道具按钮，或按 1–4 使用。护盾和共建双倍可随时使用；友善启程和四季通行仅限开局前 5 秒。跳跃拾取跑道上的道具。",
                 )}
               </span>
             </p>

@@ -775,7 +775,7 @@ export default function Home() {
       storeOpenRef.current ||
       setupOpenRef.current ||
       (e.target as HTMLElement).closest(
-        'button,a,input,textarea,select,[role="button"],[data-slot="dialog-content"]',
+        'button,a,input,textarea,select,[role="button"],[data-game-controls],[data-slot="dialog-content"]',
       )
     ) {
       lastTapRef.current = null;
@@ -1663,7 +1663,7 @@ export default function Home() {
           </div>
         )}
         {active && (
-          <div className={`run-bottom-hud ${!hud.rail && hud.time < 5 ? "with-boost-tray" : ""}`}>
+          <div className={`run-bottom-hud ${!hud.rail && hud.railReturnRemaining === 0 ? "with-boost-tray" : ""}`}>
             <div className="run-status">
               <span className="pulse-dot" />
               <span>
@@ -1674,16 +1674,18 @@ export default function Home() {
                 )}
               </span>
             </div>
-            {!hud.rail && hud.time < 5 && (
+            {!hud.rail && hud.railReturnRemaining === 0 && (
               <BoostTray
                 locale={locale}
                 scene={scene}
                 progress={progress}
                 boosts={hud.boosts}
+                runTime={hud.time}
+                disabled={hud.travelDestination !== null || game.current.turnRemaining > 0}
                 onUse={triggerBooster}
               />
             )}
-            {feedback && !hud.rail && hud.time < 5 && (
+            {feedback && !hud.rail && hud.railReturnRemaining === 0 && (
               <output className="boost-feedback" aria-live="polite">
                 {t(feedback)}
               </output>

@@ -2,7 +2,7 @@
 
 ## Controls and onboarding
 
-The first click on Start opens a two-page guide before skill selection; reopen it with **How to play** on the home screen. Swipe instructions and keyboard keys appear together, and both control methods work at any time without switching modes. The second page illustrates obstacles, transport gates, boosters, and coins. Swipe left/right or use A/D and the arrow keys to change lanes. Swipe up or press W/Up/Space to jump; swipe down or press S/Down to slide. Double-tap the path or press E to activate a charged skill.
+The first click on Start opens a two-page guide before skill selection; reopen it with **How to play** on the home screen. Touch instructions and keyboard keys appear together, and both control methods work at any time without switching modes. The second page illustrates obstacles, transport gates, boosters, and coins. Swipe left/right or use A/D and the arrow keys to change lanes. Swipe up or press W/Up/Space to jump; swipe down or press S/Down to slide. Tap the skill button, double-tap the path, or press E to activate a charged skill. Tap the booster icon buttons or use keys 1–4 to activate purchased tools, subject to each tool's timing rules.
 
 Repeating a jump or slide input restarts that motion. Switching between them immediately cancels the previous motion.
 
@@ -52,7 +52,7 @@ Roadside power-ups are occasional opportunities: the first appears about 10–16
 | Shared Rewards / 共建双倍  | 3   | 100   | Double collected coins and skill charge for 12 seconds                              |
 | Season Pass / 四季通行     | 4   | 1,000 | Travel to the purchased season plus a protected speed burst; first 5 seconds only   |
 
-Season Pass has one fixed level and only one can be held. The current season is excluded from purchase destinations. Other tools upgrade to level 3 using the original prices. Purchased tool shortcuts appear for the first five seconds; keyboard shortcuts remain available subject to each tool's timing rules.
+Season Pass has one fixed level and only one can be held. The current season is excluded from purchase destinations. Other tools upgrade to level 3 using the original prices. Purchased tools have tappable icon buttons: Boundary Shield and Shared Rewards remain available throughout the run, while Fresh Start and Season Pass can be used only in the first five seconds. Keyboard shortcuts follow the same timing rules.
 
 ## Permanent skills
 

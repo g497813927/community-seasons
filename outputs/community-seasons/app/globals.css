@@ -1137,6 +1137,9 @@ kbd {
   gap: 3px 7px;
   max-width: 100%;
 }
+.boost-slot-count {
+  display: none;
+}
 .boost-slot .boost-slot-level {
   flex-shrink: 0;
   color: #d9d9b8;
@@ -1144,6 +1147,7 @@ kbd {
 }
 .boost-slot:disabled {
   opacity: 0.6;
+  pointer-events: auto;
 }
 .boost-slot.boost-active:disabled {
   opacity: 1;
@@ -1392,17 +1396,14 @@ kbd {
   font-weight: 500;
 }
 .boost-tray {
-  animation: boost-intro-fade 5s linear both;
   pointer-events: auto;
 }
-@keyframes boost-intro-fade {
-  0%,
-  78% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
+.boost-slot {
+  touch-action: manipulation;
+}
+.boost-slot:focus-visible {
+  outline: 2px solid #f1d98e;
+  outline-offset: 3px;
 }
 .permanent-hud {
   --boost-color: #a5d1ca;
@@ -1421,7 +1422,8 @@ kbd {
   --boost-color: #e4c780;
 }
 .skill-charge-ring,
-.skill-mobile-label {
+.skill-mobile-label,
+.skill-compact-status {
   display: none;
 }
 .permanent-hud.rush {
@@ -1566,11 +1568,6 @@ kbd {
     bottom: 166px;
     width: max-content;
     max-width: calc(100% - 32px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .boost-tray {
-    animation: none;
   }
 }
 .run-setup-dialog[data-slot="dialog-content"] {
@@ -2238,7 +2235,42 @@ kbd {
   --boost-color: #d8d6ff;
 }
 
+@media (min-width: 751px) {
+  .boost-tray-opening {
+    width: 380px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .boost-tray-opening > .boost-tray-label {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (any-pointer: coarse) {
+  .boost-slot {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+  .boost-slot > kbd {
+    display: none;
+  }
+  .boost-slot > svg {
+    width: 24px;
+    height: 24px;
+  }
+}
+
 @media (max-width: 750px) {
+  .boost-tray-compact {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .boost-tray-compact .boost-slot-level {
+    display: none;
+  }
+  .boost-tray-compact .boost-slot {
+    border-radius: 12px;
+    min-height: 64px;
+  }
   .run-bottom-hud.with-boost-tray {
     position: absolute;
     left: 16px;
@@ -3099,6 +3131,10 @@ body {
   min-height: 0;
   height: auto;
 }
+/* Enlarged controls may scroll the page, but must not squeeze away the path. */
+.compact-viewport .arena.running {
+  min-height: 360px;
+}
 .compact-viewport .control-bar,
 .compact-viewport .swipe-guide {
   flex: 0 0 auto;
@@ -3241,6 +3277,52 @@ body {
     font-size: 12px;
   }
 }
+@media (max-width: 750px) and (max-height: 700px) {
+  .boost-tray-opening {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .boost-tray .boost-slot {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    min-height: 64px;
+    padding: 6px 2px;
+    border-radius: 12px;
+  }
+  .boost-tray .boost-slot > kbd,
+  .boost-tray .boost-slot > .boost-slot-copy {
+    display: none;
+  }
+  .boost-tray .boost-slot > svg {
+    width: 24px;
+    height: 24px;
+  }
+  .boost-slot-count {
+    display: block;
+    max-width: 100%;
+    font-size: 12px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  .permanent-hud .skill-mobile-label {
+    display: none;
+  }
+  .permanent-hud .skill-compact-status {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.25;
+    color: var(--boost-color);
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+  .run-bottom-hud.with-boost-tray .run-status {
+    display: none;
+  }
+}
+
 @media (pointer: coarse) {
   .topbar .home-button,
   .topbar .language-switch,

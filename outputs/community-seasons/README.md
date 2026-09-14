@@ -38,9 +38,9 @@ Toy implementation notes: the SDK stores one versioned JSON value under `communi
 ## Controls
 
 - Arrow keys / WASD: change lane, jump, slide. Space also jumps.
-- Phone: swipe left/right/up/down. Double-tap the path to use a charged skill.
+- Phone: swipe left/right/up/down. Tap the skill button or double-tap the path to use a charged skill.
 - E: permanent skill. P: pause. M: mute/unmute. B: store.
-- 1: Fresh Start; 2: Boundary Shield; 3: Shared Rewards; 4: Season Pass.
+- Tap the booster icon buttons or use 1: Fresh Start; 2: Boundary Shield; 3: Shared Rewards; 4: Season Pass. Shield and Shared Rewards stay available throughout the run; Fresh Start and Season Pass work only in the first five seconds.
 
 Each season has its own background score. Normal speed builds to 5.5×, short coin trails offer routes across multiple lanes, and a short celebration appears when you beat your previous best score. Review pauses freeze all run timers. See `GAMEPLAY.md` for details.
 

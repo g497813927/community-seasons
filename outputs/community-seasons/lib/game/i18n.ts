@@ -135,6 +135,11 @@ const ZH: Readonly<Record<string, string>> = {
   "AUTOPLAY PREVIEW": "自动演示",
   "Fresh Start": "友善启程",
   "Shared Rewards": "共建双倍",
+  "Tap the booster buttons or press 1–4. Fresh Start and Season Pass work in the first 5 seconds; Shield and Shared Rewards remain available throughout the run. Jump to collect path boosters; they activate immediately.":
+    "点击道具按钮，或按 1–4 使用。友善启程和四季通行仅限开局前 5 秒；护盾和共建双倍在跑酷过程中可随时使用。跳跃拾取跑道上的道具，效果立即生效。",
+  "Tap a booster button or press": "点击道具按钮，或按",
+  "Tap to activate": "点击使用",
+  "Tap booster buttons or press 1 / 2 / 3.": "点击道具按钮，或按 1 / 2 / 3 使用。",
   "Activate in the first 5 seconds for a protected 2× speed burst.":
     "开局前 5 秒内使用，获得双倍速度并免疫碰撞。",
   "Collected coins are worth twice as much, including skill charge.":

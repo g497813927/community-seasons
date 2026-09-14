@@ -26,6 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress as Meter } from "@/components/ui/progress";
 import {
   BOOSTERS,
+  HEAD_START_WINDOW,
   UPGRADE_BOOSTERS,
   type SkillKind,
   PERMANENT_SKILLS,
@@ -110,7 +111,7 @@ export function BoostStore({
           <TabsContent value="boosters">
             <p className="store-tab-note">
               {t(
-                "Use 1 for Fresh Start or 4 for Season Pass in the first 5 seconds. 2 for Shield and 3 for Shared Rewards work anytime. Jump to collect path boosters; they activate immediately.",
+                "Tap the booster buttons or press 1–4. Fresh Start and Season Pass work in the first 5 seconds; Shield and Shared Rewards remain available throughout the run. Jump to collect path boosters; they activate immediately.",
               )}
             </p>
             <div className="store-grid">
@@ -141,7 +142,7 @@ export function BoostStore({
                     <h3>{t(booster.name)}</h3>
                     <p>{t(booster.description)}</p>
                     <div className="boost-key-hint">
-                      {t("Activate with")} <kbd>{t(booster.key)}</kbd>
+                      {t("Tap a booster button or press")} <kbd>{t(booster.key)}</kbd>
                     </div>
                     {booster.id === "portal" ? (
                       <div
@@ -404,20 +405,32 @@ export function BoostTray({
   scene = "spring",
   progress,
   boosts,
+  runTime,
+  disabled = false,
   onUse,
 }: {
   locale?: Locale;
   progress: Progress;
   boosts: BoostState;
   scene?: SceneKind;
+  runTime: number;
+  disabled?: boolean;
   onUse: (kind: BoostKind) => void;
 }) {
   const t = (text: string) => translate(locale, text);
+  const opening = runTime < HEAD_START_WINDOW;
   return (
-    <div className="boost-tray" aria-label={t("Consumable boosters")}>
+    <div
+      className={`boost-tray ${opening ? "boost-tray-opening" : "boost-tray-compact"}`}
+      role="group"
+      data-game-controls
+      aria-label={t("Consumable boosters")}
+    >
       <span className="boost-tray-label">{t("BOOSTERS · USE ONCE")}</span>
       {BOOSTERS.filter(
-        (booster) => booster.id !== "portal" || nextPortalScene(progress) !== scene,
+        (booster) =>
+          (opening || (booster.id !== "headstart" && booster.id !== "portal")) &&
+          (booster.id !== "portal" || nextPortalScene(progress) !== scene),
       ).map((booster) => {
         const Icon = icons[booster.id],
           active = boosts[booster.id] > 0,
@@ -431,12 +444,19 @@ export function BoostTray({
           <Button
             key={booster.id}
             className={`boost-slot ${booster.id} ${active ? "boost-active" : ""}`}
-            disabled={active || count === 0}
+            disabled={disabled || active || count === 0}
             onClick={() => onUse(booster.id)}
-            aria-label={t(`${booster.shortName}: ${status}. Press ${booster.key} to activate.`)}
+            aria-label={`${t(booster.shortName)}: ${t(status)}. ${t("Tap to activate")}.`}
+            aria-keyshortcuts={booster.key}
+            title={`${t(booster.shortName)}: ${t(status)}`}
           >
-            <kbd>{t(booster.key)}</kbd>
-            <Icon />
+            <kbd aria-hidden="true">{t(booster.key)}</kbd>
+            <Icon aria-hidden="true" />
+            <span className="boost-slot-count" aria-hidden="true">
+              {active
+                ? `${Math.ceil(booster.id === "shield" ? boosts.shieldTime : boosts[booster.id])}${locale === "zh-CN" ? "秒" : "s"}`
+                : `×${count > 99 ? "99+" : count}`}
+            </span>
             <span className="boost-slot-copy">
               <b>{t(booster.shortName)}</b>
               <span className="boost-slot-meta">
@@ -536,6 +556,11 @@ export function PermanentSkillHud({
         <b>{t(boostDefinition(kind).shortName)}</b>
         <small>{active ? t(activeLabel) : ready ? t("Ready") : t("Charging")}</small>
       </div>
+      <small className="skill-compact-status" aria-hidden="true">
+        {active
+          ? `${Math.ceil(kind === "shield" ? boosts.shieldTime : boosts[kind])}${locale === "zh-CN" ? "秒" : "s"}`
+          : `${Math.floor(percent)}%`}
+      </small>
       <Meter
         className="permanent-meter"
         value={charge}
@@ -612,7 +637,7 @@ export function RunSetup({
               <RadioGroupItem value="none" id="loadout-none" />
               <span>
                 <b>{t("Run without a skill")}</b>
-                <small>{t("Consumable boosters still work with 1 / 2 / 3.")}</small>
+                <small>{t("Tap booster buttons or press 1 / 2 / 3.")}</small>
               </span>
             </label>
             {PERMANENT_SKILLS.map((definition) => {
