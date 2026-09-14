@@ -23,6 +23,17 @@ test('inspector discovery and WebSocket stay on the exact loopback endpoint', ()
     assert.throws(() => validateWebSocket(value, endpoint));
 });
 
+test('Vercel QA uses only an exact query-free HTTPS page after private access is established', () => {
+  const url = 'https://community-seasons-qa-build-techzjc.vercel.app/';
+  const page = validatePage(url);
+  assert.equal(page.hosted, false);
+  assert.equal(selectFrame({ frameTree: { frame: { id: 'vercel', url } } }, page).id, 'vercel');
+  assert.doesNotThrow(() => validatePage(url + 'index.html'));
+  assert.doesNotThrow(() => validatePage('https://community-seasons-5rx7lmmi5-techzjc.vercel.app/'));
+  for (const invalid of [url + '?_vercel_share=secret', url + 'other', url.replace('https:', 'http:'), url.replace('.app/', '.app:8443/'), 'https://community-seasons.vercel.app/', 'https://other-app.vercel.app/'])
+    assert.throws(() => validatePage(invalid));
+});
+
 test('target selection never falls back to another page or an ambiguous ID', () => {
   const selected = { id: 'qa', type: 'page', url: local.url.href };
   const rows = [selected, { id: 'other', type: 'page', url: 'http://127.0.0.1:3001/' }, { id: 'worker', type: 'service_worker', url: local.url.href }];
