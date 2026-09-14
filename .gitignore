@@ -34,3 +34,5 @@ work/renderer-fuzz/*.json
 work/property-tests/*.json
 !work/property-tests/typed-arbitraries.tsconfig.json
 work/licenses-ui-qa/served-component.js
+
+.**/better-harness/
