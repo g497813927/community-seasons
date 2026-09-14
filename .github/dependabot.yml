@@ -1,0 +1,29 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "/src"
+      - "/qa/archive/phone-cart-fix-qa"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    versioning-strategy: "increase"
+    open-pull-requests-limit: 5
+    groups:
+      # Keep a shared dependency aligned without mixing unrelated npm updates.
+      shared-dependencies:
+        applies-to: "version-updates"
+        group-by: "dependency-name"
+        patterns:
+          - "*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 3
