@@ -15,6 +15,8 @@ npm run qa:test
 npm run qa:all
 ```
 
+The build writes `qa-build-info.json` with hashes of the game, preview and dependency lockfiles. Browser checks reject missing or stale build records before launching; after source or dependency changes, run `npm run qa:build` again. A source change during compilation also fails the build, so reports describe the sources that produced the tested preview.
+
 Use `qa:web`, `qa:android`, or `qa:ios` for one browser profile. Web uses Chromium desktop, Android uses Chromium touch emulation, and iOS uses WebKit touch emulation. Each checks English and Simplified Chinese with a fresh browser context, a dedicated local server, and no external requests. These are simulations, not physical-device performance measurements. The runner records and corrects a demonstrated WebKit emulation inconsistency where a portrait screen reports a 90-degree angle. iOS simulation covers taps and UI flows; native swipes, rotation and performance require a physical device. Reports and screenshots are saved in timestamped folders under `results/qa/`.
 
 ## Interactive and device checks
@@ -36,7 +38,7 @@ npm run qa:device -- --platform ios --endpoint http://127.0.0.1:9223 --page http
 npm run qa:device -- --platform ios --endpoint http://127.0.0.1:9223 --page http://YOUR_LAN_IP:4175/ --target TARGET_ID --action measure --seconds 10
 ```
 
-For Android, use `--platform android` and the Android inspector endpoint. `screenshot` is also available where the bridge supports it. Target discovery returns only exact URL matches. Every selected-page action checks the exact frame, QA marker, isolated storage prefix and disabled cloud provider; missing/ambiguous targets are rejected. Commands never navigate, reset game progress or operate another tab. Measurements reset only diagnostics and stop if the page loses visibility, focus or real user activation. Device reports retain the observed user agent and selected platform; attach hardware evidence when making a physical-device claim.
+For Android, use `--platform android` and the Android inspector endpoint. `screenshot` is also available where the bridge supports it. Preview URLs must have no query parameters, credentials or fragments, since the selected URL is recorded in reports. Target discovery returns only exact URL matches. Every selected-page action checks the exact frame, QA marker, isolated storage prefix and disabled cloud provider; missing/ambiguous targets are rejected. Commands never navigate, reset game progress or operate another tab. Measurements reset only diagnostics and stop if the page loses visibility, focus or real user activation. Device reports retain the observed user agent and selected platform; attach hardware evidence when making a physical-device claim.
 
 The same built `qa/preview/dist/` can run on an authorized isolated host preview with relative asset paths. It must never replace the production Toy or `src/dist/`. Keep hosted preview access protected and retain the exact selected preview URL locally. A Toy preview wrapper is supported by the device inspector, but production Toy URLs are rejected.
 

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, devices } from 'playwright';
+import { assertPreviewBuildIsCurrent, changedFiles, fileHashes, previewSourceHashes } from '../preview/build-info.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const previewDist = path.join(root, 'qa/preview/dist');
@@ -37,20 +37,6 @@ are saved to results/qa/<timestamp>/. No Toy or physical device is contacted.`);
   if (args.length === 0) return 'web';
   if (args.length === 2 && args[0] === '--platform' && (args[1] === 'all' || platforms[args[1]])) return args[1];
   throw new Error('Expected --platform web|android|ios|all. Run with --help for setup instructions.');
-}
-
-async function fileHashes(directories) {
-  const hashes = {};
-  async function visit(directory) {
-    for (const entry of (await fs.readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name))) {
-      if (['node_modules', 'dist', '.git'].includes(entry.name)) continue;
-      const file = path.join(directory, entry.name);
-      if (entry.isDirectory()) await visit(file);
-      else if (entry.isFile()) hashes[path.relative(root, file)] = crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex');
-    }
-  }
-  for (const directory of directories) await visit(directory);
-  return hashes;
 }
 
 async function startFixtureServer() {
@@ -238,10 +224,10 @@ async function main() {
   if (!selected) return;
   try { await fs.access(path.join(previewDist, 'index.html')); }
   catch { throw new Error('Isolated QA preview is missing. Run `npm run qa:build` from the repository root first.'); }
+  const sourcesBefore = await assertPreviewBuildIsCurrent(root, previewDist);
   const reportDirectory = path.join(root, 'results/qa', new Date().toISOString().replace(/[:.]/g, '-'));
   await fs.mkdir(reportDirectory, { recursive: true });
-  const sourcesBefore = await fileHashes([path.join(root, 'src'), path.join(root, 'qa/preview')]);
-  const report = { version: 1, startedAt: new Date().toISOString(), requestedPlatform: selected, nodeVersion: process.version, method: 'Source-backed isolated QA preview, temporary localhost server, fresh browser contexts, external requests blocked. Browser emulation is not physical-device QA or native-device performance evidence.', sourceHashes: sourcesBefore, distHashes: await fileHashes([previewDist]), rows: [], errors: [], serverClosed: false };
+  const report = { version: 1, startedAt: new Date().toISOString(), requestedPlatform: selected, nodeVersion: process.version, method: 'Source-backed isolated QA preview, temporary localhost server, fresh browser contexts, external requests blocked. Browser emulation is not physical-device QA or native-device performance evidence.', sourceHashes: sourcesBefore, distHashes: await fileHashes(root, [previewDist]), rows: [], errors: [], serverClosed: false };
   let server;
   try {
     const fixture = await startFixtureServer();
@@ -268,8 +254,8 @@ async function main() {
       await new Promise(resolve => server.close(resolve));
       report.serverClosed = true;
     }
-    const sourcesAfter = await fileHashes([path.join(root, 'src'), path.join(root, 'qa/preview')]);
-    report.changedSourceFiles = [...new Set([...Object.keys(sourcesBefore), ...Object.keys(sourcesAfter)])].filter(file => sourcesBefore[file] !== sourcesAfter[file]);
+    const sourcesAfter = await previewSourceHashes(root);
+    report.changedSourceFiles = changedFiles(sourcesBefore, sourcesAfter);
     report.status = report.rows.length > 0 && report.rows.every(row => row.passed) && report.errors.length === 0 && report.changedSourceFiles.length === 0 ? 'passed' : 'failed';
     report.finishedAt = new Date().toISOString();
     await fs.writeFile(path.join(reportDirectory, 'report.json'), JSON.stringify(report, null, 2) + '\n');

@@ -10,7 +10,7 @@ test('only local/LAN or isolated Toy previews are accepted', () => {
   for (const page of ['http://192.168.1.2:3030/', 'http://10.0.0.2:3030/', 'http://172.31.1.2:3030/', 'http://test-phone.local:3030/', 'http://[::1]:3030/'])
     assert.equal(validatePage(page).hosted, false);
   assert.equal(hosted.hosted, true);
-  for (const page of ['https://www.bilibili.com/toy/community-seasons/index.html', 'https://evil.example/', 'https://www.bilibilitoy.com/toy/preview/preview_abc123/index.html', 'http://172.32.1.2/', 'http://user:secret@localhost:3030/', 'file:///tmp/qa/index.html', local.url.href + '#other', hosted.url.href + '?token=secret'])
+  for (const page of ['https://www.bilibili.com/toy/community-seasons/index.html', 'https://evil.example/', 'https://www.bilibilitoy.com/toy/preview/preview_abc123/index.html', 'http://172.32.1.2/', 'http://user:secret@localhost:3030/', 'file:///tmp/qa/index.html', local.url.href + '#other', hosted.url.href + '?token=secret', local.url.href + '?token=secret', 'http://192.168.1.2:3030/?token=secret', 'http://test-phone.local:3030/?token=secret'])
     assert.throws(() => validatePage(page));
 });
 

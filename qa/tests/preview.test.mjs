@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { assertPreviewBuildIsCurrent } from '../preview/build-info.mjs';
+
+test('built preview records the current source and dependency lockfiles', async () => {
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const sources = await assertPreviewBuildIsCurrent(root, fileURLToPath(new URL('../preview/dist/', import.meta.url)));
+  for (const file of ['qa/preview/bootstrap.ts', 'src/main.tsx', 'package-lock.json', 'src/package-lock.json'])
+    assert.match(sources[file], /^[a-f0-9]{64}$/);
+});
 
 test('general preview includes isolation and excludes the production Toy provider', () => {
   const root = new URL('../preview/dist/', import.meta.url);

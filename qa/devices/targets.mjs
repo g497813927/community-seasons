@@ -30,6 +30,7 @@ function isLanHost(host) {
 export function validatePage(value) {
   const url = plainUrl(value, 'Selected preview');
   if (!['http:', 'https:'].includes(url.protocol)) throw Error('Selected preview must use HTTP(S).');
+  if (url.search) throw Error('Selected preview cannot contain query parameters.');
   if (TOY_HOSTS.has(url.hostname)) {
     if (url.protocol !== 'https:' || url.port || !PREVIEW_PATH.test(url.pathname) || url.search)
       throw Error('Select an isolated Toy /toy/preview/preview_…/index.html URL, never a published game.');

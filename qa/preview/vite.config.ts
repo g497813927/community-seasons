@@ -2,12 +2,13 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
 import { fileURLToPath } from 'node:url';
+import { previewBuildInfo } from './build-info.mjs';
 
 const local = (path: string) => fileURLToPath(new URL(path, import.meta.url));
 export default defineConfig({
   base: './',
   publicDir: local('../../src/public/'),
-  plugins: [react()],
+  plugins: [previewBuildInfo(local('../../')), react()],
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: [
