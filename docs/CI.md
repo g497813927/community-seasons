@@ -6,7 +6,7 @@ The [Build and QA workflow](../.github/workflows/ci.yml) checks pull requests, p
 
 ## What runs
 
-1. `npm run setup` installs root and game dependencies at the exact versions recorded in their lockfiles. The npm download cache is keyed by both lockfiles.
+1. `npm run setup` installs root and game dependencies at the exact versions recorded in their lockfiles. The archived cart harness installs from its own lockfile; all three lockfiles key the npm download cache.
 2. `npm --prefix src run questions:validate` checks committed question data before the build can regenerate it. Then `npm run build`, `npm test` and `npm run test:types` compile the production game and run deterministic regressions and property-generator type checks.
 3. `node run.mjs quick --rounds 1 --seed 20260914 --no-tui` runs one reproducible, bounded fuzz round and records current source hashes.
 4. `npm run qa:build` and `npm run qa:test` compile and test the general isolated QA preview and device-inspection helpers.
@@ -31,7 +31,7 @@ No personal token, bot account setup, environment secret or separate credential 
 
 Preparation passes only bounded, validated data to a separate publishing job. That job grants GitHub's automatic, repository-scoped `GITHUB_TOKEN` `issues: write` plus `contents: read`, and supplies it explicitly only to the comment step. The build and artifact-preparation jobs retain read-only permissions. The publisher verifies the public GitHub Actions bot identity before deduplicating comments and uses only comment-listing and own-comment create/update operations. API credentials and response error bodies are never logged.
 
-Reproduce the failed command locally with Node.js 24.14.1 and `npm run setup`. For browser checks, first run:
+Run CI reproduction commands from the repository root with Node.js 24.14.1 and `npm run setup`. The root `.nvmrc` selects Node 24; `src/.nvmrc` is an older standalone-game pin, so do not use it for CI-parity runs. Use `nvm install 24.14.1` and `nvm use 24.14.1` for the exact CI version. For browser checks, first run:
 
 ```sh
 npx --no-install playwright install chromium webkit

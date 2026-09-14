@@ -6,7 +6,7 @@
 
 ## 检查内容
 
-1. `npm run setup` 按仓库根目录和游戏目录的锁文件安装精确版本依赖。npm 下载缓存同时使用这两个锁文件作为缓存依据。
+1. `npm run setup` 按仓库根目录和游戏目录的锁文件安装精确版本依赖。已归档的小车测试工具使用自己的锁文件安装依赖；npm 下载缓存以这三个锁文件为依据。
 2. `npm --prefix src run questions:validate` 会在构建重新生成题库数据之前，检查已提交的数据是否一致。随后通过 `npm run build`、`npm test` 和 `npm run test:types` 编译生产游戏，并运行确定性回归测试与属性测试生成器的类型检查。
 3. `node run.mjs quick --rounds 1 --seed 20260914 --no-tui` 执行一轮可复现、有明确上限的模糊测试，并记录当前源码哈希。
 4. `npm run qa:build` 和 `npm run qa:test` 构建并检查通用隔离 QA 预览及设备检查工具。
@@ -31,7 +31,7 @@
 
 准备任务仅将大小受限且已验证的数据传给独立发布任务。发布任务为 GitHub 自动提供、仅作用于当前仓库的 `GITHUB_TOKEN` 授予 `issues: write` 和 `contents: read`，并仅在评论步骤中显式提供该令牌。构建与产物准备任务保持只读权限。发布器先核对 GitHub Actions 机器人的公开身份，再查询评论，并只创建或更新该机器人自己带有对应标记的评论。日志中不输出 API 凭据或错误响应正文。
 
-本地复现时，使用 Node.js 24.14.1 并先执行 `npm run setup`，再运行失败的命令。浏览器检查需要先执行：
+在仓库根目录中使用 Node.js 24.14.1 复现 CI，先执行 `npm run setup`，再运行失败的命令。根目录 `.nvmrc` 选择 Node 24；`src/.nvmrc` 是较早的独立游戏版本配置，复现 CI 时请勿使用它。通过 `nvm install 24.14.1` 和 `nvm use 24.14.1` 可选择与 CI 完全相同的版本。浏览器检查需要先执行：
 
 ```sh
 npx --no-install playwright install chromium webkit
