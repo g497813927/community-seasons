@@ -66,9 +66,9 @@ node run.mjs full
 
 修改行为前，请阅读 [维护约定](AGENTS.zh-CN.md)、[QA 指南](docs/QA.zh-CN.md)和游戏文档。保留两种语言、键盘和触屏操作、无障碍支持及大字号布局。QA 存档的命名空间必须与玩家存档和 Toy 云存档隔离。
 
-- **题库：**编辑 [`rail-questions.json`](outputs/community-seasons/lib/game/rail-questions.json)，然后运行 `npm --prefix outputs/community-seasons run questions:sync`。开发启动和构建也会自动同步。遵循[题库指南](outputs/community-seasons/QUESTION_BANK.zh-CN.md)，保留跨重试和重新洗牌的近期题目防重复机制。
-- **依赖：**锁定依赖版本，更新后运行 `npm --prefix outputs/community-seasons run licenses:generate`。游戏内的许可声明须直接展示原文，不包含超链接；详见[许可生成器指南](outputs/community-seasons/scripts/LICENSE_GENERATOR.zh-CN.md)。
-- **测试失败：**重新运行前，将失败日志、随机种子、收缩路径和源码哈希值一并保存。模糊测试使用当前源码，压力测试期间不要修改源码。
-- **发布：**遵循[发布指南](docs/RELEASE.zh-CN.md)。部署和 GitHub 推送均需要授权。现有 Toy 作品使用密码访问，仅更新内容时必须保留原密码，且不得提交凭据。
+- **题库**：编辑 [`rail-questions.json`](outputs/community-seasons/lib/game/rail-questions.json)，然后运行 `npm --prefix outputs/community-seasons run questions:sync`。开发启动和构建也会自动同步。遵循[题库指南](outputs/community-seasons/QUESTION_BANK.zh-CN.md)，保留跨重试和重新洗牌的近期题目防重复机制。
+- **依赖**：锁定依赖版本，更新后运行 `npm --prefix outputs/community-seasons run licenses:generate`。游戏内的许可声明须直接展示原文，不包含超链接；详见[许可生成器指南](outputs/community-seasons/scripts/LICENSE_GENERATOR.zh-CN.md)。
+- **测试失败**：重新运行前，将失败日志、随机种子、收缩路径和源码哈希值一并保存。模糊测试使用当前源码，压力测试期间不要修改源码。
+- **发布**：遵循[发布指南](docs/RELEASE.zh-CN.md)。部署和 GitHub 推送均需要授权。现有 Toy 作品使用密码访问，仅更新内容时必须保留原密码，且不得提交凭据。
 
 第三方许可声明单独提供。游戏自身源码尚未选定许可证。
