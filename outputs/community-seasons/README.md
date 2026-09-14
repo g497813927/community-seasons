@@ -27,6 +27,8 @@ The first launch follows the browser’s preferred supported language (English o
 
 ## Saved progress
 
+The game's browser storage keys use the `community-seasons-*` prefix. Builds on the same origin share these keys; use the [dedicated QA fixtures](../../docs/QA.md) on their own origins when testing.
+
 On Toy, signed-in players can sync their coin wallet, purchased booster inventory, skill unlocks, upgrade levels, equipped skill, best score, and last season across devices using the same account. Existing browser progress is kept until the player chooses which save to use. If local and cloud saves differ, the comparison dialog offers **Use cloud save**, **Use this device’s save**, or **Keep playing on this device only**. If cloud storage is empty, uploading existing browser progress also requires a choice. Choosing a save replaces the other complete save; balances and purchases are not added together.
 
 The browser copy remains available when cloud storage or sign-in is unavailable. The home screen reports sync status and offers Retry or Enable cloud. Before a new run, the game checks for cloud changes; a late response cannot replace an active run. Local-only mode stays selected until the player enables cloud again. Standalone builds, including self-hosted copies, use browser storage and do not load the Toy SDK.
