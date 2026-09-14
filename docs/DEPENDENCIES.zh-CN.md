@@ -24,6 +24,7 @@
 ```sh
 npm run setup
 npm ci --prefix qa/archive/phone-cart-fix-qa --ignore-scripts
+npm --prefix qa/archive/phone-cart-fix-qa run build
 npm --prefix src run licenses:generate
 npm run build
 npm test

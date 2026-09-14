@@ -24,6 +24,7 @@ Use Node.js 24 and the PR branch. Check release notes and compatibility, then in
 ```sh
 npm run setup
 npm ci --prefix qa/archive/phone-cart-fix-qa --ignore-scripts
+npm --prefix qa/archive/phone-cart-fix-qa run build
 npm --prefix src run licenses:generate
 npm run build
 npm test
