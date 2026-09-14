@@ -113,14 +113,20 @@ test('repository metadata is normalized to safe public links without changing li
   for (const pkg of collectLicenses(root).packages) assert.equal(pkg.repository, 'https://github.com/owner/project');
 });
 
-test('pinned upstream supplements are verified before filling an omitted archive notice', t => {
-  const root = fixture(t, [{ location: 'node_modules/@rolldown/binding-test', name: '@rolldown/binding-test', version: '1.0.1',
-    pkg: { repository: 'https://github.com/rolldown/rolldown' }, files: {} }]);
-  fs.cpSync(path.join(app, 'scripts/license-supplements'), path.join(root, 'scripts/license-supplements'), { recursive: true });
-  assert.equal(collectLicenses(root).packages[0].notices.length, 2);
-  fs.appendFileSync(path.join(root, 'scripts/license-supplements/rolldown-1.0.1/LICENSE'), 'changed');
-  assert.throws(() => collectLicenses(root), /Changed upstream license supplement/);
-});
+for (const version of ['1.0.1', '1.0.3']) {
+  test(`Rolldown ${version} supplements use verified notices from the exact release`, t => {
+    const root = fixture(t, [{ location: 'node_modules/@rolldown/binding-test', name: '@rolldown/binding-test', version,
+      pkg: { repository: 'https://github.com/rolldown/rolldown' }, files: {} }]);
+    fs.cpSync(path.join(app, 'scripts/license-supplements'), path.join(root, 'scripts/license-supplements'), { recursive: true });
+    const notices = collectLicenses(root).packages[0].notices;
+    assert.equal(notices.length, 2);
+    for (const notice of notices) {
+      assert.equal(notice.source, `https://raw.githubusercontent.com/rolldown/rolldown/v${version}/${path.basename(notice.file)}`);
+    }
+    fs.appendFileSync(path.join(root, `scripts/license-supplements/rolldown-${version}/LICENSE`), 'changed');
+    assert.throws(() => collectLicenses(root), /Changed upstream license supplement/);
+  });
+}
 
 test('generated public files match the collector and prebuild/check scripts keep them current', () => {
   const inventory = collectLicenses(app);

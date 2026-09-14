@@ -13,10 +13,12 @@ const json = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
 // repository, directory, version and MIT declaration. Rolldown's own LICENSE
 // also explicitly references THIRD-PARTY-LICENSE, omitted from its npm archive.
 // Vendored upstream release files keep normal generation offline and auditable.
-const supplements = [
-  { name: /^@rolldown\/binding-/, version: "1.0.1", files: ["LICENSE", "THIRD-PARTY-LICENSE"] },
-  { name: /^rolldown$/, version: "1.0.1", files: ["THIRD-PARTY-LICENSE"] },
-];
+const supplements = ["1.0.1", "1.0.3"].flatMap((version) => [
+  { name: /^@rolldown\/binding-/, version, files: ["LICENSE", "THIRD-PARTY-LICENSE"] },
+  { name: /^rolldown$/, version, files: ["THIRD-PARTY-LICENSE"] },
+]);
+// Both exact upstream releases contain byte-identical notices, verified before
+// adding 1.0.3. Keep each release's originals and attribution alongside the script.
 const supplementHashes = {
   LICENSE: "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734",
   "THIRD-PARTY-LICENSE": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c",
@@ -79,14 +81,15 @@ function addSupplements(root, pkg, notices) {
     if (repositoryUrl(pkg) !== "https://github.com/rolldown/rolldown" || declaredLicense(pkg) !== "MIT")
       throw new Error(`Review the upstream license supplement for ${pkg.name}@${pkg.version}`);
     for (const name of rule.files) {
-      const local = path.join(root, "scripts/license-supplements/rolldown-1.0.1", name);
-      const bundled = fileURLToPath(new URL(`./license-supplements/rolldown-1.0.1/${name}`, import.meta.url));
+      const directory = `license-supplements/rolldown-${rule.version}`;
+      const local = path.join(root, "scripts", directory, name);
+      const bundled = fileURLToPath(new URL(`./${directory}/${name}`, import.meta.url));
       const data = fs.readFileSync(fs.existsSync(local) ? local : bundled);
       if (sha256(data) !== supplementHashes[name]) throw new Error(`Changed upstream license supplement: ${name}`);
       if (!notices.some((notice) => notice.text === data.toString("utf8"))) notices.push({
         file: `upstream/${name}`,
         text: data.toString("utf8"),
-        source: `https://raw.githubusercontent.com/rolldown/rolldown/v1.0.1/${name}`,
+        source: `https://raw.githubusercontent.com/rolldown/rolldown/v${rule.version}/${name}`,
       });
     }
   }

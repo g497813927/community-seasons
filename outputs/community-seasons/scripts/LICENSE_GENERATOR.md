@@ -44,4 +44,4 @@ This inventories installed direct, transitive and build dependencies, not just m
 
 Missing mandatory packages, conflicting versions/licenses, missing original license text, and unrecognized license declarations fail validation. Check the package's original release and supply its authentic notices when needed; do not replace them with guessed license templates.
 
-The included Rolldown 1.0.1 supplements address files omitted from that specific npm release and are checked against pinned SHA-256 hashes. The generator first checks the target project's `scripts/license-supplements/`, then the folder beside itself. Copy that folder with the script to retain these verified originals. Upgrading packages may require reviewing new upstream notices.
+The included Rolldown 1.0.1 and 1.0.3 supplements address files omitted from those exact npm releases and are checked against pinned SHA-256 hashes. The generator first checks the target project's `scripts/license-supplements/`, then the folder beside itself. Copy that folder with the script to retain these verified originals. Upgrading packages may require reviewing new upstream notices.
