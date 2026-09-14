@@ -20,7 +20,7 @@ const invalidLane = malformed.filter((value) => ![-1, 0, 1].includes(value));
 const invalidKind = malformed.filter((value) => !kinds.includes(value));
 const malformedLevel = malformed.filter((value) => ![1, 2, 3].includes(value));
 const reports = [];
-const sourceHashes = Object.fromEntries(["engine", "railway", "boosts", "store"].map((name) => [name, crypto.createHash("sha256").update(fs.readFileSync(new URL(`../../outputs/community-seasons/lib/game/${name}.ts`, import.meta.url))).digest("hex")]));
+const sourceHashes = Object.fromEntries(["engine", "railway", "boosts", "store"].map((name) => [name, crypto.createHash("sha256").update(fs.readFileSync(new URL(`../../src/lib/game/${name}.ts`, import.meta.url))).digest("hex")]));
 const coverage = { sequences: 0, commands: 0, pausedUpdates: 0, invalidActions: 0, invalidLanes: 0, malformedLevels: 0, numericKinds: {} };
 const clone = (value) => structuredClone(value);
 const increment = (map, key) => { map[key] = (map[key] ?? 0) + 1; };

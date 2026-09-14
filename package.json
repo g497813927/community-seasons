@@ -7,9 +7,9 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "setup": "npm ci --ignore-scripts && npm ci --prefix outputs/community-seasons",
-    "dev": "npm --prefix outputs/community-seasons run dev",
-    "build": "npm --prefix outputs/community-seasons run build",
+    "setup": "npm ci --ignore-scripts && npm ci --prefix src",
+    "dev": "npm --prefix src run dev",
+    "build": "npm --prefix src run build",
     "test": "node scripts/test.mjs",
     "test:fuzz": "node run.mjs quick",
     "test:stress": "node run.mjs full --forever",

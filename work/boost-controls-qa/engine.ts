@@ -1,9 +1,9 @@
-export * from '../../outputs/community-seasons/lib/game/engine';
+export * from '../../src/lib/game/engine';
 import {
   createRun as actualCreateRun,
   update as actualUpdate,
   type RunState,
-} from '../../outputs/community-seasons/lib/game/engine';
+} from '../../src/lib/game/engine';
 
 declare global {
   interface Window {

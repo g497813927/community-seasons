@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
 import { fileURLToPath, URL } from 'node:url';
-const app=fileURLToPath(new URL('../../outputs/community-seasons/',import.meta.url));
+const app=fileURLToPath(new URL('../../src/',import.meta.url));
 export default defineConfig({
  base:'./',cacheDir:'./.vite-cache',publicDir:'public',plugins:[react()],
  resolve:{dedupe:["react","react-dom"],alias:[

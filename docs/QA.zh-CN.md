@@ -14,7 +14,7 @@ npm run test:types
 npm run test:fuzz
 ```
 
-`npm test` 运行确定性回归测试。`npm run test:types` 检查带类型约束的属性生成器，`npm run test:fuzz` 运行一轮有明确终点的快速测试，包括种子矩阵、属性测试和渲染器检查。所有测试均引用 `outputs/community-seasons/` 下的当前源码。
+`npm test` 运行确定性回归测试。`npm run test:types` 检查带类型约束的属性生成器，`npm run test:fuzz` 运行一轮有明确终点的快速测试，包括种子矩阵、属性测试和渲染器检查。所有测试均引用 `src/` 下的当前源码。
 
 需要可复现且轮数有限的测试时，执行：
 

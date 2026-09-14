@@ -1,6 +1,6 @@
 {
   "date": "2026-09-11",
-  "mainSource": "outputs/community-seasons",
+  "mainSource": "src",
   "sourceFiles": {
     "app/page.tsx": "070d530350e9d963d0da0c172ed0fcdacd0172778bd8396d01697f19879f1dac",
     "app/globals.css": "6243f1d342b0829cf9ea47b1cd1be2834ca545398211b95d89aae7ffb18d148f",
@@ -59,6 +59,7 @@
     "public/favicon.svg": "6f4d8fa1dcb2ffa02315fb72d3742d19fcb79493fed94719ca0b4b96733ae183"
   },
   "notes": [
+    "Source locator updated to src on 2026-09-14; import date and recorded file hashes are unchanged.",
     "Original game implementation and asset files verified byte-for-byte.",
     "Tests share the main source with portable imports and an updated lazy-ref fixture.",
     "QA React deduplication and SDK re-export updated for standalone operation.",

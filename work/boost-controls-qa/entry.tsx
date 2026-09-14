@@ -1,4 +1,4 @@
-import { createProgress, PROGRESS_KEY } from '../../outputs/community-seasons/lib/game/store';
+import { createProgress, PROGRESS_KEY } from '../../src/lib/game/store';
 
 // Dedicated fixture origin and fresh browser contexts keep player saves separate.
 if (location.hostname !== '127.0.0.1' || location.port !== '3030')
@@ -15,4 +15,4 @@ localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
 localStorage.setItem('community-seasons-controls-seen', '1');
 localStorage.setItem('community-seasons-locale', params.get('lang') || 'en');
 window.__boostQA = { created: 0, frozen: true };
-void import('../../outputs/community-seasons/main');
+void import('../../src/main');

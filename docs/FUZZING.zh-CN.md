@@ -143,8 +143,8 @@ npm run test:types
 
 ## 源码与可复现性
 
-`snapshot.json` 保存工作区导入时的历史 SHA-256 哈希；每次摘要还会记录当前哈希。游戏源码位于 `outputs/community-seasons/lib/game/`，`work/` 的目录结构保留了测试导入路径。修改后与导入基线不同是正常现象。
+`snapshot.json` 保存工作区导入时的历史 SHA-256 哈希；每次摘要还会记录当前哈希。游戏源码位于 `src/lib/game/`，`work/` 的目录结构保留了测试导入路径。修改后与导入基线不同是正常现象。
 
 请在启动测试会话前直接修改规范游戏源码，不需要同步任何独立的冻结副本。运行器会对基线文件列表及当前游戏 TypeScript/JSON 模块计算哈希，并在每个套件前后检查变更。复现收缩后的失败用例时，保持依赖版本锁定。
 
-仓库也包含部署配置和隔离的浏览器/手机测试夹具；模糊测试不会运行或发布它们。测试输出、生成的 `.mjs` 模块、`.npm-cache` 和 `node_modules` 都在本地生成且由 Git 忽略。只有 `outputs/community-seasons/dist/` 是生产产物。夹具隔离要求见 [QA.zh-CN.md](QA.zh-CN.md)，发布约束见 [RELEASE.zh-CN.md](RELEASE.zh-CN.md)。
+仓库也包含部署配置和隔离的浏览器/手机测试夹具；模糊测试不会运行或发布它们。测试输出、生成的 `.mjs` 模块、`.npm-cache` 和 `node_modules` 都在本地生成且由 Git 忽略。只有 `src/dist/` 是生产产物。夹具隔离要求见 [QA.zh-CN.md](QA.zh-CN.md)，发布约束见 [RELEASE.zh-CN.md](RELEASE.zh-CN.md)。

@@ -448,7 +448,7 @@ test("fuzz coverage and deterministic replay are recorded without production hoo
   check(Object.values(coverage.forks).every((value) => value > 15), "fork-coverage");
   const artifact = {
     generatedAt: new Date().toISOString(), elapsedSeconds: (performance.now() - started) / 1000,
-    sourceSha256: Object.fromEntries(["engine", "railway", "boosts"].map((name) => [name, crypto.createHash("sha256").update(fs.readFileSync(new URL(`../../outputs/community-seasons/lib/game/${name}.ts`, import.meta.url))).digest("hex")])),
+    sourceSha256: Object.fromEntries(["engine", "railway", "boosts"].map((name) => [name, crypto.createHash("sha256").update(fs.readFileSync(new URL(`../../src/lib/game/${name}.ts`, import.meta.url))).digest("hex")])),
     coverage,
     limits: ["Engine-only fuzzing; not rendering, browser events, phone performance, or cloud concurrency.", "Fixtures choose initial checkpoints; subsequent mutations use exported production engine APIs.", "Finite valid dt includes delayed frames; game simulation deliberately clamps a call to 250ms.", "Boost/store skill purchase and bank operations are covered by separate store fuzz tests.", "Failure reduction is bounded to 2.5 seconds and 150 replay attempts."],
     replay: "node --test work/community-tests/engine-state-fuzz.test.mjs",

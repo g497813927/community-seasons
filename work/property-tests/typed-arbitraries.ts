@@ -1,15 +1,15 @@
 import * as fc from "fast-check";
-import type { Progress } from "../../outputs/community-seasons/lib/game/store";
-import type { SaveSnapshot } from "../../outputs/community-seasons/lib/game/cloud-save";
+import type { Progress } from "../../src/lib/game/store";
+import type { SaveSnapshot } from "../../src/lib/game/cloud-save";
 import type {
   BoostKind,
   BoostLevel,
   ConsumableKind,
   SkillKind,
   SkillProgress,
-} from "../../outputs/community-seasons/lib/game/boosts";
-import type { SceneKind } from "../../outputs/community-seasons/lib/game/scenes";
-import type { Action } from "../../outputs/community-seasons/lib/game/engine";
+} from "../../src/lib/game/boosts";
+import type { SceneKind } from "../../src/lib/game/scenes";
+import type { Action } from "../../src/lib/game/engine";
 
 type Fields<T> = { [K in keyof T]-?: fc.Arbitrary<T[K]> };
 const safeCount = fc.integer({ min: 0, max: Number.MAX_SAFE_INTEGER });

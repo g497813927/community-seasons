@@ -39,7 +39,7 @@ for (const name of ["scenes", "boosts", "railway", "community", "engine", "store
     new URL(`${name}.mjs`, folder),
     compile(
       fs.readFileSync(
-        new URL(`../../outputs/community-seasons/lib/game/${name}.ts`, import.meta.url),
+        new URL(`../../src/lib/game/${name}.ts`, import.meta.url),
         "utf8",
       ),
     ),

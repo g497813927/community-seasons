@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
-import { collectLicenses, renderNotices } from '../../outputs/community-seasons/scripts/licenses.mjs';
+import { collectLicenses, renderNotices } from '../../src/scripts/licenses.mjs';
 
-const app = fileURLToPath(new URL('../../outputs/community-seasons/', import.meta.url));
+const app = fileURLToPath(new URL('../../src/', import.meta.url));
 function fixture(t, entries, installed = entries) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'community-licenses-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

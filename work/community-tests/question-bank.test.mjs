@@ -1,18 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { validateQuestionBank, renderQuestionBank } from "../../outputs/community-seasons/scripts/question-bank.mjs";
+import { validateQuestionBank, renderQuestionBank } from "../../src/scripts/question-bank.mjs";
 import "./compile.mjs";
 
 const { RAIL_QUESTIONS, createRailRide, beginRailQuestion, railQuestion } = await import("./compiled/railway.mjs");
-const bank = JSON.parse(fs.readFileSync(new URL("../../outputs/community-seasons/lib/game/rail-questions.json", import.meta.url)));
+const bank = JSON.parse(fs.readFileSync(new URL("../../src/lib/game/rail-questions.json", import.meta.url)));
 test("the editable review bank is the actual game bank, with source metadata excluded", () => {
   validateQuestionBank(bank);
   assert.deepEqual(RAIL_QUESTIONS, bank.questions.map(({ source, ...question }) => question));
   assert.ok(RAIL_QUESTIONS.every(q => !("source" in q)));
   for (const q of bank.questions.filter(q => q.source)) assert.ok(!renderQuestionBank(bank).includes(q.source.url));
   for (const { source, ...question } of bank.questions) assert.deepEqual(railQuestion(question.id), question);
-  const source = fs.readFileSync(new URL("../../outputs/community-seasons/lib/game/railway.ts", import.meta.url), "utf8");
+  const source = fs.readFileSync(new URL("../../src/lib/game/railway.ts", import.meta.url), "utf8");
   assert.ok(source.includes(renderQuestionBank(bank)));
 });
 
