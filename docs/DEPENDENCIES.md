@@ -19,7 +19,7 @@ This configuration opens reviewable PRs. It does not merge, deploy, or change To
 
 ## Reviewing a dependency PR
 
-Use Node.js 24 and the PR branch. Check release notes and compatibility, then install the locked packages and validate:
+Use the PR branch and Node.js 24 from the repository root [`.nvmrc`](../.nvmrc). Run this checklist from the repository root; `src/.nvmrc` is a separate, older game-directory pin. Check release notes and compatibility, then install the locked packages and validate:
 
 ```sh
 npm run setup
