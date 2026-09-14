@@ -93,6 +93,15 @@ class FeedbackTests(unittest.TestCase):
         data["report"]["suites"][0]["failures"] = []
         self.assertIn("No per-case seed/shrink path was recorded", format_comment(data)[1])
 
+    def test_engine_case_seed_preserves_offset_plus_index_without_wrapping(self):
+        data = prepared()
+        data["report"]["suites"] = [{"name": "engine", "status": "failed", "derivedSeed": 4294967295,
+                                    "failures": [{"seed": 4294968091, "case": None, "path": None}]}]
+        self.assertIn("Failing seed `4294968091`", format_comment(data)[1])
+        data["report"]["suites"][0]["failures"][0]["seed"] = 2**53
+        with self.assertRaises(ValueError):
+            validate_report(data["report"])
+
     def test_job_output_payload_is_bounded_and_revalidated(self):
         encoded = base64.b64encode(json.dumps(prepared()).encode()).decode()
         self.assertEqual(decode_prepared(encoded), prepared())

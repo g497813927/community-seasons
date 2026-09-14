@@ -76,7 +76,9 @@ def validate_report(report):
         integer(row["derivedSeed"], -(2**31))
         require(isinstance(row["failures"], list) and len(row["failures"]) <= 20)
         for failure in row["failures"]:
-            integer(failure["seed"], -(2**31))
+            # Engine traces add a case index to the uint32 offset without
+            # wrapping. Preserve that exact seed, including values above 2**32.
+            integer(failure["seed"], -(2**31), 2**53 - 1)
             if failure["case"] is not None:
                 text(failure["case"], r"[a-z0-9-]+", 100)
             if failure["path"] is not None:
