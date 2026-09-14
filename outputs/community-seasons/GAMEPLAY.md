@@ -68,7 +68,7 @@ Equip one before every run. Each starts empty, charges from 100 collected coins,
 
 ## Saving and Toy cloud sync
 
-Coin wallet, purchased boosters, permanent unlocks, upgrade levels, equipped skill, best score, and last season save in this browser. On Toy, cloud storage also syncs these fields across devices signed in to the same account. Storage remains separate from the preserved Relic Rush game. No real-money purchases.
+Coin wallet, purchased boosters, permanent unlocks, upgrade levels, equipped skill, best score, and last season save in this browser. On Toy, cloud storage also syncs these fields across devices signed in to the same account. No real-money purchases.
 
 When enabling cloud sync with existing browser progress, the game compares both saves before changing anything. For different saves, choose the cloud save, replace the cloud save with this device’s save, or keep playing locally. The dialog shows coins, best score, skills, levels, inventory, and season so the choice can be reviewed. An empty cloud save offers upload or local-only choices. Equal saves sync without an overwrite dialog. Saves are selected as a whole, not merged.
 

@@ -4,7 +4,7 @@
 
 本文是供维护者阅读的简体中文说明；编码代理读取的规范文件仍为 [AGENTS.md](AGENTS.md)。修改维护约定时请同步两份文档。
 
-- 此目录是从本文件夹开始工作的规范源码树。修改 `outputs/community-seasons/`，不要回到原 Codex 工作区或保留的 Relic Rush 项目中修改。
+- 此目录是从本文件夹开始工作的规范源码树。修改 `outputs/community-seasons/`，源码修改须限定在本仓库内。
 - 修改行为前，阅读根目录 README、`docs/QA.md`，以及游戏目录中的 README 和 GAMEPLAY.md；这些文档均提供简体中文版本。
 - 保留英文/简体中文、键盘/WASD、触摸/滑动/双击、无障碍和放大文字布局。
 - Toy 云存档和所有 QA 存档必须使用独立命名空间。QA 不得覆盖用户存档。

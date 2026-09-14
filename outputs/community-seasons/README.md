@@ -4,8 +4,6 @@
 
 A bilingual, keyboard-and-swipe learning runner through four seasonal communities. Keep moving, collect coins, and learn how to recognize inappropriate posts.
 
-This is a separate adaptation of Relic Rush. The original Relic Rush copy is preserved outside this maintenance workspace. Browser saves use a separate `community-seasons-*` namespace.
-
 ## Run and build
 
 Use Node.js 22.13+ (Node 24 recommended).
@@ -33,7 +31,7 @@ On Toy, signed-in players can sync their coin wallet, purchased booster inventor
 
 The browser copy remains available when cloud storage or sign-in is unavailable. The home screen reports sync status and offers Retry or Enable cloud. Before a new run, the game checks for cloud changes; a late response cannot replace an active run. Local-only mode stays selected until the player enables cloud again. Standalone builds, including self-hosted copies, use browser storage and do not load the Toy SDK.
 
-Current runs, run coin counters, distance, temporary boost timers, and skill charge are not resumed on another device. Language, sound, and onboarding preferences stay on each device. This save namespace remains separate from Relic Rush.
+Current runs, run coin counters, distance, temporary boost timers, and skill charge are not resumed on another device. Language, sound, and onboarding preferences stay on each device.
 
 Toy implementation notes: the SDK stores one versioned JSON value under `community-seasons-save-v1`, within the 1,024-byte value limit. Local changes are coalesced for about three seconds, and writes are serialized. Unique revisions and a read before each write detect changed cloud saves and request another choice when needed. Toy does not provide an atomic compare-and-swap operation, so truly simultaneous writes on separate devices can still race.
 
