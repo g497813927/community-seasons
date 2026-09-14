@@ -13,8 +13,9 @@ export default defineConfig({
   return code.replace(before,'export const CLOUD_SAVE_KEY = "qa-iphone-20260910-community-seasons-save-v1";');
  },generateBundle(){
   // Keep old experimental font/DPR helpers out of the new phone build.
-  for(const fileName of ['probe.js','qa-suite.js','favicon.svg'])
+  for(const fileName of ['probe.js','qa-suite.js'])
    this.emitFile({type:'asset',fileName,source:readFileSync(new URL(`./public/${fileName}`,import.meta.url),'utf8')});
+  this.emitFile({type:'asset',fileName:'favicon.svg',source:readFileSync(`${app}public/favicon.svg`)});
  }},react()],
  resolve:{dedupe:["react","react-dom"],alias:[
   {find:/^@\/lib\/game\/engine$/,replacement:fileURLToPath(new URL('./engine-qa.ts',import.meta.url))},

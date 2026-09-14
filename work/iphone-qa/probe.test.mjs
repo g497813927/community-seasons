@@ -15,6 +15,7 @@ test('early probe isolates game saves, preserves unrelated storage, and bounds R
 });
 test('built preview is relative-path safe and cloud requests use an isolated key',()=>{
  const root=new URL('./dist-20260910/',import.meta.url),html=fs.readFileSync(new URL('index.html',root),'utf8');assert.ok(html.includes('<script src="./probe.js"></script>'));assert.ok(html.indexOf('./probe.js')<html.indexOf('type="module"'));assert.ok(!/\b(?:src|href)="\//.test(html));
+ assert.ok(html.includes('href="./favicon.svg"'));assert.match(fs.readFileSync(new URL('favicon.svg',root),'utf8'),/^\s*<svg\b/,'preview icon link must resolve to an SVG asset');
  const scripts=fs.readdirSync(new URL('assets/',root)).filter(n=>n.endsWith('.js')).map(n=>fs.readFileSync(new URL(`assets/${n}`,root),'utf8')).join('\n');assert.ok(scripts.includes('qa-iphone-20260910-community-seasons-save-v1'));assert.ok(!scripts.includes('"community-seasons-save-v1"'));assert.ok(scripts.includes('QA blocked access to a non-isolated cloud save key.'));
  for(const name of ['font-qa.js','render-scale-qa.js'])assert.equal(fs.existsSync(new URL(name,root)),false,`${name} must not enter the production-equivalent phone build`);
  assert.equal(scripts.includes('qa-iphone-20260908-'),false,'old save namespaces leaked into the new build');
