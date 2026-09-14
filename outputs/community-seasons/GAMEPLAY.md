@@ -1,5 +1,7 @@
 # Community Seasons
 
+[English](GAMEPLAY.md) | [简体中文](GAMEPLAY.zh-CN.md)
+
 ## Controls and onboarding
 
 The first click on Start opens a two-page guide before skill selection; reopen it with **How to play** on the home screen. Touch instructions and keyboard keys appear together, and both control methods work at any time without switching modes. The second page illustrates obstacles, transport gates, boosters, and coins. Swipe left/right or use A/D and the arrow keys to change lanes. Swipe up or press W/Up/Space to jump; swipe down or press S/Down to slide. Tap the skill button, double-tap the path, or press E to activate a charged skill. Tap the booster icon buttons or use keys 1–4 to activate purchased tools, subject to each tool's timing rules.

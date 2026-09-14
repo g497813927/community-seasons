@@ -1,5 +1,7 @@
 # Release handoff
 
+[English](RELEASE.md) | [简体中文](RELEASE.zh-CN.md)
+
 Existing Toy: 四季共建 · Community Seasons
 Toy ID: 30703115016192
 Slug: community-seasons

@@ -1,5 +1,7 @@
 # Type-checked fast-check factories
 
+[English](typed-arbitraries.md) | [简体中文](typed-arbitraries.zh-CN.md)
+
 `typed-arbitraries.ts` is a small **typed factory**, not TypeScript reflection or an AST-based generator. It imports the real game `Progress`, `SaveSnapshot`, booster/skill/scene and movement types using `import type`. Exhaustive property maps use `satisfies Fields<T>` and exported valid factories use `satisfies fc.Arbitrary<T>`, so missing required fields and incompatible field types fail compilation.
 
 Valid progress factories also preserve constraints that TypeScript cannot express: a portal has at most one item and a matching destination; the equipped skill is unlocked; portal level is fixed at one. Invalid factories return `unknown` with explicit mutation metadata, never falsely label damaged input as a valid save. Structured command factories retain a discriminant separating valid commands and deliberate invalid values.
@@ -20,4 +22,4 @@ Defaults: 1,000 cases each for four properties. `FC_TYPED_RUNS`, `FC_TYPED_SEED`
 
 Dependencies are the existing TypeScript and fast-check development tools. Generated runtime modules stay in `typed-arbitraries-compiled/`. No production files, real saved data, cloud requests or game hooks are used.
 
-Portable-kit package script: `"test:types": "tsc -p work/property-tests/typed-arbitraries.tsconfig.json"` (kit root with TypeScript in devDependencies). The helper/test source-relative game and compiler paths can be rewritten by the kit packager to its frozen source snapshot.
+From the repository root, `npm run test:types` runs the same typecheck. The helpers and tests import the current game source under `outputs/community-seasons/`; there is no separate frozen game snapshot to synchronize.
