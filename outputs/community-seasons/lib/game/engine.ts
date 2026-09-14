@@ -286,9 +286,10 @@ export function act(s: RunState, action: Action): boolean {
     s.lane = lane;
     return true;
   }
-  // The latest different motion takes over immediately. Repeating the current
-  // motion restarts its timer for more flexible chained actions.
+  // Different motions take over immediately. Extra jump inputs leave the
+  // current arc intact; repeated slide inputs can still restart the slide.
   if (action === "jump") {
+    if (s.jump > 0) return false;
     s.slide = 0;
     s.jump = JUMP_DURATION;
     return true;
@@ -1114,7 +1115,7 @@ export function advancePreview(s: RunState, seconds: number) {
         if (secondsToRow < 0.36 && secondsToRow > 0) {
           const action = next.kind === "arch" ? "slide" : "jump";
           // Preview decisions run every substep. Let the chosen motion finish;
-          // only a new player input should restart an active jump or slide.
+          // only a new player input should restart an active slide.
           if (s[action] <= 0) act(s, action);
         }
       }

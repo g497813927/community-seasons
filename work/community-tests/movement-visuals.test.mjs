@@ -224,7 +224,55 @@ test("66-speed collisions, jumps, slides and shield reviews stay consistent acro
     }
 });
 
-test("explicit repeated motion inputs restart jump and slide while switching cancels the other motion", () => {
+test("repeated jump inputs preserve one complete jump arc without queuing another jump", () => {
+  for (const step of [1 / 30, 1 / 60, 1 / 144, 0.25]) {
+    const single = run();
+    single.obstacles = [{ id: 1, lane: 0, at: single.distance + single.speed * 0.32, kind: "block", resolved: false }];
+    const repeated = structuredClone(single);
+    assert.equal(act(single, "jump"), true);
+    assert.equal(act(repeated, "jump"), true);
+    let elapsed = 0;
+    while (elapsed < JUMP_DURATION - 0.001 - 1e-8) {
+      for (let press = 0; press < 3; press++) {
+        assert.equal(act(repeated, "jump"), false, "extra jump inputs are ignored while airborne");
+      }
+      assert.deepEqual(repeated, single, "extra inputs must preserve the original jump and run state");
+      const poses = [single, repeated].map((s) => {
+        const renderer = new Renderer({ getContext: () => ({}) });
+        renderer.runner(s, elapsed);
+        return renderer.faces;
+      });
+      assert.deepEqual(poses[1], poses[0], "repeated jumps must follow the same rendered arc as one jump");
+      const dt = Math.min(step, JUMP_DURATION - 0.001 - elapsed);
+      advance(single, dt, step);
+      advance(repeated, dt, step);
+      elapsed += dt;
+    }
+    assert.ok(repeated.jump > 0 && repeated.jump <= 0.001 + 1e-8);
+    assert.equal(act(repeated, "jump"), false, "an input just before landing must still be ignored");
+    advance(single, 0.1, step);
+    advance(repeated, 0.1, step);
+    assert.deepEqual(repeated, single, "ignored inputs must not extend or queue a jump");
+    assert.equal(repeated.jump, 0);
+    assert.equal(repeated.mode, "running");
+    assert.equal(repeated.review, null);
+    assert.equal(act(repeated, "jump"), true, "a fresh input after landing starts the next jump");
+    assert.equal(repeated.jump, JUMP_DURATION);
+  }
+});
+
+test("explicit repeated slide inputs still restart the slide", () => {
+  const s = run();
+  assert.equal(act(s, "slide"), true);
+  advance(s, SLIDE_DURATION / 3);
+  assert.equal(act(s, "slide"), true);
+  assert.equal(s.slide, SLIDE_DURATION);
+  assert.equal(s.jump, 0);
+  advance(s, SLIDE_DURATION + 0.05);
+  assert.equal(s.slide, 0);
+});
+
+test("switching between jump and slide cancels the previous motion", () => {
   for (const [motion, other, duration] of [
     ["jump", "slide", JUMP_DURATION],
     ["slide", "jump", SLIDE_DURATION],
@@ -233,10 +281,6 @@ test("explicit repeated motion inputs restart jump and slide while switching can
     assert.equal(act(s, motion), true);
     advance(s, duration / 3);
     assert.ok(s[motion] > 0 && s[motion] < duration);
-    assert.equal(act(s, motion), true, `${motion}: an explicit repeat must be accepted`);
-    assert.equal(s[motion], duration, `${motion}: an explicit repeat must restart the motion`);
-    assert.equal(s[other], 0);
-    advance(s, duration / 3);
     assert.equal(act(s, other), true);
     assert.equal(s[motion], 0, `${other}: switching must cancel the previous motion`);
     assert.ok(s[other] > 0);
