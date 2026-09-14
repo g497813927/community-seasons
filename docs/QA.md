@@ -14,7 +14,7 @@ npm run test:types
 npm run test:fuzz
 ```
 
-`npm test` runs deterministic regressions. `npm run test:types` checks the typed property generators, and `npm run test:fuzz` runs one bounded quick pass of the seed matrices, property tests and renderer checks. All tests import the current source under `outputs/community-seasons/`.
+`npm test` runs deterministic regressions. `npm run test:types` checks the typed property generators, and `npm run test:fuzz` runs one bounded quick pass of the seed matrices, property tests and renderer checks. All tests import the current source under `src/`.
 
 For a reproducible, bounded run:
 

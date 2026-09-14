@@ -6,7 +6,7 @@ import ts from "typescript";
 import "./compile.mjs";
 const { createRun } = await import("./compiled/engine.mjs");
 const { createRailQuestionDeck } = await import("./compiled/railway.mjs");
-const project = new URL("../../outputs/community-seasons/", import.meta.url);
+const project = new URL("../../src/", import.meta.url);
 const compile = (source) =>
   ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },

@@ -6,7 +6,7 @@ import path from "node:path";
 import ts from "typescript";
 
 const source = fs.readFileSync(
-  new URL("../../outputs/community-seasons/deploy/project-license.ts", import.meta.url),
+  new URL("../../src/deploy/project-license.ts", import.meta.url),
   "utf8",
 );
 const compiled = ts.transpileModule(source, {

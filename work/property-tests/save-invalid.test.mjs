@@ -10,7 +10,7 @@ const started = performance.now(),
 fs.mkdirSync(folder, { recursive: true });
 for (const name of ["scenes", "boosts", "railway", "community", "engine", "store", "cloud-save"]) {
   const source = fs.readFileSync(
-    new URL(`../../outputs/community-seasons/lib/game/${name}.ts`, import.meta.url),
+    new URL(`../../src/lib/game/${name}.ts`, import.meta.url),
     "utf8",
   );
   sourceHashes[name] = crypto.createHash("sha256").update(source).digest("hex");

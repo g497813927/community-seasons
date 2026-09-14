@@ -1,5 +1,5 @@
-import * as engine from '../../outputs/community-seasons/lib/game/engine';
-export * from '../../outputs/community-seasons/lib/game/engine';
+import * as engine from '../../src/lib/game/engine';
+export * from '../../src/lib/game/engine';
 const qa = (window as any).__phoneQA;
 qa.engine = engine;
 export function update(...args: Parameters<typeof engine.update>) {

@@ -4,11 +4,9 @@
 
 A bilingual, keyboard-and-swipe learning runner through four seasonal communities. Keep moving, collect coins, and learn how to recognize inappropriate posts.
 
-This is a separate adaptation of Relic Rush. The original Relic Rush copy is preserved outside this maintenance workspace. Browser saves use a separate `community-seasons-*` namespace.
-
 ## Run and build
 
-Use Node.js 22.13+ (Node 24 recommended).
+Use Node.js 22.13+ (Node 24 recommended). Run these commands from the repository’s `src/` directory:
 
 ```sh
 npm ci
@@ -29,11 +27,13 @@ The first launch follows the browser’s preferred supported language (English o
 
 ## Saved progress
 
+The game's browser storage keys use the `community-seasons-*` prefix. Builds on the same origin share these keys; use the [dedicated QA fixtures](../docs/QA.md) on their own origins when testing.
+
 On Toy, signed-in players can sync their coin wallet, purchased booster inventory, skill unlocks, upgrade levels, equipped skill, best score, and last season across devices using the same account. Existing browser progress is kept until the player chooses which save to use. If local and cloud saves differ, the comparison dialog offers **Use cloud save**, **Use this device’s save**, or **Keep playing on this device only**. If cloud storage is empty, uploading existing browser progress also requires a choice. Choosing a save replaces the other complete save; balances and purchases are not added together.
 
 The browser copy remains available when cloud storage or sign-in is unavailable. The home screen reports sync status and offers Retry or Enable cloud. Before a new run, the game checks for cloud changes; a late response cannot replace an active run. Local-only mode stays selected until the player enables cloud again. Standalone builds, including self-hosted copies, use browser storage and do not load the Toy SDK.
 
-Current runs, run coin counters, distance, temporary boost timers, and skill charge are not resumed on another device. Language, sound, and onboarding preferences stay on each device. This save namespace remains separate from Relic Rush.
+Current runs, run coin counters, distance, temporary boost timers, and skill charge are not resumed on another device. Language, sound, and onboarding preferences stay on each device.
 
 Toy implementation notes: the SDK stores one versioned JSON value under `community-seasons-save-v1`, within the 1,024-byte value limit. Local changes are coalesced for about three seconds, and writes are serialized. Unique revisions and a read before each write detect changed cloud saves and request another choice when needed. Toy does not provide an atomic compare-and-swap operation, so truly simultaneous writes on separate devices can still race.
 
@@ -52,7 +52,7 @@ The railway draws from 47 bilingual teaching questions using a session deck that
 
 ## Project license
 
-The game's own source code is licensed under the repository's [MIT License](../../LICENSE). Every production build copies that notice verbatim into `dist/LICENSE` and embeds it as an inert text block in `dist/index.html`. The HTML copy preserves the notice on hosts such as Toy that do not serve standalone license files. Include the complete build when distributing the game; maintain the root `LICENSE` as the single source for both copies.
+The game's own source code is licensed under the repository's [MIT License](../LICENSE). Every production build copies that notice verbatim into `dist/LICENSE` and embeds it as an inert text block in `dist/index.html`. The HTML copy preserves the notice on hosts such as Toy that do not serve standalone license files. Include the complete build when distributing the game; maintain the root `LICENSE` as the single source for both copies.
 
 ## Dependency licenses
 

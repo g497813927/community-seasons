@@ -9,7 +9,7 @@ const { createRun, update } = await import("./compiled/engine.mjs");
 const { createProgress, readProgress, buyBooster, activateOwnedBooster } =
   await import("./compiled/store.mjs");
 const { isSceneKind } = await import("./compiled/scenes.mjs");
-const root = new URL("../../outputs/community-seasons/", import.meta.url);
+const root = new URL("../../src/", import.meta.url);
 const compile = (source) =>
   ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -155,7 +155,7 @@ test("public production source and built assets contain no QA entry points or UR
 });
 
 test("production artifact includes the complete current project license", () => {
-  const notice = fs.readFileSync(new URL("../../LICENSE", root));
+  const notice = fs.readFileSync(new URL("../LICENSE", root));
   assert.deepEqual(
     fs.readFileSync(new URL("dist/LICENSE", root)),
     notice,

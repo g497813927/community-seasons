@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
 import { fileURLToPath, URL } from 'node:url';
 import { readFileSync } from 'node:fs';
-const app = fileURLToPath(new URL('../../outputs/community-seasons/', import.meta.url));
+const app = fileURLToPath(new URL('../../src/', import.meta.url));
 export default defineConfig({
  base: './', cacheDir: './.vite-cache', publicDir: false,
  plugins: [{name:'isolated-qa-cloud-key',enforce:'pre',transform(code,id){

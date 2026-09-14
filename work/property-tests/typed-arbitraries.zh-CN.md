@@ -22,4 +22,4 @@ node --test work/property-tests/typed-arbitraries.test.mjs
 
 依赖仅为已有的 TypeScript 和 fast-check 开发工具。生成的运行时模块位于 `typed-arbitraries-compiled/`。不会使用生产文件、真实存档、云端请求或游戏调试钩子。
 
-在仓库根目录执行 `npm run test:types` 可运行同一类型检查。辅助函数和测试导入 `outputs/community-seasons/` 中的当前游戏源码，不需要同步独立的冻结副本。
+在仓库根目录执行 `npm run test:types` 可运行同一类型检查。辅助函数和测试导入 `src/` 中的当前游戏源码，不需要同步独立的冻结副本。

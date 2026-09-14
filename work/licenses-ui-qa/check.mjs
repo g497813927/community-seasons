@@ -1,9 +1,9 @@
 import {chromium} from 'playwright';
 import fs from 'node:fs';import assert from 'node:assert/strict';import crypto from 'node:crypto';
-const inventory=JSON.parse(fs.readFileSync('outputs/community-seasons/public/open-source-licenses.json','utf8'));
-const notices=fs.readFileSync('outputs/community-seasons/public/THIRD-PARTY-NOTICES.txt');
+const inventory=JSON.parse(fs.readFileSync('src/public/open-source-licenses.json','utf8'));
+const notices=fs.readFileSync('src/public/THIRD-PARTY-NOTICES.txt');
 const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
-const sources=()=>Object.fromEntries(['app/page.tsx','components/licenses-dialog.tsx','components/licenses-dialog.css','public/open-source-licenses.json'].map(p=>[p,hash(fs.readFileSync('outputs/community-seasons/'+p))]));const sourceStart=sources();
+const sources=()=>Object.fromEntries(['app/page.tsx','components/licenses-dialog.tsx','components/licenses-dialog.css','public/open-source-licenses.json'].map(p=>[p,hash(fs.readFileSync('src/'+p))]));const sourceStart=sources();
 const b=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})}),rows=[];
 async function scaleText(p,scale){await p.evaluate(scale=>{const m=window.__licensesQA.fonts??=new Map();for(const[el,v]of m)if(el.isConnected){el.style.fontSize=v.font;el.style.lineHeight=v.line;}const elements=[...document.querySelectorAll('.credits-footer, .credits-footer *, .licenses-dialog, .licenses-dialog *')];const values=elements.map(el=>{if(!m.has(el))m.set(el,{font:el.style.fontSize,line:el.style.lineHeight});const s=getComputedStyle(el);return[el,parseFloat(s.fontSize),s.lineHeight]});for(const[e,f,l]of values){e.style.setProperty('font-size',`${f*scale}px`,'important');if(l!=='normal')e.style.setProperty('line-height',`${parseFloat(l)*scale}px`,'important');}},scale);}
 async function layout(p){return p.locator('.licenses-dialog').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,viewport:{width:document.documentElement.clientWidth,height:innerHeight},docOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};});}

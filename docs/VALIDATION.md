@@ -15,4 +15,4 @@ Validated in this folder after installing its own locked dependencies:
 
 Browser checks used local Chrome through PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH. The portable default uses Chromium installed by `npx playwright install chromium`. No physical phone session or remote publication was performed for this workspace preparation.
 
-Builds retain the existing large-bundle advisory. One stale lazy-ref test fixture was extended to include the session question deck. Obsolete font/DPR experiments and the unrelated Relic Rush preservation test were omitted. Game behavior was not changed.
+Builds retain the existing large-bundle advisory. One stale lazy-ref test fixture was extended to include the session question deck. Obsolete font/DPR experiments were omitted. Game behavior was not changed.

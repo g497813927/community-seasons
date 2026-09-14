@@ -6,7 +6,7 @@ const cache = new URL("./store-economy-fuzz-compiled/", import.meta.url);
 fs.mkdirSync(cache, { recursive: true });
 for (const name of ["scenes", "boosts", "railway", "community", "engine", "store", "cloud-save"]) {
   const text = fs.readFileSync(
-    new URL(`../../outputs/community-seasons/lib/game/${name}.ts`, import.meta.url),
+    new URL(`../../src/lib/game/${name}.ts`, import.meta.url),
     "utf8",
   );
   fs.writeFileSync(

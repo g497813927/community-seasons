@@ -1,6 +1,6 @@
-import { loadToyCloudStorage as loadReal } from '../../outputs/community-seasons/lib/game/toy-sdk';
-import type { ToyCloudSdk } from '../../outputs/community-seasons/lib/game/cloud-save';
-export { isToyPage, loadToySdk } from '../../outputs/community-seasons/lib/game/toy-sdk';
+import { loadToyCloudStorage as loadReal } from '../../src/lib/game/toy-sdk';
+import type { ToyCloudSdk } from '../../src/lib/game/cloud-save';
+export { isToyPage, loadToySdk } from '../../src/lib/game/toy-sdk';
 const qa=(window as any).__phoneQA;
 let wrapped:ToyCloudSdk|null=null,previous:ToyCloudSdk|null=null;
 function check(keys?:string[]){if(!keys?.length||keys.some(key=>!key.startsWith(qa.prefix)))throw new Error('QA blocked access to a non-isolated cloud save key.');}

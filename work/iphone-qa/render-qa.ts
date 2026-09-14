@@ -1,4 +1,4 @@
-import { Renderer as OriginalRenderer } from '../../outputs/community-seasons/lib/game/render';
+import { Renderer as OriginalRenderer } from '../../src/lib/game/render';
 const qa=(window as any).__phoneQA;
 export class Renderer extends OriginalRenderer {
  private qaDepth=0;

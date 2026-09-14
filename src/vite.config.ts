@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [
     productionBoundary(fileURLToPath(new URL(".", import.meta.url))),
     react(),
-    projectLicense(fileURLToPath(new URL("../../LICENSE", import.meta.url))),
+    projectLicense(fileURLToPath(new URL("../LICENSE", import.meta.url))),
   ],
   resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
   css: { postcss: { plugins: [tailwindcss()] } },

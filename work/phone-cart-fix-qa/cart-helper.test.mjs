@@ -1,16 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import ts from '../../outputs/community-seasons/node_modules/typescript/lib/typescript.js';
+import ts from '../../src/node_modules/typescript/lib/typescript.js';
 
 const compiled = new URL('./cart-compiled/', import.meta.url);
 fs.mkdirSync(compiled, { recursive: true });
 for (const name of ['boosts', 'scenes', 'railway', 'engine', 'cart-helper']) {
   const source = fs.readFileSync(new URL(name === 'cart-helper' ? './cart-helper.ts' :
-    `../../outputs/community-seasons/lib/game/${name}.ts`, import.meta.url), 'utf8');
+    `../../src/lib/game/${name}.ts`, import.meta.url), 'utf8');
   const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext,
     target: ts.ScriptTarget.ES2022 } }).outputText
-    .replace(/from ['"]\.\.\/\.\.\/outputs\/community-seasons\/lib\/game\/engine['"]/g, "from './engine.mjs'")
+    .replace(/from ['"]\.\.\/\.\.\/src\/lib\/game\/engine['"]/g, "from './engine.mjs'")
     .replace(/from ['"](\.\/[a-z-]+)['"]/g, "from '$1.mjs'");
   fs.writeFileSync(new URL(`${name}.mjs`, compiled), output);
 }

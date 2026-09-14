@@ -1,5 +1,5 @@
-import * as engine from '../../outputs/community-seasons/lib/game/engine';
-import { isSceneKind, nextScene, type SceneKind } from '../../outputs/community-seasons/lib/game/scenes';
+import * as engine from '../../src/lib/game/engine';
+import { isSceneKind, nextScene, type SceneKind } from '../../src/lib/game/scenes';
 const qa=(window as any).__phoneQA;
 function running(){const s=qa.run as engine.RunState|null;if(!s||s.mode!=='running')throw new Error('Use the real game Start / guide / Begin run controls first (and resume if paused).');return s;}
 function base(distance:number,time:number,scene:SceneKind){const s=running();Object.assign(s,engine.createRun(4182,scene),{mode:'running',distance,time,score:Math.floor(distance*10),speed:Math.min(engine.MAX_SPEED,engine.INITIAL_SPEED+distance*.006),nextRow:distance+50,nextRelicAt:distance+160,nextForkAt:1e9,nextRailAt:1e9,nextPortalAt:1e9});engine.generateAhead(s);return s;}
@@ -19,4 +19,4 @@ qa.answer=(correct=true)=>{const s=running(),q=engine.currentRailQuestion(s);if(
 qa.travel=(scene?:SceneKind)=>{const s=running();return engine.startSceneTravel(s,isSceneKind(scene)?scene:nextScene(s.scene));};
 qa.pause=()=>qa.pauseWithUI();
 qa.action=(action:engine.Action)=>engine.act(running(),action);
-await import('../../outputs/community-seasons/main.tsx');
+await import('../../src/main.tsx');

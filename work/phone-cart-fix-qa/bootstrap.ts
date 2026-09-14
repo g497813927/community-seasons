@@ -97,6 +97,6 @@ window.addEventListener('error', e => event('error', e.message));
 window.addEventListener('unhandledrejection', e => event('unhandledrejection', String(e.reason?.message ?? e.reason)));
 window.addEventListener('pagehide', () => { event('pagehide'); finish('pagehide'); });
 
-await import('../../outputs/community-seasons/main.tsx');
+await import('../../src/main.tsx');
 // Only this isolated preview arms a bounded measurement after real user input.
 host.__cartQA.arm();

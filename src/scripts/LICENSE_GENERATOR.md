@@ -9,7 +9,7 @@
 
 ## In this game
 
-From the project folder:
+From the repository’s `src/` directory:
 
 ```sh
 npm ci
