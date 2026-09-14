@@ -11,6 +11,18 @@ async function visible(p,selector){const el=p.locator(selector).first();await el
 function checkLayout(d){assert.ok(d.x>=-1&&d.right<=d.viewport.width+1,'dialog outside viewport');assert.ok(d.y>=-1&&d.bottom<=d.viewport.height+1,'dialog vertically clipped');assert.ok(d.scrollWidth<=d.clientWidth+1,'dialog horizontal scroll');assert.ok(d.docOverflow<=1,'page horizontal overflow');}
 async function make(width,height,locale){const c=await b.newContext({viewport:{width,height},locale,isMobile:width<750,hasTouch:width<750});const p=await c.newPage(),errors=[],requests=[];p.on('pageerror',e=>errors.push(String(e)));p.on('request',r=>requests.push(r.url()));await p.goto(`http://127.0.0.1:3029/?lang=${locale}`);await p.locator('.licenses-launcher').waitFor();await p.evaluate(()=>document.fonts.ready);return {c,p,errors,requests};}
 const count=r=>r.filter(u=>u.endsWith('/open-source-licenses.json')).length;
+
+async function checkDialogFocus(page) {
+  // Base UI redirects its hidden focus guard on the next animation frame.
+  // Wait only for that handoff: real focus outside the dialog must still fail.
+  await page.waitForFunction(
+    () => !document.activeElement?.matches('[data-base-ui-focus-guard]'),
+    undefined,
+    {timeout: 1000},
+  );
+  assert.ok(await page.evaluate(() => Boolean(document.activeElement?.closest('.licenses-dialog'))), 'focus escaped dialog');
+}
+
 try{
 for(const [width,height]of[[320,568],[390,844],[1280,900]])for(const locale of['en','zh-CN'])for(const scale of[1,2]){
  const{c,p,errors,requests}=await make(width,height,locale),row={kind:'layout-search',width,height,locale,scale};
@@ -23,7 +35,7 @@ for(const [width,height]of[[320,568],[390,844],[1280,900]])for(const locale of['
    if(query==='React'||query==='Lucide'){const name=query==='React'?'react':'lucide-react',item=inventory.packages.find(x=>x.name===name);const entry=p.locator('.license-entry').filter({has:p.locator('.license-package-name strong',{hasText:new RegExp(`^${name}$`)})});await entry.locator('summary').click();await scaleText(p,scale);assert.deepEqual(await entry.locator('pre').allTextContents(),item.notices.map(n=>n.text));checkLayout(await layout(p));await visible(p,'.license-entry[open] .license-entry-content pre');if(query==='Lucide'){row.expandedLayout=await layout(p);await p.screenshot({path:`work/licenses-ui-qa/${width}-${locale}-${scale}-expanded.png`});}}
   }
   assert.equal(await p.locator('.licenses-dialog a, .licenses-dialog [role=link]').count(),0,'license panel must not contain hyperlinks');const response=await p.request.get('http://127.0.0.1:3029/THIRD-PARTY-NOTICES.txt');assert.equal(response.status(),200);assert.equal(hash(await response.body()),hash(notices));row.noticesFile={status:200,sha256:hash(notices)};
-  await input.focus();for(let i=0;i<7;i++){await p.keyboard.press('Tab');await p.waitForTimeout(15);assert.ok(await p.evaluate(()=>Boolean(document.activeElement?.closest('.licenses-dialog'))),'focus escaped dialog');}
+  await input.focus();for(let i=0;i<7;i++){await p.keyboard.press('Tab');await checkDialogFocus(p);}
   for(const selector of['.licenses-close','.licenses-search input']){const r=await visible(p,selector);assert.ok(r.height>=44&&r.width>=44,`${selector}: small target`);}
   await visible(p,'.licenses-title');await p.screenshot({path:`work/licenses-ui-qa/${width}-${locale}-${scale}-heading.png`});await p.keyboard.press('Escape');await p.locator('.licenses-dialog').waitFor({state:'detached'});assert.ok(await p.locator('.licenses-launcher').evaluate(e=>document.activeElement===e),'focus did not return to footer');
   await p.locator('.licenses-launcher').click();await p.locator('.licenses-count').waitFor();assert.equal(count(requests),1,'cached inventory fetched again');await p.locator('.licenses-close').click();await p.locator('.licenses-dialog').waitFor({state:'detached'});assert.deepEqual(errors,[]);assert.equal(requests.some(u=>u.includes('toy-sdk.js')),false);Object.assign(row,{passed:true,inventoryRequests:count(requests),errors});
