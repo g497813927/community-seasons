@@ -2,8 +2,8 @@ THIRD-PARTY NOTICES
 
 Installed, locked project dependencies and their original license notices, including transitive and build dependencies. Production/development are npm dependency classifications, not a list of packages shipped to the browser. Optional packages not installed on this build platform are listed separately. External platform services and test tools outside this project are not included.
 
-Lockfile: sha256:113ffa54531c796df43c1b62d2da1c258bae2ec4919f705be54ca4f050e21d35
-Packages: 356
+Lockfile: sha256:3135ace7e4ebaf96e6573bc8f7df62c908f600c828e8fdba41c193373eaec858
+Packages: 355
 
 ==============================================================================
 @alloc/quick-lru@5.3.0
@@ -1413,7 +1413,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-@oxc-project/types@0.130.0
+@oxc-project/types@0.133.0
 Declared license: MIT
 Dependency classification: development
 Repository: https://github.com/oxc-project/oxc
@@ -1443,13 +1443,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ==============================================================================
-@rolldown/binding-darwin-arm64@1.0.1
+@rolldown/binding-darwin-arm64@1.0.3
 Declared license: MIT
 Dependency classification: development
 Repository: https://github.com/rolldown/rolldown
 
 --- upstream/LICENSE ---
-Upstream source: https://raw.githubusercontent.com/rolldown/rolldown/v1.0.1/LICENSE
+Upstream source: https://raw.githubusercontent.com/rolldown/rolldown/v1.0.3/LICENSE
 MIT License
 
 Copyright (c) 2024-present VoidZero Inc. & Contributors
@@ -1477,7 +1477,7 @@ end of terms and conditions
 The licenses of externally maintained libraries from which parts of the Software is derived are listed [here](https://github.com/rolldown/rolldown/blob/main/THIRD-PARTY-LICENSE).
 
 --- upstream/THIRD-PARTY-LICENSE ---
-Upstream source: https://raw.githubusercontent.com/rolldown/rolldown/v1.0.1/THIRD-PARTY-LICENSE
+Upstream source: https://raw.githubusercontent.com/rolldown/rolldown/v1.0.3/THIRD-PARTY-LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2017 [these people](https://github.com/rollup/rollup/graphs/contributors)
@@ -10570,7 +10570,7 @@ SOFTWARE.
 
 
 ==============================================================================
-rolldown@1.0.1
+rolldown@1.0.3
 Declared license: MIT
 Dependency classification: development
 Repository: https://github.com/rolldown/rolldown
@@ -10603,7 +10603,7 @@ end of terms and conditions
 The licenses of externally maintained libraries from which parts of the Software is derived are listed [here](https://github.com/rolldown/rolldown/blob/main/THIRD-PARTY-LICENSE).
 
 --- upstream/THIRD-PARTY-LICENSE ---
-Upstream source: https://raw.githubusercontent.com/rolldown/rolldown/v1.0.1/THIRD-PARTY-LICENSE
+Upstream source: https://raw.githubusercontent.com/rolldown/rolldown/v1.0.3/THIRD-PARTY-LICENSE
 The MIT License (MIT)
 
 Copyright (c) 2017 [these people](https://github.com/rollup/rollup/graphs/contributors)
@@ -12107,58 +12107,6 @@ MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
 
 
 ==============================================================================
-undici@7.24.8
-Declared license: MIT
-Dependency classification: production
-Repository: https://github.com/nodejs/undici
-
---- LICENSE ---
-MIT License
-
-Copyright (c) Matteo Collina and Undici contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
---- lib/web/fetch/LICENSE ---
-MIT License
-
-Copyright (c) 2020 Ethan Arrowood
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-==============================================================================
 undici@7.29.1
 Declared license: MIT
 Dependency classification: production
@@ -12448,7 +12396,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-vite@8.0.13
+vite@8.0.16
 Declared license: MIT
 Dependency classification: development
 Repository: https://github.com/vitejs/vite
@@ -13673,7 +13621,7 @@ Repository: https://github.com/lydell/js-tokens
 ## launch-editor, launch-editor-middleware
 License: MIT
 By: Evan You
-Repositories: https://github.com/yyx990803/launch-editor, https://github.com/yyx990803/launch-editor
+Repositories: https://github.com/vitejs/launch-editor, https://github.com/vitejs/launch-editor
 
 > The MIT License (MIT)
 > 
@@ -14886,20 +14834,20 @@ OPTIONAL PACKAGES NOT INSTALLED ON THIS BUILD PLATFORM
 @emnapi/runtime@1.11.3
 @emnapi/wasi-threads@1.2.1
 @napi-rs/wasm-runtime@1.2.3
-@rolldown/binding-android-arm64@1.0.1
-@rolldown/binding-darwin-x64@1.0.1
-@rolldown/binding-freebsd-x64@1.0.1
-@rolldown/binding-linux-arm-gnueabihf@1.0.1
-@rolldown/binding-linux-arm64-gnu@1.0.1
-@rolldown/binding-linux-arm64-musl@1.0.1
-@rolldown/binding-linux-ppc64-gnu@1.0.1
-@rolldown/binding-linux-s390x-gnu@1.0.1
-@rolldown/binding-linux-x64-gnu@1.0.1
-@rolldown/binding-linux-x64-musl@1.0.1
-@rolldown/binding-openharmony-arm64@1.0.1
-@rolldown/binding-wasm32-wasi@1.0.1
-@rolldown/binding-win32-arm64-msvc@1.0.1
-@rolldown/binding-win32-x64-msvc@1.0.1
+@rolldown/binding-android-arm64@1.0.3
+@rolldown/binding-darwin-x64@1.0.3
+@rolldown/binding-freebsd-x64@1.0.3
+@rolldown/binding-linux-arm-gnueabihf@1.0.3
+@rolldown/binding-linux-arm64-gnu@1.0.3
+@rolldown/binding-linux-arm64-musl@1.0.3
+@rolldown/binding-linux-ppc64-gnu@1.0.3
+@rolldown/binding-linux-s390x-gnu@1.0.3
+@rolldown/binding-linux-x64-gnu@1.0.3
+@rolldown/binding-linux-x64-musl@1.0.3
+@rolldown/binding-openharmony-arm64@1.0.3
+@rolldown/binding-wasm32-wasi@1.0.3
+@rolldown/binding-win32-arm64-msvc@1.0.3
+@rolldown/binding-win32-x64-msvc@1.0.3
 @tailwindcss/oxide-android-arm64@4.2.1
 @tailwindcss/oxide-darwin-x64@4.2.1
 @tailwindcss/oxide-freebsd-x64@4.2.1
