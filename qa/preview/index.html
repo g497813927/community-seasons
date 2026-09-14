@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="community-seasons-qa" content="community-seasons-qa-v1" />
+    <link rel="icon" href="./favicon.svg" />
+    <title>Community Seasons · QA preview</title>
+    <style>
+      .qa-console { position: fixed; bottom: 6px; left: 6px; z-index: 9999; color: #fff; background: #172437; border: 1px solid #8096b2; border-radius: 6px; padding: 5px 9px; font: 12px system-ui; max-width: 90vw; }
+      .qa-console summary { cursor: pointer; }
+      .qa-console button { color: #fff; background: #344963; border: 1px solid #8096b2; padding: 5px; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <details class="qa-console">
+      <summary>QA</summary>
+      <p>Isolated saves · Cloud disabled<br />测试存档已隔离 · 云端已禁用</p>
+      <button id="qa-export" type="button">Export report / 导出报告</button>
+    </details>
+    <script type="module" src="./bootstrap.ts"></script>
+  </body>
+</html>

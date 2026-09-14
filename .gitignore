@@ -36,3 +36,21 @@ work/property-tests/*.json
 work/licenses-ui-qa/served-component.js
 
 .**/better-harness/
+
+# QA source stays tracked; generated previews and device evidence do not.
+qa/**/compiled/
+qa/**/*-compiled/
+qa/**/*-failures-*/
+qa/**/*results*.json
+qa/**/*-result.json
+qa/**/physical-*
+qa/**/preview*.json
+qa/**/*.png
+qa/**/*.svg
+qa/**/*.log
+qa/**/*-report.md
+qa/**/*-report.json
+qa/**/devices.json
+qa/**/device-details.json
+qa/**/traces/
+qa/archive/licenses-ui-qa/served-component.js

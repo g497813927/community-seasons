@@ -39,38 +39,23 @@ node run.mjs quick --rounds 2 --seed 3231321585 --no-tui
 
 重构时应保持套件顺序、种子推导常量、环境变量名和报告格式稳定。通过轮次、失败轮次、中断、运行时间上限和源码变化各有独立计数；未完成的工作不能计为通过。
 
-## 浏览器布局检查
+## 网页、Android 与 iOS QA
 
-首次使用时安装浏览器：
-
-```sh
-npx playwright install chromium
-```
-
-在一个终端启动测试专用服务器，再在另一个终端运行对应测试。两个终端都从仓库根目录执行：
+当前浏览器与设备检查使用[跨平台 QA 框架](../qa/README.zh-CN.md)：
 
 ```sh
-npm run qa:licenses:serve
-npm run qa:licenses
+npm run qa:build
+npm run qa:test
+npm run qa:all
+npm run qa:preview
 ```
 
-```sh
-npm run qa:android:serve
-npm run qa:android
-```
+`qa:web`、`qa:android`、`qa:ios` 可单独运行浏览器组合。网页和 Android 使用 Chromium，iOS 使用 WebKit。手机组合属于模拟，不是真机性能测量。每组使用全新浏览器上下文、隔离存档、外部请求拦截，报告保存于 `results/qa/` 下带时间戳的目录。
 
-许可面板 QA 使用端口 3029；Android 大字体 QA 使用端口 3028。测试会将截图和 JSON 写入各自的测试目录。文字缩放是在 Chromium 中模拟的，并非原生 Android 硬件测试。许可套件检查延迟加载、原始声明、无超链接、焦点、暂停、重试和响应式布局。Android QA 检查结算/暂停布局和较大的数值。
+真机检查时，在普通 Safari/Chrome 中打开指定的构建预览，通过 `qa:device` 明确指定完整地址与检查器目标。设备指南涵盖 Android USB 转发及 iOS Web Inspector 桥接。测量要求设备解锁、页面可见且聚焦，并已真实触摸页面。通用预览在当前游戏加载前隔离存档，并禁用全部 Toy SDK/云访问；既可本地运行，也可使用已获授权的独立托管预览。
 
-本地测试页面可能清除**自身本地来源**中的存储；请使用它们的专用端口和干净的浏览器配置，不要使用玩家的生产站点来源。这些测试页面不是发布构建。
+## 历史场景
 
-## 实体 iPhone / 小车 QA
+原 `work/*-qa/` 目录已移到 [`qa/archive/`](../qa/archive/)，保留原专项场景与测试。重现旧问题时，可运行 `qa:archive:licenses`、`qa:archive:android`、`qa:archive:phone:build`、`qa:archive:iphone:build`；配套服务器命令及隔离要求见框架指南。
 
-`work/phone-cart-fix-qa/` 是专门检查小车流程的测试工具；`work/iphone-qa/` 保留扩展渲染与性能测试工具。它们的启动代码和 SDK 包装层会将测试状态与游戏存档隔离。使用 `npm run qa:phone:build` 构建小车测试工具，使用 `npm run qa:iphone:build` 构建扩展测试工具。两者的输出都不能作为生产版本上传。旧的字体/DPR 实验脚本未导入此仓库。
-
-通过 Toy 测试时，获得授权后应上传独立的测试预览。在本地创建 `work/phone-cart-fix-qa/preview.json`，内容为 `{"preview_url":"THE_ACTUAL_TOY_PREVIEW_URL"}`。扩展测试工具使用 `work/iphone-qa/preview-20260910.json`。这些配置文件已被 Git 忽略，不含继承的预览地址或密码。
-
-USB 脚本依赖单独配置的 Web Inspector/CDP 桥接服务，地址为 `http://127.0.0.1:9223`；仓库未附带该服务，也不会自动启动它。通过数据线连接 iPhone 并保持解锁，在普通 Safari 中打开明确选定的隔离测试预览。为使 Safari 计时可靠，需要在设备上真实点击 Start/Begin run。用户需要触摸页面时，请避免 Safari Remote Automation 会话，因为其测试弹窗会干扰操作。
-
-运行 `node work/phone-cart-fix-qa/usb.mjs status` 查看选定预览。脚本会在执行操作前校验预览地址完全一致，且页面处于隔离的 QA 环境。启用测试前，先阅读脚本支持的命令。实体设备结果必须重新采集；历史设备标识、录屏和原始输出未导入此仓库。
-
-人工检查应覆盖所有季节、转弯、加速结束、小车进站/答题/出站、答错坠落、分享面板打开/关闭、大字体、屏幕方向、暂停/继续和云存档冲突选择。不要仅为验证布局而写入真实云存档。
+归档场景不得在玩家的生产来源上运行：部分会清空自身页面存储，带日期的 iPhone 云端场景使用独立测试键。预览配置、截图和原始设备报告仍由 Git 忽略。历史性能结果不代表当前真机验证。
