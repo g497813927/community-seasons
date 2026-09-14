@@ -1,4 +1,4 @@
-import * as engine from '../../outputs/community-seasons/lib/game/engine';
+import * as engine from '../../src/lib/game/engine';
 
 export const CART_SEED = 1017116225;
 export const CHECKPOINT_STEP = 0.025;

@@ -7,7 +7,7 @@ const base = 'http://127.0.0.1:3030';
 const sourceHashes = () => Object.fromEntries([
   'app/page.tsx', 'app/globals.css', 'components/boost-store.tsx', 'lib/game/i18n.ts',
   'lib/game/boosts.ts', 'lib/game/store.ts', 'lib/game/engine.ts',
-].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(`outputs/community-seasons/${file}`)).digest('hex')]));
+].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(`src/${file}`)).digest('hex')]));
 const sourceStart = sourceHashes();
 const browser = await chromium.launch({
   headless: true,

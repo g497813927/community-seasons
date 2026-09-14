@@ -1,1 +1,1 @@
-import '../../outputs/community-seasons/main';
+import '../../src/main';

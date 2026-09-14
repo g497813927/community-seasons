@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
-const gameRoot = new URL("../outputs/community-seasons/lib/game/", import.meta.url);
+const gameRoot = new URL("../src/lib/game/", import.meta.url);
 const gameEntries = ["scenes", "boosts", "railway", "engine", "rail-transition", "travel-colors", "store", "community", "render"];
 const portablePath = (file) => file.split(path.sep).join("/");
 

@@ -1,6 +1,6 @@
 import {chromium} from 'playwright';
 import fs from 'node:fs';import crypto from 'node:crypto';
-const sourceHashes=()=>Object.fromEntries(['app/page.tsx','app/globals.css'].map(p=>[p,crypto.createHash('sha256').update(fs.readFileSync('outputs/community-seasons/'+p)).digest('hex')]));const sourceHashesStart=sourceHashes();
+const sourceHashes=()=>Object.fromEntries(['app/page.tsx','app/globals.css'].map(p=>[p,crypto.createHash('sha256').update(fs.readFileSync('src/'+p)).digest('hex')]));const sourceHashesStart=sourceHashes();
 const phase=process.env.QA_PHASE||'after',quick=process.env.QA_QUICK==='1';
 const browser=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})});const rows=[];
 try{

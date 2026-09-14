@@ -8,7 +8,7 @@ const compile = (source) =>
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
   }).outputText;
 const source = fs.readFileSync(
-  new URL("../../outputs/community-seasons/lib/game/viewport.ts", import.meta.url),
+  new URL("../../src/lib/game/viewport.ts", import.meta.url),
   "utf8",
 );
 const { needsPortrait, portraitPromptHeight, sameGameViewport } = await import(
@@ -62,7 +62,7 @@ test("Toy tall iframe uses physical landscape without top access, and prompt fit
   assert.doesNotMatch(source, /window\.(?:top|parent)/);
 });
 const page = fs.readFileSync(
-  new URL("../../outputs/community-seasons/app/page.tsx", import.meta.url),
+  new URL("../../src/app/page.tsx", import.meta.url),
   "utf8",
 );
 const ast = ts.createSourceFile("page.tsx", page, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX),

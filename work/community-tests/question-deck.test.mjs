@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import ts from '../../outputs/community-seasons/node_modules/typescript/lib/typescript.js';
+import ts from '../../src/node_modules/typescript/lib/typescript.js';
 import './compile.mjs';
 
 const { RAIL_QUESTIONS, createRailQuestionDeck, createRailRide, beginRailQuestion } =
@@ -163,7 +163,7 @@ test('default engine runs and identical seeded decks remain independent and dete
 });
 
 test('page retry, home and cloud-reset paths explicitly preserve one page-owned deck', () => {
-  const source = fs.readFileSync(new URL('../../outputs/community-seasons/app/page.tsx', import.meta.url), 'utf8');
+  const source = fs.readFileSync(new URL('../../src/app/page.tsx', import.meta.url), 'utf8');
   const ast = ts.createSourceFile('page.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const functions = new Map(), variables = new Map();
   function visit(node) {

@@ -143,8 +143,8 @@ Typed-property failures include the exact `FC_TYPED_SEED`, `FC_TYPED_PATH`, and 
 
 ## Included code and reproducibility
 
-`snapshot.json` contains historical SHA-256 hashes from the workspace import. The test runner records current hashes in each summary. Source lives under `outputs/community-seasons/lib/game/`; the `work/` layout preserves the test imports. Differences from the import baseline are expected after edits.
+`snapshot.json` contains historical SHA-256 hashes from the workspace import. The test runner records current hashes in each summary. Source lives under `src/lib/game/`; the `work/` layout preserves the test imports. Differences from the import baseline are expected after edits.
 
 Edit the canonical game source directly before starting a test session. There is no separate frozen game copy to synchronize. The runner hashes the baseline file list plus current TypeScript and JSON game modules, and checks for changes before and after each suite. Keep dependencies pinned when replaying a shrunk failure.
 
-The repository also contains deployment configuration and isolated browser/phone fixtures; fuzzing does not run or publish them. Test output, generated `.mjs` modules, `.npm-cache`, and `node_modules` are created locally and ignored by Git. Only `outputs/community-seasons/dist/` is a production artifact. See [QA.md](QA.md) for fixture isolation and [RELEASE.md](RELEASE.md) for release constraints.
+The repository also contains deployment configuration and isolated browser/phone fixtures; fuzzing does not run or publish them. Test output, generated `.mjs` modules, `.npm-cache`, and `node_modules` are created locally and ignored by Git. Only `src/dist/` is a production artifact. See [QA.md](QA.md) for fixture isolation and [RELEASE.md](RELEASE.md) for release constraints.

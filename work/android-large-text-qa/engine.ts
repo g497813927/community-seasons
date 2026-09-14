@@ -1,5 +1,5 @@
-export * from '../../outputs/community-seasons/lib/game/engine';
-import {createRun as actualCreateRun, type Mode} from '../../outputs/community-seasons/lib/game/engine';
+export * from '../../src/lib/game/engine';
+import {createRun as actualCreateRun, type Mode} from '../../src/lib/game/engine';
 const pending=new WeakMap<object,Mode>();
 export const createRun:typeof actualCreateRun=(...args)=>{
  const run=Object.assign(actualCreateRun(...args),{mode:'running' as const,time:180,distance:6387,score:90324,coins:529,scene:'autumn' as const,nextRailAt:Infinity,nextForkAt:Infinity,nextPortalAt:Infinity,nextRow:Infinity,nextRelicAt:Infinity,obstacles:[],pickups:[],relics:[],chaseRemaining:0,reason:'The disruptors caught up.',reviewedPosts:18});

@@ -325,7 +325,7 @@ function writeJSON(file, value) {
 }
 
 function readSourceHashes(manifest) {
-  const gameDirectory = 'outputs/community-seasons/lib/game/';
+  const gameDirectory = 'src/lib/game/';
   const files = new Set(Object.keys(manifest.sourceHashes));
   for (const file of fs.readdirSync(gameDirectory, { recursive: true }).sort()) {
     if (/\.(?:ts|json)$/.test(file)) files.add(gameDirectory + file.split(path.sep).join('/'));

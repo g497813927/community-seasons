@@ -22,4 +22,4 @@ Defaults: 1,000 cases each for four properties. `FC_TYPED_RUNS`, `FC_TYPED_SEED`
 
 Dependencies are the existing TypeScript and fast-check development tools. Generated runtime modules stay in `typed-arbitraries-compiled/`. No production files, real saved data, cloud requests or game hooks are used.
 
-From the repository root, `npm run test:types` runs the same typecheck. The helpers and tests import the current game source under `outputs/community-seasons/`; there is no separate frozen game snapshot to synchronize.
+From the repository root, `npm run test:types` runs the same typecheck. The helpers and tests import the current game source under `src/`; there is no separate frozen game snapshot to synchronize.

@@ -17,9 +17,9 @@ npm run dev -- --port 3001
 
 Open [http://127.0.0.1:3001](http://127.0.0.1:3001). If you already have the repository, start with `npm run setup` from its root. Setup installs the exact locked dependencies for both the QA workspace and game.
 
-Run all commands below from the repository root. Edit the game in `outputs/community-seasons/`; every test and QA fixture imports that same source.
+Run all commands below from the repository root. Edit the game in `src/`; every test and QA fixture imports that same source.
 
-For controls, saved progress and game rules, see the [game README](outputs/community-seasons/README.md) and [gameplay guide](outputs/community-seasons/GAMEPLAY.md).
+For controls, saved progress and game rules, see the [game README](src/README.md) and [gameplay guide](src/GAMEPLAY.md).
 
 ## Test and build
 
@@ -30,13 +30,13 @@ npm run test:fuzz       # One bounded round of quick fuzz tests
 npm run build           # Validate and build the production game
 ```
 
-The build synchronizes the question bank, regenerates third-party notices, checks types and writes `outputs/community-seasons/dist/`. Preview that build locally with:
+The build synchronizes the question bank, regenerates third-party notices, checks types and writes `src/dist/`. Preview that build locally with:
 
 ```sh
-npm --prefix outputs/community-seasons run preview -- --port 4173
+npm --prefix src run preview -- --port 4173
 ```
 
-Open [http://127.0.0.1:4173](http://127.0.0.1:4173). Only `outputs/community-seasons/dist/` is a production artifact; QA fixtures, debug controls and QA URL switches must stay out of releases.
+Open [http://127.0.0.1:4173](http://127.0.0.1:4173). Only `src/dist/` is a production artifact; QA fixtures, debug controls and QA URL switches must stay out of releases.
 
 For a reproducible fuzz run or the full bounded suite:
 
@@ -51,7 +51,7 @@ See the [QA guide](docs/QA.md) for browser and physical-device checks, and the [
 
 | Path | Contents |
 | --- | --- |
-| `outputs/community-seasons/` | Game source, translations, question bank, assets and build configuration |
+| `src/` | Game source, translations, question bank, assets and build configuration |
 | `work/community-tests/` | Deterministic engine, renderer, layout, question-bank, license and production-boundary regressions |
 | `work/property-tests/` | Generated gameplay and local/cloud-save tests |
 | `work/renderer-fuzz.mjs` | Randomized canvas and scene checks |
@@ -60,14 +60,14 @@ See the [QA guide](docs/QA.md) for browser and physical-device checks, and the [
 | `docs/` | QA, fuzzing, validation and release notes |
 | `snapshot.json` | Historical import baseline for reproducibility; runs record current source hashes |
 
-`outputs/` and `work/` are source directories, not disposable build output. Their names preserve relative test imports. Generated builds, installed dependencies and QA results are ignored by Git.
+`src/` contains the game, and `work/` contains its tests and QA fixtures. Both are maintained source directories. Generated builds, installed dependencies and QA results are ignored by Git.
 
 ## Making changes
 
 Read [AGENTS.md](AGENTS.md), the [QA guide](docs/QA.md) and the game documentation before changing behavior. Preserve both languages, keyboard and touch controls, accessibility and enlarged-text layouts. Keep QA save namespaces separate from player and Toy cloud saves.
 
-- **Questions:** edit [`rail-questions.json`](outputs/community-seasons/lib/game/rail-questions.json), then run `npm --prefix outputs/community-seasons run questions:sync`. Dev and build also synchronize it. Follow the [question-bank guide](outputs/community-seasons/QUESTION_BANK.md), including recent-question protection across retries and reshuffles.
-- **Dependencies:** keep versions locked and run `npm --prefix outputs/community-seasons run licenses:generate` after updates. The in-game notices remain inline without hyperlinks; see the [license generator guide](outputs/community-seasons/scripts/LICENSE_GENERATOR.md).
+- **Questions:** edit [`rail-questions.json`](src/lib/game/rail-questions.json), then run `npm --prefix src run questions:sync`. Dev and build also synchronize it. Follow the [question-bank guide](src/QUESTION_BANK.md), including recent-question protection across retries and reshuffles.
+- **Dependencies:** keep versions locked and run `npm --prefix src run licenses:generate` after updates. The in-game notices remain inline without hyperlinks; see the [license generator guide](src/scripts/LICENSE_GENERATOR.md).
 - **Failures:** keep the failure log, seed, shrink path and source hashes together before rerunning. Fuzz tests exercise the current source; do not edit it during a stress session.
 - **Releases:** follow the [release guide](docs/RELEASE.md). Deployment and GitHub pushes require authorization. Existing Toy releases use password access; content-only updates must preserve the existing password, and credentials must never be committed.
 

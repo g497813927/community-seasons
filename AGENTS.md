@@ -2,7 +2,7 @@
 
 [English](AGENTS.md) | [简体中文](AGENTS.zh-CN.md)
 
-- This is the canonical source tree for work started in this folder. Edit `outputs/community-seasons/` and keep source changes within this repository.
+- This is the canonical source tree for work started in this folder. Edit `src/` and keep source changes within this repository.
 - Read the root README, `docs/QA.md`, and the game README/GAMEPLAY.md before changing behavior.
 - Preserve English/Simplified Chinese, keyboard/WASD, touch/swipe/double-tap, accessibility and enlarged-text layouts.
 - Keep Toy cloud saves and all QA save namespaces separate. Do not overwrite user saves during QA.

@@ -3,16 +3,16 @@
   "createdAt": "2026-09-10T23:31:21.431306+00:00",
   "description": "Workspace import baseline; fuzz runner always tests the current main source and records its hashes.",
   "sourceHashes": {
-    "outputs/community-seasons/lib/game/scenes.ts": "9527078fd2ae559d2456ca03a583f762fe61423a8675403dd194526f86a15aa2",
-    "outputs/community-seasons/lib/game/boosts.ts": "2c08dfc77c36426df376fd06593165c17d411743d26f43ff67d225c8fd63f99f",
-    "outputs/community-seasons/lib/game/railway.ts": "a34955de3249ae3fef85992198ec4c03c9fdaa8972c2a560a4f1e6022fb2f582",
-    "outputs/community-seasons/lib/game/engine.ts": "f5e936a56443ad7c00f24d84f435aeb10ca5bf6109c6e3af6a95fc2a0865dd26",
-    "outputs/community-seasons/lib/game/rail-transition.ts": "7fe53ce6d0d93b5ab14d89165c55b271702d21ce23be2a154b8e8d6dd57d9a9d",
-    "outputs/community-seasons/lib/game/travel-colors.ts": "7438cf6d5d519cc0bc226ec8631d0775d62b7de798c625a1736376a4f344fa3b",
-    "outputs/community-seasons/lib/game/store.ts": "e98c8fe81cb53b514a1a22552b33fec3801a1f991097d63e7d042cd0db4b2f8d",
-    "outputs/community-seasons/lib/game/community.ts": "57c1eed08815b99d2ab42e634a779eccd37eb9dc345070599afb09f116143fd6",
-    "outputs/community-seasons/lib/game/render.ts": "21474fdcd17c4112adef22690b7c8feb8d179bac1065678a3827ff83a96e993a",
-    "outputs/community-seasons/lib/game/cloud-save.ts": "dc0e3669f1c4d052162ce9f6028b66d837806cf8c39db2aae0fdeb546750e394"
+    "src/lib/game/scenes.ts": "9527078fd2ae559d2456ca03a583f762fe61423a8675403dd194526f86a15aa2",
+    "src/lib/game/boosts.ts": "2c08dfc77c36426df376fd06593165c17d411743d26f43ff67d225c8fd63f99f",
+    "src/lib/game/railway.ts": "a34955de3249ae3fef85992198ec4c03c9fdaa8972c2a560a4f1e6022fb2f582",
+    "src/lib/game/engine.ts": "f5e936a56443ad7c00f24d84f435aeb10ca5bf6109c6e3af6a95fc2a0865dd26",
+    "src/lib/game/rail-transition.ts": "7fe53ce6d0d93b5ab14d89165c55b271702d21ce23be2a154b8e8d6dd57d9a9d",
+    "src/lib/game/travel-colors.ts": "7438cf6d5d519cc0bc226ec8631d0775d62b7de798c625a1736376a4f344fa3b",
+    "src/lib/game/store.ts": "e98c8fe81cb53b514a1a22552b33fec3801a1f991097d63e7d042cd0db4b2f8d",
+    "src/lib/game/community.ts": "57c1eed08815b99d2ab42e634a779eccd37eb9dc345070599afb09f116143fd6",
+    "src/lib/game/render.ts": "21474fdcd17c4112adef22690b7c8feb8d179bac1065678a3827ff83a96e993a",
+    "src/lib/game/cloud-save.ts": "dc0e3669f1c4d052162ce9f6028b66d837806cf8c39db2aae0fdeb546750e394"
   },
   "testFiles": {
     "work/renderer-fuzz.mjs": "9f6792e6a1c8f5d6199fbdd8b297f86c9dc8041916483a5bb3403ed9f52063b5",
