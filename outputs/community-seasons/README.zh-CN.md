@@ -56,6 +56,6 @@ Toy 实现说明：SDK 在 `community-seasons-save-v1` 下保存一个带版本�
 
 执行 `npm ci` 或更新依赖后，运行 `npm run licenses:generate`；`npm run licenses:check` 用于检查生成结果是否最新。生产构建会在类型检查和打包前生成清单。缺少必需包、无法确定许可证、固定补充文件变化或生成结果过期，都会导致校验失败。生成过程不使用网络，并逐字保留版权行和嵌套的第三方声明。
 
-Rolldown 1.0.3 的原生包缺少许可证文件，主包还引用了未包含在其 npm 归档中的第三方声明。该版本对应的上游原始文件保存在 `scripts/license-supplements/rolldown-1.0.3/` 中；生成的声明包含来源 URL，生成器会检查其 SHA-256。升级 Rolldown 时应审阅这些补充文件，不得用通用许可证模板替代。
+Rolldown 的 npm 归档可能遗漏原生包的许可证文件及引用的第三方声明。已核实的上游原始文件按版本保存在 `scripts/license-supplements/` 下的各个目录中；生成的声明包含来源 URL，`scripts/licenses.mjs` 使用固定的 SHA-256 进行校验。已安装版本以 `package-lock.json` 为准，生成器支持的补充文件版本以脚本中的规则为准。添加新版本时应保留此前已核实的目录，不得用通用许可证模板替代。
 
 生成器可直接复用，无需安装额外工具。对其他 npm 项目独立运行、指定输出目录和在 CI 中校验的方法，见[许可证生成器指南](scripts/LICENSE_GENERATOR.zh-CN.md)。

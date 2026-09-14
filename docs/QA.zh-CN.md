@@ -28,13 +28,13 @@ node run.mjs quick --rounds 2 --seed 3231321585 --no-tui
 
 ## 维护 QA 运行器
 
-| 文件 / 函数 | 职责 |
+| 文件 / 部分 | 职责 |
 | --- | --- |
 | `scripts/test.mjs` | 查找并排序 `work/community-tests/*.test.mjs` 中的确定性测试，排除模糊测试套件，然后调用 Node 测试运行器。 |
-| `run.mjs`：`parseOptions`、`createBaseEnvironment`、`createRoundEnvironment` | 校验命令行选项，应用默认工作量，为每个套件推导可复现的种子。 |
-| `run.mjs`：`runChild`、`ensureDependencies` | 按需安装锁定版本的依赖，管理子进程，限制日志大小并执行超时控制。 |
-| `run.mjs`：`readSourceHashes`、`createReport`、`preserveFailure` | 记录被测源码，维护报告格式并保留失败产物。 |
-| `run.mjs`：`runSuite`、`runRound`、`main` | 执行选定套件，遇到首个未成功结果时停止，并完成会话汇总。 |
+| `run.mjs`：命令行与工作量设置 | 校验命令行选项，应用默认工作量，为每个套件推导可复现的种子。 |
+| `run.mjs`：依赖与进程管理 | 按需安装锁定版本的依赖，管理子进程，限制日志大小并执行超时控制。 |
+| `run.mjs`：源码跟踪与报告 | 记录被测源码，维护报告格式并保留失败产物。 |
+| `run.mjs`：套件与轮次执行 | 执行选定套件，遇到首个未成功结果时停止，并完成会话汇总。 |
 | `terminal-dashboard.mjs` | 显示进度，不参与测试选择，也不改变执行行为。 |
 
 重构时应保持套件顺序、种子推导常量、环境变量名和报告格式稳定。通过轮次、失败轮次、中断、运行时间上限和源码变化各有独立计数；未完成的工作不能计为通过。

@@ -28,13 +28,13 @@ See [FUZZING.md](FUZZING.md) for workload settings and exact failure replay. `sn
 
 ## Maintaining the QA runners
 
-| File / function | Responsibility |
+| File / area | Responsibility |
 | --- | --- |
 | `scripts/test.mjs` | Find and sort deterministic `work/community-tests/*.test.mjs` files, excluding fuzz suites, then run Node's test runner. |
-| `run.mjs`: `parseOptions`, `createBaseEnvironment`, `createRoundEnvironment` | Validate CLI options, apply workload defaults and derive reproducible per-suite seeds. |
-| `run.mjs`: `runChild`, `ensureDependencies` | Install exact locked dependencies when needed, manage child processes, cap logs and enforce timeouts. |
-| `run.mjs`: `readSourceHashes`, `createReport`, `preserveFailure` | Record the tested source, maintain the report schema and retain failure artifacts. |
-| `run.mjs`: `runSuite`, `runRound`, `main` | Run the selected suites, stop on the first unsuccessful result and finalize the session summary. |
+| `run.mjs`: CLI and workload setup | Validate CLI options, apply workload defaults and derive reproducible per-suite seeds. |
+| `run.mjs`: dependency and process management | Install exact locked dependencies when needed, manage child processes, cap logs and enforce timeouts. |
+| `run.mjs`: source tracking and reports | Record the tested source, maintain the report schema and retain failure artifacts. |
+| `run.mjs`: suite and round execution | Run the selected suites, stop on the first unsuccessful result and finalize the session summary. |
 | `terminal-dashboard.mjs` | Display progress; it does not select tests or change their execution. |
 
 Keep suite order, seed derivation constants, environment variable names and the report format stable when refactoring. Passed rounds, failed rounds, interruptions, runtime limits and changed source each have a separate counter; incomplete work must not count as passing.
