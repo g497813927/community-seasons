@@ -71,4 +71,4 @@ Read [AGENTS.md](AGENTS.md), the [QA guide](docs/QA.md) and the game documentati
 - **Failures:** keep the failure log, seed, shrink path and source hashes together before rerunning. Fuzz tests exercise the current source; do not edit it during a stress session.
 - **Releases:** follow the [release guide](docs/RELEASE.md). Deployment and GitHub pushes require authorization. Existing Toy releases use password access; content-only updates must preserve the existing password, and credentials must never be committed.
 
-Third-party notices are included separately. A license for the game's own source code has not been selected.
+The game's own source code is licensed under the [MIT License](LICENSE). Third-party dependencies retain their own licenses; their notices are included separately.

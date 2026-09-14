@@ -154,6 +154,14 @@ test("public production source and built assets contain no QA entry points or UR
   assert.ok(!html.includes("iphone-qa"));
 });
 
+test("production artifact includes the complete current project license", () => {
+  assert.deepEqual(
+    fs.readFileSync(new URL("dist/LICENSE", root)),
+    fs.readFileSync(new URL("../../LICENSE", root)),
+    "distributed MIT notice must match the repository license verbatim",
+  );
+});
+
 test("legitimate purchased travel still charges coins and consumes a pass; missing passes cannot teleport", () => {
   const run = createRun(4182, "spring");
   run.mode = "running";

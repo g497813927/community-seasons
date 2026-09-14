@@ -50,6 +50,10 @@ Road forks turn left or right, and occasional Community Express cart rides repla
 
 The railway draws from 47 bilingual teaching questions using a session deck that avoids recent repeats, including across deck refills and retries. Edit `lib/game/rail-questions.json` to review questions, choices, correct answers, and explanations. See [QUESTION_BANK.md](QUESTION_BANK.md) for the field guide and validation commands. The development server and production build synchronize this JSON into the game before starting.
 
+## Project license
+
+The game's own source code is licensed under the repository's [MIT License](../../LICENSE). Every production build copies that notice verbatim into `dist/LICENSE`. Include this file when distributing the game; maintain the root `LICENSE` as the single source for the notice.
+
 ## Dependency licenses
 
 The Open-source licenses button sits below the game and controls. Its searchable panel loads `public/open-source-licenses.json` only when opened and shows original notices inline, with no hyperlinks or external navigation. URLs within the original license texts remain plain text. Opening it pauses an active run. `public/THIRD-PARTY-NOTICES.txt` also contains the complete notices as a developer/distribution artifact. Both files cover installed packages in this project's npm lockfile, including transitive dependencies and development tools. The production/development labels describe npm dependency classification; they do not claim every listed package is included in the browser bundle. Optional platform packages that were not installed are listed separately. External platform services and tools in the separate fuzz/phone-test workspaces are outside this inventory.
