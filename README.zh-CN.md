@@ -4,6 +4,12 @@
 
 [![在 Toy 上游玩](https://img.shields.io/badge/Play-on_Toy-00A1D6)](https://www.bilibili.com/toy/community-seasons/index.html)
 
+[![未关闭的拉取请求数](https://community-seasons-badges.vercel.app/github/open-prs/g497813927/community-seasons)](https://github.com/g497813927/community-seasons/pulls)
+[![未关闭的问题数](https://community-seasons-badges.vercel.app/github/open-issues/g497813927/community-seasons)](https://github.com/g497813927/community-seasons/issues)
+[![主分支最近一次推送的构建与 QA 状态](https://community-seasons-badges.vercel.app/github/workflow/g497813927/community-seasons/ci.yml/main/push)](https://github.com/g497813927/community-seasons/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![仓库许可证](https://community-seasons-badges.vercel.app/github/license/g497813927/community-seasons)](LICENSE)
+[![第三方许可声明](https://img.shields.io/badge/third--party-notices-blue)](src/public/THIRD-PARTY-NOTICES.txt)
+
 《四季共建》将网络社区素养学习融入四季跑酷：躲避不当言论，通过案例讲解和铁路答题识别有害内容，练习更友善的回应。
 
 游戏支持英语和简体中文，可通过键盘/WASD 或触屏滑动操作。使用 React、TypeScript 和 Vite 开发，独立运行时无需服务器账号、API 密钥或数据库。
