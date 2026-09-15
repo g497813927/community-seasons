@@ -4,7 +4,7 @@ updates:
     directories:
       - "/"
       - "/src"
-      - "/qa/archive/phone-cart-fix-qa"
+      - "/tests/qa/archive/phone-cart-fix-qa"
     schedule:
       interval: "weekly"
       day: "monday"

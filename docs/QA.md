@@ -19,7 +19,7 @@ npm run test:fuzz
 For a reproducible, bounded run:
 
 ```sh
-node run.mjs quick --rounds 2 --seed 3231321585 --no-tui
+node tests/fuzz/run.mjs quick --rounds 2 --seed 3231321585 --no-tui
 ```
 
 Read `results/summary.json` for the outcome, source hashes and each suite's seed settings; suite output is in `results/<suite>.log`. Failure reports and logs are also saved in `results/failure/`. Preserve the failing seed, shrink path, source hashes and dependency lockfile together before rerunning. Each invocation writes the same result paths, so run only one fuzz session at a time in this checkout.
@@ -30,18 +30,18 @@ See [FUZZING.md](FUZZING.md) for workload settings and exact failure replay. `sn
 
 | File / area | Responsibility |
 | --- | --- |
-| `scripts/test.mjs` | Find and sort deterministic `work/community-tests/*.test.mjs` files, excluding fuzz suites, then run Node's test runner. |
-| `run.mjs`: CLI and workload setup | Validate CLI options, apply workload defaults and derive reproducible per-suite seeds. |
-| `run.mjs`: dependency and process management | Install exact locked dependencies when needed, manage child processes, cap logs and enforce timeouts. |
-| `run.mjs`: source tracking and reports | Record the tested source, maintain the report schema and retain failure artifacts. |
-| `run.mjs`: suite and round execution | Run the selected suites, stop on the first unsuccessful result and finalize the session summary. |
-| `terminal-dashboard.mjs` | Display progress; it does not select tests or change their execution. |
+| `tests/unit/run.mjs` | Find and sort deterministic `tests/unit/*.test.mjs` files, excluding fuzz suites, then run Node's test runner. |
+| `tests/fuzz/run.mjs`: CLI and workload setup | Validate CLI options, apply workload defaults and derive reproducible per-suite seeds. |
+| `tests/fuzz/run.mjs`: dependency and process management | Install exact locked dependencies when needed, manage child processes, cap logs and enforce timeouts. |
+| `tests/fuzz/run.mjs`: source tracking and reports | Record the tested source, maintain the report schema and retain failure artifacts. |
+| `tests/fuzz/run.mjs`: suite and round execution | Run the selected suites, stop on the first unsuccessful result and finalize the session summary. |
+| `tests/fuzz/terminal-dashboard.mjs` | Display progress; it does not select tests or change their execution. |
 
 Keep suite order, seed derivation constants, environment variable names and the report format stable when refactoring. Passed rounds, failed rounds, interruptions, runtime limits and changed source each have a separate counter; incomplete work must not count as passing.
 
 ## Web, Android and iOS QA
 
-Use the [cross-platform QA framework](../qa/README.md) for current browser and device checks:
+Use the [cross-platform QA framework](../tests/qa/README.md) for current browser and device checks:
 
 ```sh
 npm run qa:build
@@ -56,6 +56,6 @@ For a physical device, open the exact built preview in normal Safari/Chrome and 
 
 ## Historical scenarios
 
-The former `work/*-qa/` directories are preserved in [`qa/archive/`](../qa/archive/) with their existing targeted scenarios and tests. Use `qa:archive:licenses`, `qa:archive:android`, `qa:archive:phone:build`, and `qa:archive:iphone:build` when reproducing those issues; see the framework guide for paired server commands and safety boundaries.
+The former `work/*-qa/` directories are preserved in [`tests/qa/archive/`](../tests/qa/archive/) with their existing targeted scenarios and tests. Use `qa:archive:licenses`, `qa:archive:android`, `qa:archive:phone:build`, and `qa:archive:iphone:build` when reproducing those issues; see the framework guide for paired server commands and safety boundaries.
 
 Do not run archived fixtures on a player's production origin: some clear their own local storage, while the dated iPhone cloud harness uses separate test keys. Preview configuration, screenshots and raw device reports remain Git-ignored. Historical performance results are not current physical-device validation.

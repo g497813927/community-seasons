@@ -63,14 +63,14 @@ class FeedbackTests(unittest.TestCase):
                          "https://github.com/owner/game/actions/runs/42/attempts/1",
                          "https://github.com/owner/game/actions/runs/42/artifacts/5"]:
             self.assertIn(expected, body)
-        for details in ["2:1:0", "numeric-dt", "node run.mjs", "a" * 64]:
+        for details in ["2:1:0", "numeric-dt", "node tests/fuzz/run.mjs", "a" * 64]:
             self.assertNotIn(details, body)
         self.assertLess(len(body), 1000)
 
     def test_markdown_artifact_retains_replay_paths_and_full_hashes(self):
         body = format_details(report(), "owner/game")
         for expected in ["Base seed: `20260914`", "FC_SEED=1525155539", "`2:1:0`", "numeric-dt",
-                         "1 files", "node run.mjs quick --rounds 1 --seed 20260914 --no-tui",
+                         "1 files", "node tests/fuzz/run.mjs quick --rounds 1 --seed 20260914 --no-tui",
                          "a" * 64 + "  src/lib/game/engine.ts"]:
             self.assertIn(expected, body)
 
@@ -273,13 +273,13 @@ class FeedbackTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             (root / "results").mkdir()
-            (root / "work/property-tests").mkdir(parents=True)
+            (root / "tests/property").mkdir(parents=True)
             summary = {"version": 2, "mode": "quick", "requestedRounds": 1, "status": "failed",
                        "startedAt": "2020-01-01T00:00:00Z", "masterSeed": 20260914,
                        "sourceHashes": report()["sourceHashes"], "latestRound": {"number": 1, "seed": 20260914,
                        "settings": {"FC_SEED": "1525155539"}, "suites": [{"name": "engine-properties", "status": "failed"}]}}
             (root / "results/summary.json").write_text(json.dumps(summary))
-            (root / "work/property-tests/engine-invalid-failure-numeric-dt.json").write_text(json.dumps({
+            (root / "tests/property/engine-invalid-failure-numeric-dt.json").write_text(json.dumps({
                 "id": "numeric-dt", "seed": 1525155539, "counterexamplePath": "2:1:0",
                 "error": "@everyone secret", "replay": "curl evil", "counterexample": "<script>"}))
             result = collect(root, 42, 1)

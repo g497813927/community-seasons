@@ -41,26 +41,26 @@ npm --prefix src run preview -- --port 4173
 需要可复现的模糊测试，或执行一轮完整测试时，可运行：
 
 ```sh
-node run.mjs quick --seed 3231321585
-node run.mjs full
+node tests/fuzz/run.mjs quick --seed 3231321585
+node tests/fuzz/run.mjs full
 ```
 
-浏览器与真机检查请参阅 [QA 指南](docs/QA.zh-CN.md)，测试套件选项及失败重放请参阅[模糊测试指南](docs/FUZZING.zh-CN.md)。浏览器 QA 使用独立的测试服务器和隔离存档。手机 QA 需要已连接且解锁的设备，并明确选定测试预览。仅在使用可选的 `fuzz_game.py` 启动器时才需要 Python 3.8+。
+浏览器与真机检查请参阅 [QA 指南](docs/QA.zh-CN.md)，测试套件选项及失败重放请参阅[模糊测试指南](docs/FUZZING.zh-CN.md)。浏览器 QA 使用独立的测试服务器和隔离存档。手机 QA 需要已连接且解锁的设备，并明确选定测试预览。仅在使用可选的 `tests/fuzz/fuzz_game.py` 启动器时才需要 Python 3.8+。
 
 ## 目录结构
 
 | 路径 | 内容 |
 | --- | --- |
 | `src/` | 游戏源码、翻译、题库、资源和构建配置 |
-| `work/community-tests/` | 引擎、渲染、布局、题库、许可和正式版本边界的确定性回归测试 |
-| `work/property-tests/` | 使用生成数据测试玩法及本地/云端存档 |
-| `work/renderer-fuzz.mjs` | 随机画布和场景检查 |
-| `qa/` | 通用网页/Android/iOS 预览、浏览器检查、设备检查与历史场景 |
-| `run.mjs`、`fuzz_game.py`、`terminal-dashboard.mjs` | 模糊测试运行器、可选 Python 启动器和终端仪表盘 |
+| `tests/unit/` | 游戏、渲染器、布局、许可与生产边界的确定性回归测试 |
+| `tests/fuzz/` | 带种子的引擎、经济与渲染器套件，以及 Node、Python 和 Shell 启动器 |
+| `tests/property/` | 生成式游戏/存档用例与带类型的属性生成器 |
+| `tests/helpers/` | 共用编译器与生成的测试模块 |
+| `tests/qa/` | 网页/Android/iOS QA 预览、设备检查、浏览器检查与历史场景 |
 | `docs/` | QA、模糊测试、验证记录和发布说明 |
 | `snapshot.json` | 用于复现的历史导入基线；每次测试都会记录当前源码的哈希值 |
 
-`src/` 保存游戏代码，`work/` 保存引擎和属性测试，`qa/` 保存浏览器与设备 QA。它们都是需要维护的源码目录。构建产物、已安装的依赖和 QA 结果均由 Git 忽略。
+`src/` 保存游戏代码；所有测试套件与 QA 工具统一放在 `tests/`。套件分工和启动方式见[测试维护指南](tests/README.zh-CN.md)。构建产物、已安装的依赖与测试结果均由 Git 忽略。
 
 ## 修改与维护
 
