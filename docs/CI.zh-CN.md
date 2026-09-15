@@ -7,7 +7,7 @@
 ## 检查内容
 
 1. `node scripts/check-committed-notices.mjs` 在安装依赖或生成文件前检查已提交的许可声明。随后，`npm run setup` 按仓库根目录和游戏目录的锁文件安装精确版本依赖。已归档的小车测试工具使用自己的锁文件安装依赖；npm 下载缓存以这三个锁文件为依据。
-2. `npm --prefix src run questions:validate` 会在构建重新生成题库数据之前，检查已提交的数据是否一致。随后通过 `npm run build`、`npm test` 和 `npm run test:types` 编译生产游戏，并运行确定性回归测试与属性测试生成器的类型检查。
+2. 铁路题目 Issue 解析器的回归测试和 `npm --prefix src run questions:validate` 会在构建重新生成题库数据之前，检查提交工具和已提交的数据。随后通过 `npm run build`、`npm test` 和 `npm run test:types` 编译生产游戏，并运行确定性回归测试（包括 Issue 解析器）与属性测试生成器的类型检查。
 3. `node tests/fuzz/run.mjs quick --rounds 1 --seed 20260914 --no-tui` 执行一轮可复现、有明确上限的模糊测试，并记录当前源码哈希。
 4. `npm run qa:build` 和 `npm run qa:test` 构建并检查通用隔离 QA 预览及设备检查工具。
 5. 构建两个已归档的手机预览，再执行小车、探针和套件测试。归档后的工具仍可针对当前游戏源码运行。
@@ -16,6 +16,22 @@
 浏览器检查会创建独立的本地夹具服务器和全新浏览器上下文，验证启动、许可面板、操作、暂停/继续、存档隔离以及外部请求拦截。Android 和 iOS 项目属于浏览器模拟；工作流通过并不代表已验证真机性能或原生 Safari 行为。连接真机后的检查方式见 [QA 指南](QA.zh-CN.md)。
 
 生产构建会在编译前重新生成题库数据和依赖许可声明。前面的只读声明检查会将已提交 JSON 清单的 `generatedFromLockfile` SHA-256 与 `src/package-lock.json` 比较，并确认已提交的文本声明与该清单一致。过期快照会在 prebuild 覆盖它之前导致检查失败。这项检查无需安装依赖：不同操作系统安装的可选包可能不同，因此有效的 macOS 清单可以与随后在 Linux 生成的清单不同。回归测试会验证重新生成的内容，但不要求生成后 Git 差异为空。
+
+## 铁路题目提交
+
+[铁路题目 Issue 表单](https://github.com/g497813927/community-seasons/issues/new?template=rail-question.yml)让贡献者无需编辑题库，即可提交完整双语新题或修订。独立的 [Check rail question 工作流](../.github/workflows/rail-question.yml)在 Issue 创建、编辑或重新打开时运行，跳过无关 Issue。工作流合并到默认分支后才会生效，并使用该可信分支上的检查器。
+
+检查器校验表单必填字段、以连字符分隔的小写 ID 和主题、双语文本、三个选项及各自解析，以及 1–3 之间的正确选项。新题 ID 必须未被占用；修订必须匹配已有 ID。检查器复用题库校验器，检查重复题干和选项、答案索引，以及文本长度：题干英语/简体中文分别限 180/90 字符，选项文本限 72/36 字符，解析限 240/120 字符。
+
+工作流会写入 Actions 摘要，并仅创建或更新 GitHub Actions 机器人自己带有标记的反馈评论。贡献者可保留字段标题并修改 Issue 正文来修复错误。检查通过只表示结构有效，不代表答案、翻译或来源已获认可。可选说明和参考仍需人工审阅；Issue 不会自动导入、提交代码或部署。维护者按[题库指南](../src/QUESTION_BANK.zh-CN.md)审阅、整合采纳的内容，同步生成数据，运行回归测试并构建。
+
+从仓库根目录执行以下命令，可离线校验已保存的 Issue 正文：
+
+```sh
+node scripts/check-rail-question.mjs --body /path/to/issue.md
+```
+
+Issue 检查器无需安装依赖。其解析器回归测试也会在 `npm test` 中执行，并在 Build and QA 生成题库之前运行。
 
 ## 排查失败
 
@@ -45,4 +61,4 @@ npm run qa:all
 
 官方 `actions/checkout`、`actions/setup-node` 和 `actions/upload-artifact` 均固定为完整提交哈希，旁边注明发行版本。更新固定版本前，先核实上游发行版及对应提交。Node 版本应与支持的本地工具保持一致，依赖安装应继续使用锁文件。
 
-Build and QA 仅授予 `contents: read` 权限，不保留检出凭据，使用普通 `pull_request` 事件。独立且可信的 `workflow_run` 准备任务具有 contents、Actions 和拉取请求的只读权限；发布任务仅在 `contents: read` 基础上为自动令牌增加 `issues: write`。两个工作流均不会部署、发布 Toy 预览或更改密码。发布仍是[发布指南](RELEASE.zh-CN.md)中需要单独授权的步骤。这些工作流不会修改仓库的分支保护设置；首次运行后，维护者可以将 **Compile and test** 设为必需检查。
+Build and QA 仅授予 `contents: read` 权限，不保留检出凭据，使用普通 `pull_request` 事件。独立且可信的 `workflow_run` 准备任务具有 contents、Actions 和拉取请求的只读权限；发布任务仅在 `contents: read` 基础上为自动令牌增加 `issues: write`。铁路题目 Issue 工作流使用 `contents: read` 和 `issues: write`，从可信默认分支检查提交并发布反馈。这些工作流均不会部署、发布 Toy 预览或更改密码。发布仍是[发布指南](RELEASE.zh-CN.md)中需要单独授权的步骤。这些工作流不会修改仓库的分支保护设置；首次运行后，维护者可以将 **Compile and test** 设为必需检查。

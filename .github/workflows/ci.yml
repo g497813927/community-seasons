@@ -54,6 +54,9 @@ jobs:
       - name: Test fuzz feedback validation
         run: python3 -m unittest discover -s scripts -p 'test_ci_fuzz_feedback.py'
 
+      - name: Test railway question submission checks
+        run: node --test tests/unit/rail-question-issue.test.mjs 2>&1 | tee results/ci/question-submission-tests.log
+
       - name: Compile production and run regressions
         run: |
           npm --prefix src run questions:validate 2>&1 | tee results/ci/questions-validation.log
