@@ -270,7 +270,7 @@ def format_details(report, repo):
               f"Download `qa-failure-{run_id}-{attempt}` from that run for the original logs, counterexamples and source hashes. Preserve those files before rerunning.",
               "原始日志、反例和源码哈希保存在该运行的失败产物中；重新测试前请先保存。", "",
               "## Source hashes / 源码哈希", "", "```text"]
-    lines.extend(f"{digest}  {name}" for name, digest in sorted(report["sourceHashes"].items()))
+    lines.extend(f"{file_digest}  {name}" for name, file_digest in sorted(report["sourceHashes"].items()))
     lines.append("```")
     return "\n".join(lines) + "\n"
 
