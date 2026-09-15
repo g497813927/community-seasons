@@ -74,6 +74,12 @@ test('configuration requires explicit QA identifiers, main CI ref and a bounded 
   assert.throws(() => configuration({ ...env, GITHUB_ACTIONS: 'true', GITHUB_REF: 'refs/heads/feature' }), /main/);
 });
 
+test('unknown and repeated options point to help for the selected command', () => {
+  assert.throws(() => configuration({}, ['--unknown']), /npm run qa:deploy -- --help/);
+  assert.throws(() => configuration({}, ['share', '--unknown']), /npm run qa:share -- --help/);
+  assert.throws(() => configuration({}, ['share', '--deployment', deployment.id, '--deployment', deployment.id]), /npm run qa:share -- --help/);
+});
+
 test('project identity and All Deployments protection must match', () => {
   assert.doesNotThrow(() => assertProtectedProject(project, config));
   for (const patch of [{ id: 'prj_other' }, { accountId: 'team_other' }, { name: 'public-game' }, { ssoProtection: null }, { ssoProtection: { deploymentType: 'preview' } }])

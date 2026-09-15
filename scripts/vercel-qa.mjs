@@ -18,7 +18,7 @@ export function configuration(env, args = []) {
   for (let index = mode === 'share' ? 1 : 0; index < args.length; index++) {
     const key = args[index];
     if (!['--ttl-seconds', '--deployment', '--deploy-only'].includes(key) || Object.hasOwn(options, key))
-      throw Error('Unknown or repeated option. Run npm run qa:deploy -- --help for usage.');
+      throw Error(`Unknown or repeated option. Run npm run qa:${mode} -- --help for usage.`);
     if (key === '--deploy-only') options[key] = true;
     else {
       if (!args[index + 1] || args[index + 1].startsWith('--')) throw Error('Expected a value after the option.');
