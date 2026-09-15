@@ -12,6 +12,7 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom'],
     alias: [
+      { find: /^@\/lib\/game\/tools$/, replacement: local('./input-tools.ts') },
       { find: /^@\/lib\/game\/toy-sdk$/, replacement: local('./toy-sdk.ts') },
       { find: /^\.\/toy-sdk$/, replacement: local('./toy-sdk.ts') },
       { find: '@', replacement: local('../../../src/') },

@@ -7,6 +7,7 @@ import { chromium, webkit, devices } from 'playwright';
 import { assertPreviewBuildIsCurrent, changedFiles, fileHashes, previewSourceHashes } from '../preview/build-info.mjs';
 import { fixtureHandler, initializeBrowserEmulation, licensesCloseIsComplete, snapshotDocumentScrollStyles } from './runtime.mjs';
 import { freezeClockAtCurrentTime } from './clock.mjs';
+import { inputCases, installInputGate, verifyInputCase } from './inputs.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const previewDist = path.join(root, 'tests/qa/preview/dist');
@@ -19,7 +20,7 @@ const sentinelEntries = {
   'qa-unrelated-sentinel': 'preserve-this-value',
 };
 const platforms = {
-  web: { engine: 'chromium', browser: chromium, simulation: 'desktop browser', context: { viewport: { width: 1280, height: 900 } } },
+  web: { engine: 'chromium', browser: chromium, simulation: 'desktop browser with touch enabled', context: { viewport: { width: 1280, height: 900 }, hasTouch: true } },
   android: { engine: 'chromium', browser: chromium, simulation: 'Android phone emulation; not physical Android', context: devices['Pixel 7'] },
   // Hosted WebKit's native layout/scroll actions can exceed 10s under CPU load.
   ios: { engine: 'webkit', browser: webkit, simulation: 'iPhone emulation in Playwright WebKit; not physical iOS Safari', context: devices['iPhone 13'], actionTimeoutMs: 30000, scenarioTimeoutMs: 120000 },
@@ -58,6 +59,20 @@ async function swipeChromium(page, from, to) {
     }
     await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   } finally { await session.detach(); }
+}
+
+async function swipeWebKit(page, from, to) {
+  // Playwright WebKit has no native swipe API. Exercise the real React touch
+  // pointer handlers, while explicitly reporting this synthetic delivery.
+  await page.locator('canvas.world').evaluate((canvas, { from, to }) => {
+    const send = (type, point) => canvas.dispatchEvent(new PointerEvent(type, {
+      bubbles: true, cancelable: true, pointerId: 71, pointerType: 'touch', isPrimary: true,
+      clientX: point[0], clientY: point[1], buttons: type === 'pointerup' ? 0 : 1,
+    }));
+    send('pointerdown', from);
+    for (let step = 1; step <= 4; step++) send('pointermove', [from[0] + (to[0] - from[0]) * step / 4, from[1] + (to[1] - from[1]) * step / 4]);
+    send('pointerup', to);
+  }, { from, to });
 }
 
 async function runFlow(page, platform, locale, row, reportDirectory, sourceHashes) {
@@ -130,29 +145,37 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await page.locator('.boost-tray').waitFor();
   assert.equal(await page.locator('.boost-slot').count(), 4);
   row.inputs = [];
-  if (platform === 'web') {
-    for (const key of ['ArrowUp', 'w', 'Space', 'ArrowDown', 's', 'ArrowLeft', 'ArrowRight']) {
-      await page.keyboard.press(key);
-      await advance(32);
-    }
-    row.inputs.push('Arrow keys, W, S, Space');
-  } else {
-    const bounds = await page.locator('canvas.world').boundingBox();
-    assert.ok(bounds, 'Game canvas is visible');
-    const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height * .65;
-    if (platforms[platform].engine === 'chromium') {
-      for (const [dx, dy] of [[0, -70], [0, 70], [-70, 0], [70, 0]]) {
-        await swipeChromium(page, [x, y], [x + dx, y + dy]);
-        await advance(32);
-      }
-      row.inputs.push('CDP touch swipes up/down/left/right');
-    }
-    await page.touchscreen.tap(x, y);
-    await advance(32);
-    await page.touchscreen.tap(x, y);
-    await advance(32);
-    row.inputs.push('Two touchscreen taps');
-    if (platform === 'ios') row.inputs.push('Swipe and native orientation behavior require physical-device QA');
+  const snapshot = () => page.evaluate(() => window.__communitySeasonsQA.inputs.snapshot());
+  const bounds = await page.locator('canvas.world').boundingBox();
+  assert.ok(bounds, 'Game canvas is visible');
+  const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height * .65;
+  for (const input of inputCases) {
+    const result = { id: input.id, outcome: input.outcome, delivery: input.kind === 'keyboard' ? 'Playwright keyboard'
+      : input.kind === 'double-tap' ? 'Playwright touchscreen taps'
+      : platforms[platform].engine === 'chromium' ? 'CDP touch swipe' : 'Synthetic touch PointerEvents; not native WebKit swipe' };
+    row.inputs.push(result);
+    await action(`input-${input.id}`, () => verifyInputCase(input, {
+      prepare: () => page.evaluate(() => window.__communitySeasonsQA.inputs.prepare()),
+      snapshot, advance,
+      setBlocked: blocked => page.evaluate(blocked => {
+        window.__qaInputGate.blocked = blocked;
+        window.__qaInputGate.events.length = 0;
+      }, blocked),
+      blockedEvents: () => page.evaluate(() => [...window.__qaInputGate.events]),
+      send: async input => {
+        if (input.kind === 'keyboard') await page.keyboard.press(input.key);
+        else if (input.kind === 'swipe') {
+          const swipe = platforms[platform].engine === 'chromium' ? swipeChromium : swipeWebKit;
+          await swipe(page, [x, y], [x + input.dx, y + input.dy]);
+        } else {
+          await page.touchscreen.tap(x, y);
+          await advance(32);
+          const firstTap = await snapshot();
+          await page.touchscreen.tap(x, y);
+          return firstTap;
+        }
+      },
+    }, result));
   }
   if (platform === 'android' && locale === 'en') {
     // The first obstacle can arrive after about four seconds. Wait longer in
@@ -225,7 +248,13 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
   try {
     assert.deepEqual((await context.storageState()).origins, []);
     await page.clock.install({ time: Date.now() });
-    await context.addInitScript(initializeBrowserEmulation, { entries: sentinelEntries, platform });
+    await context.addInitScript(initializeBrowserEmulation, { entries: {
+      ...sentinelEntries,
+      // Only this fresh context's isolated QA save gets an unlocked skill;
+      // the real setup UI still equips it before the input fixture charges it.
+      [storagePrefix + 'community-seasons-progress-v1']: JSON.stringify({ version: 1, skills: { shield: { unlocked: true } }, equippedSkill: 'shield' }),
+    }, platform });
+    await context.addInitScript(installInputGate);
     await context.route('**/*', async route => {
       if (new URL(route.request().url()).origin !== origin) {
         row.blockedRequests.push(route.request().url()); await route.abort(); return;
