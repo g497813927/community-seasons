@@ -71,7 +71,7 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
       return result;
     } finally { timing.elapsedMs = performance.now() - started; }
   };
-  const capture = name => action(`screenshot-${name}`, () => page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-${name}.png`), fullPage: true, timeout: 10000 }));
+  const capture = name => action(`screenshot-${name}`, () => page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-${name}.png`), fullPage: true, timeout: row.timeouts.actionMs }));
   const advance = async milliseconds => {
     await page.clock.runFor(milliseconds);
     row.clock.advancedMs += milliseconds;
@@ -246,7 +246,7 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
   } catch (error) {
     row.error = String(error);
     row.stack = error.stack;
-    await page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-failure.png`), fullPage: true, timeout: 3000 }).catch(() => {});
+    await page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-failure.png`), fullPage: true, timeout: timeouts.actionMs }).catch(() => {});
   } finally {
     clearTimeout(timer);
     await context.close();
