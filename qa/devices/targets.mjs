@@ -30,13 +30,20 @@ function isLanHost(host) {
 export function validatePage(value) {
   const url = plainUrl(value, 'Selected preview');
   if (!['http:', 'https:'].includes(url.protocol)) throw Error('Selected preview must use HTTP(S).');
+  // Accept the dedicated qa-… suffix or a shortened <build>-<team> suffix.
+  // Both require at least two nonempty segments after community-seasons-.
+  if (/^community-seasons-[a-z0-9]+-[a-z0-9]+(?:-[a-z0-9]+)*\.vercel\.app$/.test(url.hostname)) {
+    if (url.protocol !== 'https:' || url.port || url.search || !['/', '/index.html'].includes(url.pathname))
+      throw Error('Open the private Vercel access link first, then select its query-free HTTPS QA page.');
+    return { url, hosted: false };
+  }
   if (url.search) throw Error('Selected preview cannot contain query parameters.');
   if (TOY_HOSTS.has(url.hostname)) {
     if (url.protocol !== 'https:' || url.port || !PREVIEW_PATH.test(url.pathname) || url.search)
       throw Error('Select an isolated Toy /toy/preview/preview_…/index.html URL, never a published game.');
     return { url, hosted: true };
   }
-  if (!isLanHost(url.hostname)) throw Error('Select a local/LAN QA preview or an isolated Toy preview.');
+  if (!isLanHost(url.hostname)) throw Error('Select a local/LAN QA preview, protected Vercel QA preview, or isolated Toy preview.');
   return { url, hosted: false };
 }
 

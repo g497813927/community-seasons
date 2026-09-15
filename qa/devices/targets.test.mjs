@@ -23,6 +23,27 @@ test('inspector discovery and WebSocket stay on the exact loopback endpoint', ()
     assert.throws(() => validateWebSocket(value, endpoint));
 });
 
+test('Vercel QA uses only an exact query-free HTTPS page after private access is established', () => {
+  const url = 'https://community-seasons-qa-build-techzjc.vercel.app/';
+  const page = validatePage(url);
+  assert.equal(page.hosted, false);
+  assert.equal(selectFrame({ frameTree: { frame: { id: 'vercel', url } } }, page).id, 'vercel');
+  assert.doesNotThrow(() => validatePage(url + 'index.html'));
+  assert.doesNotThrow(() => validatePage('https://community-seasons-5rx7lmmi5-techzjc.vercel.app/'));
+  assert.throws(() => validatePage(url + '?_vercel_share=secret'), {
+    message: 'Open the private Vercel access link first, then select its query-free HTTPS QA page.',
+  });
+  for (const invalid of [url + '?_vercel_share=secret', url + 'other', url.replace('https:', 'http:'), url.replace('.app/', '.app:8443/'), 'https://community-seasons.vercel.app/', 'https://other-app.vercel.app/'])
+    assert.throws(() => validatePage(invalid));
+});
+
+test('Vercel hostnames require a dedicated QA suffix or both build and team segments', () => {
+  for (const hostname of ['community-seasons-qa-test.vercel.app', 'community-seasons-59sotdkkf-techzjc.vercel.app', 'community-seasons-59sotdkkf-example-team.vercel.app'])
+    assert.equal(validatePage(`https://${hostname}/`).hosted, false);
+  for (const hostname of ['community-seasons-evil.vercel.app', 'community-seasons-qa.vercel.app', 'community-seasons--team.vercel.app', 'community-seasons-build-.vercel.app', 'community-seasons-build--team.vercel.app', 'community-seasons-build-team.vercel.app.evil.example'])
+    assert.throws(() => validatePage(`https://${hostname}/`));
+});
+
 test('target selection never falls back to another page or an ambiguous ID', () => {
   const selected = { id: 'qa', type: 'page', url: local.url.href };
   const rows = [selected, { id: 'other', type: 'page', url: 'http://127.0.0.1:3001/' }, { id: 'worker', type: 'service_worker', url: local.url.href }];

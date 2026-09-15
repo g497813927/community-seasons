@@ -21,14 +21,16 @@
     "qa:ios": "node qa/web/run.mjs --platform ios",
     "qa:all": "node qa/web/run.mjs --platform all",
     "qa:device": "node qa/devices/cli.mjs",
-    "qa:test": "node --test qa/tests/*.test.mjs qa/devices/*.test.mjs",
+    "qa:test": "node --test qa/tests/*.test.mjs qa/devices/*.test.mjs scripts/vercel-qa.test.mjs",
     "qa:archive:licenses:serve": "vite qa/archive/licenses-ui-qa --config qa/archive/licenses-ui-qa/vite.config.ts",
     "qa:archive:licenses": "node qa/archive/licenses-ui-qa/check.mjs",
     "qa:archive:android:serve": "vite qa/archive/android-large-text-qa --config qa/archive/android-large-text-qa/vite.config.ts",
     "qa:archive:android": "node qa/archive/android-large-text-qa/check.mjs",
     "qa:archive:phone:build": "vite build qa/archive/phone-cart-fix-qa --config qa/archive/phone-cart-fix-qa/vite.config.ts",
     "qa:archive:iphone:build": "vite build qa/archive/iphone-qa --config qa/archive/iphone-qa/vite.config.ts",
-    "qa:preview": "vite preview qa/preview --config qa/preview/vite.config.ts --port 4175 --strictPort"
+    "qa:preview": "vite preview qa/preview --config qa/preview/vite.config.ts --port 4175 --strictPort",
+    "qa:deploy": "node scripts/vercel-qa.mjs",
+    "qa:share": "node scripts/vercel-qa.mjs share"
   },
   "devDependencies": {
     "fast-check": "4.9.0",

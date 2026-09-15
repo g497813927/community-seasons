@@ -1,0 +1,61 @@
+name: Protected QA preview
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: protected-qa-preview
+  cancel-in-progress: false
+
+jobs:
+  protected-preview:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: qa-preview
+    defaults:
+      run:
+        shell: bash
+    env:
+      CI: true
+    steps:
+      - name: Check out trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.14.1
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            src/package-lock.json
+
+      - name: Install locked dependencies and browser engines
+        run: |
+          npm run setup
+          npx --no-install playwright install --with-deps chromium webkit
+
+      - name: Test and build the isolated preview
+        run: |
+          npm run build
+          npm run qa:build
+          npm run qa:test
+          npm run qa:all
+
+      - name: Deploy only to the protected QA project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+        run: npm run qa:deploy -- --deploy-only
+
+      # Access URLs are credentials. Never upload results/qa/vercel-* or print
+      # access.json. Use the protected deployment URL with Vercel Authentication,
+      # or request a new temporary link privately through the Vercel connector.
