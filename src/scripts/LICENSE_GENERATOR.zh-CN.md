@@ -47,3 +47,5 @@ node scripts/licenses.mjs --help
 缺少必需包、版本或许可证冲突、缺失原始许可证文本，以及无法识别的许可证声明，都会导致校验失败。应检查软件包对应的原始发布版本，必要时补充其真实声明；不要使用猜测的许可证模板替代。
 
 Rolldown 的 npm 归档可能遗漏原生包的许可证文件及引用的第三方声明。已核实的上游原始文件按版本保存在 `scripts/license-supplements/` 下的各个目录中；生成的声明包含来源 URL，`scripts/licenses.mjs` 使用固定的 SHA-256 进行校验。已安装版本以目标项目的 `package-lock.json` 为准，生成器支持的补充文件版本以脚本中的规则为准。生成器先检查目标项目的 `scripts/license-supplements/`，再检查脚本旁的同名文件夹。复制脚本时应一并复制该文件夹，以保留这些已核实的原始文件。添加新版本时应审阅新版上游声明，并保留此前已核实的目录，不得用通用许可证模板替代。
+
+部分 Linux 安装还会包含可选的 WASI 辅助包 `@napi-rs/wasm-runtime@1.2.3` 和 `@tybys/wasm-util@0.10.3`，但其 npm 归档未包含许可证原文。针对这两个版本的补充文件保留上游 MIT 许可证，校验仓库信息和 SHA-256，并记录不可变的来源链接。NAPI-RS 原文来自 npm `gitHead` 指向的提交 `70c149321ca4e361f6726349cf9b2258467fb24f`。wasm-util 原文来自维护者的 `add LICENSE` 提交 `a16b188d44ae43cc91edb71996ba2b43ff0996d9`；该提交中的 `package.json` 仍为 0.10.3，而更早的 npm `gitHead` 没有 LICENSE 文件。这些都是上游原文，并非生成的许可证模板。支持新版本时需要重新核实。

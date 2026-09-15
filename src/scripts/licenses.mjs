@@ -24,6 +24,23 @@ const supplementHashes = {
   "THIRD-PARTY-LICENSE": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c",
 };
 
+// Linux npm installs can include these optional WASI helpers. Their npm
+// archives omit LICENSE; use the maintainers' originals at immutable commits.
+const wasmSupplements = [
+  {
+    name: "@napi-rs/wasm-runtime", version: "1.2.3", directory: "napi-wasm-runtime-1.2.3",
+    repository: "https://github.com/napi-rs/napi-rs", repositoryDirectory: "wasm-runtime",
+    revision: "70c149321ca4e361f6726349cf9b2258467fb24f",
+    hash: "3f1ce66533302df3a32edbfdfc0b78f0dd34659e4c1f5817162e5ea3c2297215",
+  },
+  {
+    name: "@tybys/wasm-util", version: "0.10.3", directory: "tybys-wasm-util-0.10.3",
+    repository: "https://github.com/toyobayashi/wasm-util",
+    revision: "a16b188d44ae43cc91edb71996ba2b43ff0996d9",
+    hash: "09e436100bf926e78df875ec80cf3d0c643dfec779b52cfe2aa96afa0de714cb",
+  },
+];
+
 function declaredLicense(pkg) {
   if (typeof pkg.license === "string") return pkg.license;
   if (typeof pkg.license?.type === "string") return pkg.license.type;
@@ -76,6 +93,20 @@ function readNotices(directory) {
 }
 
 function addSupplements(root, pkg, notices) {
+  for (const rule of wasmSupplements) {
+    if (pkg.name !== rule.name || pkg.version !== rule.version) continue;
+    if (repositoryUrl(pkg) !== rule.repository || declaredLicense(pkg) !== "MIT" ||
+        (rule.repositoryDirectory && pkg.repository?.directory !== rule.repositoryDirectory))
+      throw new Error(`Review the upstream license supplement for ${pkg.name}@${pkg.version}`);
+    const relative = `license-supplements/${rule.directory}/LICENSE`;
+    const local = path.join(root, "scripts", relative);
+    const data = fs.readFileSync(fs.existsSync(local) ? local : fileURLToPath(new URL(`./${relative}`, import.meta.url)));
+    if (sha256(data) !== rule.hash) throw new Error(`Changed upstream license supplement: ${rule.name}`);
+    if (!notices.some((notice) => notice.text === data.toString("utf8"))) notices.push({
+      file: "upstream/LICENSE", text: data.toString("utf8"),
+      source: `${rule.repository.replace("https://github.com/", "https://raw.githubusercontent.com/")}/${rule.revision}/LICENSE`,
+    });
+  }
   for (const rule of supplements) {
     if (!rule.name.test(pkg.name) || rule.version !== pkg.version) continue;
     if (repositoryUrl(pkg) !== "https://github.com/rolldown/rolldown" || declaredLicense(pkg) !== "MIT")

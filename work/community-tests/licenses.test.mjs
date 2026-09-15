@@ -42,7 +42,9 @@ test('current inventory covers every installed locked package version with exact
     assert.equal(inventory.packages.find(p => p.name === name).notices.find(n => n.file === file).text, original);
     assert.ok(renderNotices(inventory).includes(original), `${name} notice changed in downloadable text`);
   }
-  assert.equal(inventory.packages.find(p => p.name === '@rolldown/binding-darwin-arm64').status, 'complete');
+  const nativeBindings = inventory.packages.filter(p => p.name.startsWith('@rolldown/binding-'));
+  assert.ok(nativeBindings.length > 0, 'the build platform needs a native Rolldown binding');
+  for (const binding of nativeBindings) assert.equal(binding.status, 'complete');
   assert.ok(inventory.packages.find(p => p.name === 'rolldown').notices.some(n => n.file === 'upstream/THIRD-PARTY-LICENSE'));
   assert.deepEqual(collectLicenses(app), inventory, 'generation must be deterministic without timestamps');
 });
@@ -124,6 +126,30 @@ for (const version of ['1.0.1', '1.0.3']) {
       assert.equal(notice.source, `https://raw.githubusercontent.com/rolldown/rolldown/v${version}/${path.basename(notice.file)}`);
     }
     fs.appendFileSync(path.join(root, `scripts/license-supplements/rolldown-${version}/LICENSE`), 'changed');
+    assert.throws(() => collectLicenses(root), /Changed upstream license supplement/);
+  });
+}
+
+for (const pkg of [
+  { name: '@napi-rs/wasm-runtime', version: '1.2.3', directory: 'napi-wasm-runtime-1.2.3',
+    repository: { url: 'git+https://github.com/napi-rs/napi-rs.git', directory: 'wasm-runtime' } },
+  { name: '@tybys/wasm-util', version: '0.10.3', directory: 'tybys-wasm-util-0.10.3',
+    repository: { url: 'git+https://github.com/toyobayashi/wasm-util.git' } },
+]) {
+  test(`${pkg.name} optional WASI license is original, version-specific and tamper checked`, t => {
+    const root = fixture(t, [{ location: `node_modules/${pkg.name}`, name: pkg.name, version: pkg.version,
+      pkg: { repository: pkg.repository }, lock: { optional: true }, files: {} }]);
+    fs.cpSync(path.join(app, 'scripts/license-supplements'), path.join(root, 'scripts/license-supplements'), { recursive: true });
+    const inventory = collectLicenses(root);
+    assert.deepEqual(inventory.issues, []);
+    assert.equal(inventory.packages[0].notices[0].text, fs.readFileSync(path.join(app, `scripts/license-supplements/${pkg.directory}/LICENSE`), 'utf8'));
+    assert.match(inventory.packages[0].notices[0].source, /\/[^/]+\/[a-f0-9]{40}\/LICENSE$/);
+    const manifest = path.join(root, `node_modules/${pkg.name}/package.json`);
+    const original = JSON.parse(fs.readFileSync(manifest));
+    fs.writeFileSync(manifest, JSON.stringify({ ...original, repository: 'https://github.com/unrelated/project' }));
+    assert.throws(() => collectLicenses(root), /Review the upstream license supplement/);
+    fs.writeFileSync(manifest, JSON.stringify(original));
+    fs.appendFileSync(path.join(root, `scripts/license-supplements/${pkg.directory}/LICENSE`), 'changed');
     assert.throws(() => collectLicenses(root), /Changed upstream license supplement/);
   });
 }
