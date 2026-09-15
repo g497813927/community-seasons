@@ -6,7 +6,7 @@ The [Dependabot configuration](../.github/dependabot.yml) requests version check
 
 | Ecosystem | Manifests checked | Open version PR limit |
 | --- | --- | --- |
-| npm | Root workspace, `src/`, `qa/archive/phone-cart-fix-qa/` | 5 |
+| npm | Root workspace, `src/`, `tests/qa/archive/phone-cart-fix-qa/` | 5 |
 | GitHub Actions | `.github/workflows/` and root action manifests | 3 |
 
 An npm PR updates one dependency across matching directories when constraints are compatible. Unrelated packages stay in separate PRs; incompatible constraints may require separate PRs. The `increase` strategy updates the existing version requirement; keep this repository's exact pins when reviewing. GitHub Actions updates remain separate. See the [GitHub options reference](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).
@@ -23,8 +23,8 @@ Use the PR branch and Node.js 24 from the repository root [`.nvmrc`](../.nvmrc).
 
 ```sh
 npm run setup
-npm ci --prefix qa/archive/phone-cart-fix-qa --ignore-scripts
-npm --prefix qa/archive/phone-cart-fix-qa run build
+npm ci --prefix tests/qa/archive/phone-cart-fix-qa --ignore-scripts
+npm --prefix tests/qa/archive/phone-cart-fix-qa run build
 npm --prefix src run licenses:generate
 npm run build
 npm test
@@ -41,7 +41,7 @@ For each affected lockfile, run the corresponding audit and inspect any remainin
 ```sh
 npm audit
 npm audit --prefix src
-npm audit --prefix qa/archive/phone-cart-fix-qa
+npm audit --prefix tests/qa/archive/phone-cart-fix-qa
 ```
 
 Resolve failures before requesting review and merging. A successful dependency update still needs the normal [release process](RELEASE.md) before publication.

@@ -1,0 +1,55 @@
+import {chromium} from 'playwright';
+import fs from 'node:fs';import assert from 'node:assert/strict';import crypto from 'node:crypto';
+const inventory=JSON.parse(fs.readFileSync('src/public/open-source-licenses.json','utf8'));
+const notices=fs.readFileSync('src/public/THIRD-PARTY-NOTICES.txt');
+const hash=x=>crypto.createHash('sha256').update(x).digest('hex');
+const sources=()=>Object.fromEntries(['app/page.tsx','components/licenses-dialog.tsx','components/licenses-dialog.css','public/open-source-licenses.json'].map(p=>[p,hash(fs.readFileSync('src/'+p))]));const sourceStart=sources();
+const b=await chromium.launch({headless:true,...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?{executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH}:{})}),rows=[];
+async function scaleText(p,scale){await p.evaluate(scale=>{const m=window.__licensesQA.fonts??=new Map();for(const[el,v]of m)if(el.isConnected){el.style.fontSize=v.font;el.style.lineHeight=v.line;}const elements=[...document.querySelectorAll('.credits-footer, .credits-footer *, .licenses-dialog, .licenses-dialog *')];const values=elements.map(el=>{if(!m.has(el))m.set(el,{font:el.style.fontSize,line:el.style.lineHeight});const s=getComputedStyle(el);return[el,parseFloat(s.fontSize),s.lineHeight]});for(const[e,f,l]of values){e.style.setProperty('font-size',`${f*scale}px`,'important');if(l!=='normal')e.style.setProperty('line-height',`${parseFloat(l)*scale}px`,'important');}},scale);}
+async function layout(p){return p.locator('.licenses-dialog').evaluate(el=>{const r=el.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height,scrollWidth:el.scrollWidth,clientWidth:el.clientWidth,scrollHeight:el.scrollHeight,clientHeight:el.clientHeight,viewport:{width:document.documentElement.clientWidth,height:innerHeight},docOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth};});}
+async function visible(p,selector){const el=p.locator(selector).first();await el.evaluate(e=>e.scrollIntoView({block:'start'}));await p.waitForTimeout(40);const r=await el.boundingBox(),d=await p.locator('.licenses-dialog').boundingBox();assert.ok(r.x>=d.x-1&&r.x+r.width<=d.x+d.width+1,`${selector}: horizontal clipping`);assert.ok(r.y>=Math.max(0,d.y)-1&&r.y+Math.min(r.height,44)<=Math.min(d.y+d.height,await p.evaluate(()=>innerHeight))+1,`${selector}: cannot reach by scrolling`);return r;}
+function checkLayout(d){assert.ok(d.x>=-1&&d.right<=d.viewport.width+1,'dialog outside viewport');assert.ok(d.y>=-1&&d.bottom<=d.viewport.height+1,'dialog vertically clipped');assert.ok(d.scrollWidth<=d.clientWidth+1,'dialog horizontal scroll');assert.ok(d.docOverflow<=1,'page horizontal overflow');}
+async function make(width,height,locale){const c=await b.newContext({viewport:{width,height},locale,isMobile:width<750,hasTouch:width<750});const p=await c.newPage(),errors=[],requests=[];p.on('pageerror',e=>errors.push(String(e)));p.on('request',r=>requests.push(r.url()));await p.goto(`http://127.0.0.1:3029/?lang=${locale}`);await p.locator('.licenses-launcher').waitFor();await p.evaluate(()=>document.fonts.ready);return {c,p,errors,requests};}
+const count=r=>r.filter(u=>u.endsWith('/open-source-licenses.json')).length;
+
+async function checkDialogFocus(page) {
+  // Base UI redirects its hidden focus guard on the next animation frame.
+  // Wait only for that handoff: real focus outside the dialog must still fail.
+  await page.waitForFunction(
+    () => !document.activeElement?.matches('[data-base-ui-focus-guard]'),
+    undefined,
+    {timeout: 1000},
+  );
+  assert.ok(await page.evaluate(() => Boolean(document.activeElement?.closest('.licenses-dialog'))), 'focus escaped dialog');
+}
+
+try{
+for(const [width,height]of[[320,568],[390,844],[1280,900]])for(const locale of['en','zh-CN'])for(const scale of[1,2]){
+ const{c,p,errors,requests}=await make(width,height,locale),row={kind:'layout-search',width,height,locale,scale};
+ try{
+  await scaleText(p,scale);await p.waitForTimeout(100);assert.equal(count(requests),0,'inventory fetched before user request');
+  const footer=await p.locator('.licenses-launcher').evaluate(el=>{const r=el.getBoundingClientRect(),a=document.querySelector('.arena').getBoundingClientRect();return{outside:!el.closest('.arena'),afterArena:r.y>=a.bottom,height:r.height,width:r.width};});assert.ok(footer.outside&&footer.afterArena);assert.ok(footer.height>=44&&footer.width>=44);row.footer=footer;
+  await p.locator('.licenses-launcher').click();await p.locator('.license-entry').first().waitFor();assert.equal(count(requests),1);assert.equal(await p.locator('.license-entry').count(),inventory.packages.length);assert.equal(await p.locator('.licenses-title').evaluate(el=>document.activeElement===el),true);await scaleText(p,scale);checkLayout(await layout(p));await p.locator('.licenses-dialog').evaluate(el=>el.scrollTop=0);await p.screenshot({path:`tests/qa/archive/licenses-ui-qa/${width}-${locale}-${scale}-initial.png`});
+  const input=p.locator('.licenses-search input');row.searches=[];
+  for(const query of['React','Lucide','MIT','__no_matching_license_742']){await input.fill(query);await p.waitForTimeout(30);await scaleText(p,scale);const expected=inventory.packages.filter(x=>`${x.name} ${x.version} ${x.license}`.toLowerCase().includes(query.toLowerCase())).length;assert.equal(await p.locator('.license-entry').count(),expected);row.searches.push({query,matches:expected});if(expected===0)assert.ok(await p.getByText(locale==='en'?'No matching projects or licenses.':'没有匹配的项目或许可。',{exact:true}).isVisible());
+   if(query==='React'||query==='Lucide'){const name=query==='React'?'react':'lucide-react',item=inventory.packages.find(x=>x.name===name);const entry=p.locator('.license-entry').filter({has:p.locator('.license-package-name strong',{hasText:new RegExp(`^${name}$`)})});await entry.locator('summary').click();await scaleText(p,scale);assert.deepEqual(await entry.locator('pre').allTextContents(),item.notices.map(n=>n.text));checkLayout(await layout(p));await visible(p,'.license-entry[open] .license-entry-content pre');if(query==='Lucide'){row.expandedLayout=await layout(p);await p.screenshot({path:`tests/qa/archive/licenses-ui-qa/${width}-${locale}-${scale}-expanded.png`});}}
+  }
+  assert.equal(await p.locator('.licenses-dialog a, .licenses-dialog [role=link]').count(),0,'license panel must not contain hyperlinks');const response=await p.request.get('http://127.0.0.1:3029/THIRD-PARTY-NOTICES.txt');assert.equal(response.status(),200);assert.equal(hash(await response.body()),hash(notices));row.noticesFile={status:200,sha256:hash(notices)};
+  await input.focus();for(let i=0;i<7;i++){await p.keyboard.press('Tab');await checkDialogFocus(p);}
+  for(const selector of['.licenses-close','.licenses-search input']){const r=await visible(p,selector);assert.ok(r.height>=44&&r.width>=44,`${selector}: small target`);}
+  await visible(p,'.licenses-title');await p.screenshot({path:`tests/qa/archive/licenses-ui-qa/${width}-${locale}-${scale}-heading.png`});await p.keyboard.press('Escape');await p.locator('.licenses-dialog').waitFor({state:'detached'});assert.ok(await p.locator('.licenses-launcher').evaluate(e=>document.activeElement===e),'focus did not return to footer');
+  await p.locator('.licenses-launcher').click();await p.locator('.licenses-count').waitFor();assert.equal(count(requests),1,'cached inventory fetched again');await p.locator('.licenses-close').click();await p.locator('.licenses-dialog').waitFor({state:'detached'});assert.deepEqual(errors,[]);assert.equal(requests.some(u=>u.includes('toy-sdk.js')),false);Object.assign(row,{passed:true,inventoryRequests:count(requests),errors});
+ }catch(e){Object.assign(row,{passed:false,error:String(e),errors});await p.screenshot({path:`tests/qa/archive/licenses-ui-qa/${width}-${locale}-${scale}-failure.png`}).catch(()=>{});}
+ rows.push(row);console.log(JSON.stringify(row));await c.close();
+}
+for(const [width,locale,scale]of[[390,'en',1],[320,'zh-CN',2]]){
+ const{c,p,errors,requests}=await make(width,844,locale),row={kind:'live-run',width,locale,scale};try{
+  await p.locator('.start-screen .run-button').click();await p.locator('.run-setup-footer button[type=submit]').click();await p.waitForFunction(()=>window.__licensesQA.live.mode==='running');await scaleText(p,scale);await p.locator('.licenses-launcher').scrollIntoViewIfNeeded();await p.locator('.licenses-launcher').focus();await p.keyboard.press('Space');await p.locator('.license-entry').first().waitFor();assert.equal(await p.evaluate(()=>window.__licensesQA.live.mode),'paused');
+  const snap=()=>p.evaluate(()=>{const s=window.__licensesQA.live;return{mode:s.mode,time:s.time,distance:s.distance,score:s.score,x:s.x,created:window.__licensesQA.created};});const before=await snap();await p.locator('.licenses-title').focus();for(const key of['p','Space','Enter','ArrowRight'])await p.keyboard.press(key);await p.waitForTimeout(300);assert.deepEqual(await snap(),before);assert.equal(await p.locator('.licenses-dialog').count(),1);await p.keyboard.press('Escape');await p.locator('.licenses-dialog').waitFor({state:'detached'});await p.waitForTimeout(100);assert.deepEqual(await snap(),before);assert.ok(await p.locator('.licenses-launcher').evaluate(e=>document.activeElement===e));assert.deepEqual(errors,[]);Object.assign(row,{passed:true,frozen:before,inventoryRequests:count(requests),errors});
+ }catch(e){Object.assign(row,{passed:false,error:String(e),errors});}rows.push(row);console.log(JSON.stringify(row));await c.close();
+}
+{
+ const{c,p,errors,requests}=await make(390,844,'en'),row={kind:'failed-fetch-retry'};try{let intercepted=0;await p.route('**/open-source-licenses.json',async route=>{intercepted++;if(intercepted===1)await route.fulfill({status:503,body:'Temporarily unavailable'});else await route.continue();});await p.locator('.licenses-launcher').click();await p.locator('.licenses-error').waitFor();assert.equal(await p.locator('.license-entry').count(),0);await p.getByRole('button',{name:'Try again',exact:true}).click();await p.locator('.license-entry').first().waitFor();assert.equal(await p.locator('.license-entry').count(),inventory.packages.length);assert.equal(count(requests),2);assert.equal(await p.locator('.licenses-error').count(),0);assert.deepEqual(errors,[]);Object.assign(row,{passed:true,requests:count(requests),errors});}catch(e){Object.assign(row,{passed:false,error:String(e),errors});}rows.push(row);console.log(JSON.stringify(row));await c.close();
+}
+}finally{fs.writeFileSync('tests/qa/archive/licenses-ui-qa/results.json',JSON.stringify({sourceStart,sourceEnd:sources(),inventoryPackages:inventory.packages.length,method:'Actual Home and real static license assets; isolated in-memory engine grace prevents test run from ending. New footer and panel computed font/line-height enlargement at fixed viewport; no native share calls or external downloads.',rows},null,2));await b.close();}
+if(rows.some(r=>!r.passed))process.exitCode=1;

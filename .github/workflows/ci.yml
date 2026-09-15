@@ -37,7 +37,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             src/package-lock.json
-            qa/archive/phone-cart-fix-qa/package-lock.json
+            tests/qa/archive/phone-cart-fix-qa/package-lock.json
 
       - name: Validate committed license notices before generation
         run: |
@@ -49,7 +49,7 @@ jobs:
         run: |
           mkdir -p results/ci
           npm run setup 2>&1 | tee results/ci/setup.log
-          npm ci --prefix qa/archive/phone-cart-fix-qa --ignore-scripts 2>&1 | tee results/ci/archive-phone-setup.log
+          npm ci --prefix tests/qa/archive/phone-cart-fix-qa --ignore-scripts 2>&1 | tee results/ci/archive-phone-setup.log
 
       - name: Test fuzz feedback validation
         run: python3 -m unittest discover -s scripts -p 'test_ci_fuzz_feedback.py'
@@ -63,7 +63,7 @@ jobs:
 
       - name: Run bounded fuzz tests
         id: fuzz
-        run: node run.mjs quick --rounds 1 --seed 20260914 --no-tui 2>&1 | tee results/ci/fuzz.log
+        run: node tests/fuzz/run.mjs quick --rounds 1 --seed 20260914 --no-tui 2>&1 | tee results/ci/fuzz.log
 
       - name: Collect bounded fuzz feedback
         id: fuzz_feedback
@@ -86,9 +86,9 @@ jobs:
 
       - name: Compile and test archived cart and iPhone harnesses
         run: |
-          npm --prefix qa/archive/phone-cart-fix-qa run build 2>&1 | tee results/ci/archive-phone-build.log
+          npm --prefix tests/qa/archive/phone-cart-fix-qa run build 2>&1 | tee results/ci/archive-phone-build.log
           npm run qa:archive:iphone:build 2>&1 | tee results/ci/archive-iphone-build.log
-          node --test qa/archive/phone-cart-fix-qa/cart-helper.test.mjs qa/archive/iphone-qa/probe.test.mjs qa/archive/iphone-qa/suite.test.mjs 2>&1 | tee results/ci/archive-harness-tests.log
+          node --test tests/qa/archive/phone-cart-fix-qa/cart-helper.test.mjs tests/qa/archive/iphone-qa/probe.test.mjs tests/qa/archive/iphone-qa/suite.test.mjs 2>&1 | tee results/ci/archive-harness-tests.log
 
       - name: Install browser engines and Linux dependencies
         run: npx --no-install playwright install --with-deps chromium webkit 2>&1 | tee results/ci/browser-install.log
@@ -108,10 +108,10 @@ jobs:
             results/
             !results/qa/device-*/**
             !results/qa/vercel-*/**
-            qa/archive/**/*-result.json
-            qa/archive/**/*results*.json
-            qa/archive/**/*-failures-*/
-            work/**/*-failures-*/
-            work/**/*-failure*.json
-            work/renderer-fuzz/repro.json
-            work/renderer-fuzz/results.json
+            tests/qa/archive/**/*-result.json
+            tests/qa/archive/**/*results*.json
+            tests/qa/archive/**/*-failures-*/
+            tests/fuzz/*-failures-*/
+            tests/**/*-failure*.json
+            tests/fuzz/renderer-fuzz/repro.json
+            tests/fuzz/renderer-fuzz/results.json

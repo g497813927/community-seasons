@@ -1,5 +1,6 @@
 import type { Plugin } from "vite";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { posix } from "node:path";
 
 const testHook =
   /__communitySeasonsQA|qa-community-seasons-v1:|__phoneQA|__journey(?:Run|Engine)|__qaCloud|qa-iphone-\d+|qa-suite\.js|(?:engine|render)-qa\.[jt]s|mock-toy-sdk/;
@@ -17,6 +18,7 @@ export function assertProductionCode(code: string, name: string, firstParty = fa
 
 export function productionBoundary(appRoot: string): Plugin {
   const root = appRoot.replaceAll("\\", "/").replace(/\/$/, "");
+  const testsRoot = `${posix.dirname(root)}/tests/`;
   return {
     name: "production-boundary",
     enforce: "pre",
@@ -42,7 +44,7 @@ export function productionBoundary(appRoot: string): Plugin {
       const path = id.split("?")[0].replaceAll("\\", "/");
       if (
         !path.startsWith(`${root}/`) &&
-        (/\/qa\//.test(path) || /\/work\/(?:[^/]+-qa|journey-browser|cloud-browser|community-tests)(?:\/|$)/.test(path))
+        (path.startsWith(testsRoot) || /\/qa\//.test(path) || /\/work\/(?:[^/]+-qa|journey-browser|cloud-browser|community-tests)(?:\/|$)/.test(path))
       )
         throw new Error(`Test workspace imports cannot ship: ${path}`);
       if (

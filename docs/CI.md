@@ -8,7 +8,7 @@ The [Build and QA workflow](../.github/workflows/ci.yml) checks pull requests, p
 
 1. `node scripts/check-committed-notices.mjs` checks committed license notices before installing dependencies or generating files. Then `npm run setup` installs root and game dependencies at the exact versions recorded in their lockfiles. The archived cart harness installs from its own lockfile; all three lockfiles key the npm download cache.
 2. `npm --prefix src run questions:validate` checks committed question data before the build can regenerate it. Then `npm run build`, `npm test` and `npm run test:types` compile the production game and run deterministic regressions and property-generator type checks.
-3. `node run.mjs quick --rounds 1 --seed 20260914 --no-tui` runs one reproducible, bounded fuzz round and records current source hashes.
+3. `node tests/fuzz/run.mjs quick --rounds 1 --seed 20260914 --no-tui` runs one reproducible, bounded fuzz round and records current source hashes.
 4. `npm run qa:build` and `npm run qa:test` compile and test the general isolated QA preview and device-inspection helpers.
 5. Both archived phone previews are built, then their cart, probe and suite tests run. Archiving a harness keeps it runnable against current game source.
 6. Playwright installs Chromium, WebKit and their Linux system dependencies. `npm run qa:all` runs six smoke scenarios: Web, Android emulation and iOS emulation, each in English and Simplified Chinese.

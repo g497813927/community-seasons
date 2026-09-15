@@ -41,26 +41,26 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173). Only `src/dist/` is a produ
 For a reproducible fuzz run or the full bounded suite:
 
 ```sh
-node run.mjs quick --seed 3231321585
-node run.mjs full
+node tests/fuzz/run.mjs quick --seed 3231321585
+node tests/fuzz/run.mjs full
 ```
 
-See the [QA guide](docs/QA.md) for browser and physical-device checks, and the [fuzzing guide](docs/FUZZING.md) for suite options and failure replay. Browser QA uses dedicated fixture servers and isolated saves. Phone QA requires a connected, unlocked device and an explicitly selected test preview. Python 3.8+ is only needed for the optional `fuzz_game.py` launcher.
+See the [QA guide](docs/QA.md) for browser and physical-device checks, and the [fuzzing guide](docs/FUZZING.md) for suite options and failure replay. Browser QA uses dedicated fixture servers and isolated saves. Phone QA requires a connected, unlocked device and an explicitly selected test preview. Python 3.8+ is only needed for the optional `tests/fuzz/fuzz_game.py` launcher.
 
 ## Project layout
 
 | Path | Contents |
 | --- | --- |
 | `src/` | Game source, translations, question bank, assets and build configuration |
-| `work/community-tests/` | Deterministic engine, renderer, layout, question-bank, license and production-boundary regressions |
-| `work/property-tests/` | Generated gameplay and local/cloud-save tests |
-| `work/renderer-fuzz.mjs` | Randomized canvas and scene checks |
-| `qa/` | Shared web/Android/iOS QA preview, browser checks, device inspection, and archived scenarios |
-| `run.mjs`, `fuzz_game.py`, `terminal-dashboard.mjs` | Fuzz runner, optional Python launcher and terminal dashboard |
+| `tests/unit/` | Deterministic game, renderer, layout, license and production-boundary regressions |
+| `tests/fuzz/` | Seeded engine, economy and renderer suites; Node, Python and shell launchers |
+| `tests/property/` | Generated gameplay/save cases and typed property generators |
+| `tests/helpers/` | Shared compiler and generated test modules |
+| `tests/qa/` | Web/Android/iOS QA preview, device inspection, browser checks and archived scenarios |
 | `docs/` | QA, fuzzing, validation and release notes |
 | `snapshot.json` | Historical import baseline for reproducibility; runs record current source hashes |
 
-`src/` contains the game, `work/` contains automated engine/property tests, and `qa/` contains browser/device QA. These are maintained source directories. Generated builds, installed dependencies and QA results are ignored by Git.
+`src/` contains the game; all test suites and QA tools live under `tests/`. See the [test maintenance guide](tests/README.md) for the suite layout and launchers. Generated builds, installed dependencies and test results are ignored by Git.
 
 ## Making changes
 

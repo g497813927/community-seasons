@@ -8,7 +8,7 @@
 
 1. `node scripts/check-committed-notices.mjs` 在安装依赖或生成文件前检查已提交的许可声明。随后，`npm run setup` 按仓库根目录和游戏目录的锁文件安装精确版本依赖。已归档的小车测试工具使用自己的锁文件安装依赖；npm 下载缓存以这三个锁文件为依据。
 2. `npm --prefix src run questions:validate` 会在构建重新生成题库数据之前，检查已提交的数据是否一致。随后通过 `npm run build`、`npm test` 和 `npm run test:types` 编译生产游戏，并运行确定性回归测试与属性测试生成器的类型检查。
-3. `node run.mjs quick --rounds 1 --seed 20260914 --no-tui` 执行一轮可复现、有明确上限的模糊测试，并记录当前源码哈希。
+3. `node tests/fuzz/run.mjs quick --rounds 1 --seed 20260914 --no-tui` 执行一轮可复现、有明确上限的模糊测试，并记录当前源码哈希。
 4. `npm run qa:build` 和 `npm run qa:test` 构建并检查通用隔离 QA 预览及设备检查工具。
 5. 构建两个已归档的手机预览，再执行小车、探针和套件测试。归档后的工具仍可针对当前游戏源码运行。
 6. Playwright 安装 Chromium、WebKit 及其 Linux 系统依赖。`npm run qa:all` 运行六种冒烟测试：Web、Android 模拟和 iOS 模拟，每种均覆盖英文与简体中文。

@@ -55,7 +55,7 @@ npm run qa:deploy -- --ttl-seconds 7200
 
 The repository accepts 60–82,800 seconds, up to 23 hours. It always sends a TTL: omitting TTL from Vercel's share-link API would create a link that never expires.
 
-The trigger uploads only allowlisted files from `qa/preview/dist/` to the explicitly selected project as a preview. It verifies readiness, project identity, preview target and protection again, then requires anonymous access to be denied before requesting a share link. Unexpected API responses stop the run without printing their contents. The inline upload is capped at 4 MiB; exceeding that cap requires reviewing the upload strategy.
+The trigger uploads only allowlisted files from `tests/qa/preview/dist/` to the explicitly selected project as a preview. It verifies readiness, project identity, preview target and protection again, then requires anonymous access to be denied before requesting a share link. Unexpected API responses stop the run without printing their contents. The inline upload is capped at 4 MiB; exceeding that cap requires reviewing the upload strategy.
 
 ## Access and device selection
 

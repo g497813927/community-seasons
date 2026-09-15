@@ -29,12 +29,12 @@ SUITES = {
     "renderer": "RENDERER_FUZZ_BASE_SEED",
 }
 DETAILS = {
-    "engine": "work/community-tests/engine-fuzz-failures-*/*.json",
-    "economy": "work/community-tests/store-economy-fuzz-failure.json",
-    "engine-properties": "work/property-tests/engine-invalid-failure-*.json",
-    "save-properties": "work/property-tests/save-invalid-failure-*.json",
-    "typed-generators": "work/property-tests/typed-arbitraries-failure-*.json",
-    "renderer": "work/renderer-fuzz/repro.json",
+    "engine": "tests/fuzz/engine-fuzz-failures-*/*.json",
+    "economy": "tests/fuzz/store-economy-fuzz-failure.json",
+    "engine-properties": "tests/property/engine-invalid-failure-*.json",
+    "save-properties": "tests/property/save-invalid-failure-*.json",
+    "typed-generators": "tests/property/typed-arbitraries-failure-*.json",
+    "renderer": "tests/fuzz/renderer-fuzz/repro.json",
 }
 
 
@@ -271,7 +271,7 @@ def format_details(report, repo):
             lines.append("  - No per-case seed/shrink path was recorded; use the bounded round replay below.")
     lines += ["", f"Reported source hashes: {len(report['sourceHashes'])} files; SHA-256 of the sorted hash map: `{digest}`.",
               "", "Replay on the tested commit shown in that run, with Node.js 24.14.1 after `npm run setup`:", "", "```sh",
-              f"node run.mjs quick --rounds 1 --seed {report['masterSeed']} --no-tui", "```", "",
+              f"node tests/fuzz/run.mjs quick --rounds 1 --seed {report['masterSeed']} --no-tui", "```", "",
               f"Download `qa-failure-{run_id}-{attempt}` from that run for the original logs, counterexamples and source hashes. Preserve those files before rerunning.",
               "原始日志、反例和源码哈希保存在该运行的失败产物中；重新测试前请先保存。", "",
               "## Source hashes / 源码哈希", "", "```text"]

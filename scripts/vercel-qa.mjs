@@ -51,22 +51,22 @@ async function walk(directory, visitor, ignore = new Set()) {
 
 async function sourceHashes(root) {
   const hashes = {};
-  for (const directory of ['src', 'qa/preview'])
+  for (const directory of ['src', 'tests/qa/preview'])
     await walk(path.join(root, directory), async file => { hashes[path.relative(root, file).split(path.sep).join('/')] = digest(await fs.readFile(file)); }, new Set(['node_modules', 'dist', '.git', '.vite*']));
   for (const file of ['package.json', 'package-lock.json']) hashes[file] = digest(await fs.readFile(path.join(root, file)));
   return hashes;
 }
 
 export async function readArtifact(root = ROOT) {
-  const directory = path.join(root, 'qa/preview/dist');
+  const directory = path.join(root, 'tests/qa/preview/dist');
   const files = [], hashes = {};
   let html = '', scripts = '', buildInfo;
   await walk(directory, async file => {
     const relative = path.relative(directory, file).split(path.sep).join('/');
     if (!/^(?:index\.html|qa-build-info\.json|favicon\.svg|open-source-licenses\.json|THIRD-PARTY-NOTICES\.txt|assets\/[A-Za-z0-9_.-]+\.(?:js|css))$/.test(relative))
-      throw Error('QA output contains an unexpected file. Rebuild qa/preview/dist before deploying.');
+      throw Error('QA output contains an unexpected file. Rebuild tests/qa/preview/dist before deploying.');
     const contents = await fs.readFile(file);
-    hashes[`qa/preview/dist/${relative}`] = digest(contents);
+    hashes[`tests/qa/preview/dist/${relative}`] = digest(contents);
     files.push({ file: relative, data: contents.toString('base64'), encoding: 'base64' });
     if (relative === 'index.html') html = contents.toString('utf8');
     if (relative === 'qa-build-info.json') {

@@ -19,7 +19,7 @@ npm run test:fuzz
 需要可复现且轮数有限的测试时，执行：
 
 ```sh
-node run.mjs quick --rounds 2 --seed 3231321585 --no-tui
+node tests/fuzz/run.mjs quick --rounds 2 --seed 3231321585 --no-tui
 ```
 
 在 `results/summary.json` 中查看结果、源码哈希和每个测试套件的种子设置；套件输出位于 `results/<suite>.log`。失败报告和日志还会保存到 `results/failure/`。重新运行前，请一起保留失败种子、收缩路径、源码哈希和依赖锁文件。每次调用都会写入相同的结果路径，因此同一份检出目录中同时只能运行一个模糊测试会话。
@@ -30,18 +30,18 @@ node run.mjs quick --rounds 2 --seed 3231321585 --no-tui
 
 | 文件 / 部分 | 职责 |
 | --- | --- |
-| `scripts/test.mjs` | 查找并排序 `work/community-tests/*.test.mjs` 中的确定性测试，排除模糊测试套件，然后调用 Node 测试运行器。 |
-| `run.mjs`：命令行与工作量设置 | 校验命令行选项，应用默认工作量，为每个套件推导可复现的种子。 |
-| `run.mjs`：依赖与进程管理 | 按需安装锁定版本的依赖，管理子进程，限制日志大小并执行超时控制。 |
-| `run.mjs`：源码跟踪与报告 | 记录被测源码，维护报告格式并保留失败产物。 |
-| `run.mjs`：套件与轮次执行 | 执行选定套件，遇到首个未成功结果时停止，并完成会话汇总。 |
-| `terminal-dashboard.mjs` | 显示进度，不参与测试选择，也不改变执行行为。 |
+| `tests/unit/run.mjs` | 查找并排序 `tests/unit/*.test.mjs` 中的确定性测试，排除模糊测试套件，然后调用 Node 测试运行器。 |
+| `tests/fuzz/run.mjs`：命令行与工作量设置 | 校验命令行选项，应用默认工作量，为每个套件推导可复现的种子。 |
+| `tests/fuzz/run.mjs`：依赖与进程管理 | 按需安装锁定版本的依赖，管理子进程，限制日志大小并执行超时控制。 |
+| `tests/fuzz/run.mjs`：源码跟踪与报告 | 记录被测源码，维护报告格式并保留失败产物。 |
+| `tests/fuzz/run.mjs`：套件与轮次执行 | 执行选定套件，遇到首个未成功结果时停止，并完成会话汇总。 |
+| `tests/fuzz/terminal-dashboard.mjs` | 显示进度，不参与测试选择，也不改变执行行为。 |
 
 重构时应保持套件顺序、种子推导常量、环境变量名和报告格式稳定。通过轮次、失败轮次、中断、运行时间上限和源码变化各有独立计数；未完成的工作不能计为通过。
 
 ## 网页、Android 与 iOS QA
 
-当前浏览器与设备检查使用[跨平台 QA 框架](../qa/README.zh-CN.md)：
+当前浏览器与设备检查使用[跨平台 QA 框架](../tests/qa/README.zh-CN.md)：
 
 ```sh
 npm run qa:build
@@ -56,6 +56,6 @@ npm run qa:preview
 
 ## 历史场景
 
-原 `work/*-qa/` 目录已移到 [`qa/archive/`](../qa/archive/)，保留原专项场景与测试。重现旧问题时，可运行 `qa:archive:licenses`、`qa:archive:android`、`qa:archive:phone:build`、`qa:archive:iphone:build`；配套服务器命令及隔离要求见框架指南。
+原 `work/*-qa/` 目录已移到 [`tests/qa/archive/`](../tests/qa/archive/)，保留原专项场景与测试。重现旧问题时，可运行 `qa:archive:licenses`、`qa:archive:android`、`qa:archive:phone:build`、`qa:archive:iphone:build`；配套服务器命令及隔离要求见框架指南。
 
 归档场景不得在玩家的生产来源上运行：部分会清空自身页面存储，带日期的 iPhone 云端场景使用独立测试键。预览配置、截图和原始设备报告仍由 Git 忽略。历史性能结果不代表当前真机验证。

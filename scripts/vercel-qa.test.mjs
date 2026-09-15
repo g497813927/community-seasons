@@ -16,17 +16,17 @@ const deployment = { id: 'dpl_test', projectId: config.projectId, target: null, 
 async function fixture(t) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'vercel-qa-test-'));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
-  const source = { 'src/example.ts': 'export const game = 1;', 'qa/preview/example.mjs': 'export const qa = 1;', 'package.json': '{}', 'package-lock.json': '{}' };
+  const source = { 'src/example.ts': 'export const game = 1;', 'tests/qa/preview/example.mjs': 'export const qa = 1;', 'package.json': '{}', 'package-lock.json': '{}' };
   const sourceHashes = Object.fromEntries(Object.entries(source).map(([file, contents]) => [file, sha(contents)]));
   const outputs = {
-    'qa/preview/dist/index.html': '<meta name="community-seasons-qa" content="community-seasons-qa-v1"><script src="./assets/qa-test.js"></script>',
-    'qa/preview/dist/assets/qa-test.js': 'window.__communitySeasonsQA={id:"community-seasons-qa-v1",storagePrefix:"qa-community-seasons-v1:",cloud:"disabled"};',
-    'qa/preview/dist/assets/main-test.js': 'export const fixtureGame = true;',
-    'qa/preview/dist/assets/main-test.css': 'body { margin: 0; }',
-    'qa/preview/dist/favicon.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/></svg>',
-    'qa/preview/dist/open-source-licenses.json': JSON.stringify({ packages: [{ name: 'fixture-package', version: '1.0.0', license: 'MIT', text: 'Fixture license notice.' }] }),
-    'qa/preview/dist/THIRD-PARTY-NOTICES.txt': 'fixture-package 1.0.0 — MIT\nFixture license notice.\n',
-    'qa/preview/dist/qa-build-info.json': JSON.stringify({ version: 1, sourceHashes }),
+    'tests/qa/preview/dist/index.html': '<meta name="community-seasons-qa" content="community-seasons-qa-v1"><script src="./assets/qa-test.js"></script>',
+    'tests/qa/preview/dist/assets/qa-test.js': 'window.__communitySeasonsQA={id:"community-seasons-qa-v1",storagePrefix:"qa-community-seasons-v1:",cloud:"disabled"};',
+    'tests/qa/preview/dist/assets/main-test.js': 'export const fixtureGame = true;',
+    'tests/qa/preview/dist/assets/main-test.css': 'body { margin: 0; }',
+    'tests/qa/preview/dist/favicon.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/></svg>',
+    'tests/qa/preview/dist/open-source-licenses.json': JSON.stringify({ packages: [{ name: 'fixture-package', version: '1.0.0', license: 'MIT', text: 'Fixture license notice.' }] }),
+    'tests/qa/preview/dist/THIRD-PARTY-NOTICES.txt': 'fixture-package 1.0.0 — MIT\nFixture license notice.\n',
+    'tests/qa/preview/dist/qa-build-info.json': JSON.stringify({ version: 1, sourceHashes }),
   };
   for (const [file, contents] of Object.entries({ ...source, ...outputs })) {
     await fs.mkdir(path.dirname(path.join(root, file)), { recursive: true });
@@ -165,14 +165,14 @@ test('only the tested current static QA files are deployed as preview', async t 
 
 test('unexpected output files, symlinks and a production bundle are rejected', async t => {
   const f = await fixture(t);
-  const bad = path.join(f.root, 'qa/preview/dist/.env');
+  const bad = path.join(f.root, 'tests/qa/preview/dist/.env');
   await fs.writeFile(bad, 'do not upload');
   await assert.rejects(readArtifact(f.root), /unexpected file/);
   await fs.unlink(bad);
   await fs.symlink(path.join(f.root, 'src/example.ts'), bad);
   await assert.rejects(readArtifact(f.root), /symbolic links/);
   await fs.unlink(bad);
-  await fs.writeFile(path.join(f.root, 'qa/preview/dist/assets/qa-test.js'), 'window.production=true;');
+  await fs.writeFile(path.join(f.root, 'tests/qa/preview/dist/assets/qa-test.js'), 'window.production=true;');
   await assert.rejects(readArtifact(f.root), /isolated QA preview/);
 });
 

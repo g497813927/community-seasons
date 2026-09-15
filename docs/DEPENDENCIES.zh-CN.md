@@ -6,7 +6,7 @@
 
 | 生态 | 检查范围 | 同时打开的版本更新 PR 上限 |
 | --- | --- | --- |
-| npm | 根目录工作区、`src/`、`qa/archive/phone-cart-fix-qa/` | 5 |
+| npm | 根目录工作区、`src/`、`tests/qa/archive/phone-cart-fix-qa/` | 5 |
 | GitHub Actions | `.github/workflows/` 与根目录的 Action 清单 | 3 |
 
 当版本约束兼容时，同一个 npm 依赖在多个目录中的更新会放入一个 PR。无关依赖保留独立 PR；约束不兼容时可能拆分 PR。`increase` 策略会提高现有版本要求；审查时仍须保留本仓库的精确版本锁定。GitHub Actions 更新也保持独立。字段说明见 [GitHub 配置参考](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference)。
@@ -23,8 +23,8 @@
 
 ```sh
 npm run setup
-npm ci --prefix qa/archive/phone-cart-fix-qa --ignore-scripts
-npm --prefix qa/archive/phone-cart-fix-qa run build
+npm ci --prefix tests/qa/archive/phone-cart-fix-qa --ignore-scripts
+npm --prefix tests/qa/archive/phone-cart-fix-qa run build
 npm --prefix src run licenses:generate
 npm run build
 npm test
@@ -41,7 +41,7 @@ npm run qa:test
 ```sh
 npm audit
 npm audit --prefix src
-npm audit --prefix qa/archive/phone-cart-fix-qa
+npm audit --prefix tests/qa/archive/phone-cart-fix-qa
 ```
 
 修复验证失败后再请求审查和合并。依赖更新通过验证后，仍须遵循正常的[发布流程](RELEASE.zh-CN.md)才能发布。
