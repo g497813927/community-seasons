@@ -92,6 +92,7 @@ test("production build rejects query controls, test globals, and QA workspace al
     'new URL(location.href).searchParams.get("speed")',
     "window.__phoneQA = {}",
     "window.__journeyRun = run",
+    "window.__communitySeasonsQA = {}",
   ])
     assert.throws(() => boundary.assertProductionCode(code, "main.tsx", true));
   const guard = boundary.productionBoundary(fileURLToPath(root));
@@ -102,12 +103,13 @@ test("production build rejects query controls, test globals, and QA workspace al
       "/work/community-seasons/lib/game/scenes.ts",
     ),
   );
-  assert.throws(
-    () =>
-      guard.transform(
-        'export {createRun} from "engine"',
-        "/some/project/work/iphone-qa/engine-qa.ts",
-      ),
+  for (const path of [
+    "/some/project/work/iphone-qa/engine-qa.ts",
+    "/some/project/qa/archive/iphone-qa/engine-qa.ts",
+    "/some/project/qa/preview/bootstrap.ts",
+    "C:\\project\\qa\\preview\\toy-sdk.ts",
+  ]) assert.throws(
+    () => guard.transform('export const fixture = true', path),
     /Test workspace/,
   );
   assert.throws(

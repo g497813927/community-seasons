@@ -55,12 +55,12 @@ node run.mjs full
 | `work/community-tests/` | 引擎、渲染、布局、题库、许可和正式版本边界的确定性回归测试 |
 | `work/property-tests/` | 使用生成数据测试玩法及本地/云端存档 |
 | `work/renderer-fuzz.mjs` | 随机画布和场景检查 |
-| `work/*-qa/` | 隔离的浏览器和手机 QA 测试页面 |
+| `qa/` | 通用网页/Android/iOS 预览、浏览器检查、设备检查与历史场景 |
 | `run.mjs`、`fuzz_game.py`、`terminal-dashboard.mjs` | 模糊测试运行器、可选 Python 启动器和终端仪表盘 |
 | `docs/` | QA、模糊测试、验证记录和发布说明 |
 | `snapshot.json` | 用于复现的历史导入基线；每次测试都会记录当前源码的哈希值 |
 
-`src/` 保存游戏代码，`work/` 保存测试和 QA 测试页面。两者都是需要维护的源码目录。构建产物、已安装的依赖和 QA 结果均由 Git 忽略。
+`src/` 保存游戏代码，`work/` 保存引擎和属性测试，`qa/` 保存浏览器与设备 QA。它们都是需要维护的源码目录。构建产物、已安装的依赖和 QA 结果均由 Git 忽略。
 
 ## 修改与维护
 

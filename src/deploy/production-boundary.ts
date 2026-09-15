@@ -2,7 +2,7 @@ import type { Plugin } from "vite";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 
 const testHook =
-  /__phoneQA|__journey(?:Run|Engine)|__qaCloud|qa-iphone-\d+|qa-suite\.js|(?:engine|render)-qa\.[jt]s|mock-toy-sdk/;
+  /__communitySeasonsQA|qa-community-seasons-v1:|__phoneQA|__journey(?:Run|Engine)|__qaCloud|qa-iphone-\d+|qa-suite\.js|(?:engine|render)-qa\.[jt]s|mock-toy-sdk/;
 const queryControl =
   /\bURLSearchParams\b|\blocation\s*(?:\.\s*(?:search|hash)\b|\[\s*["'`](?:search|hash)["'`]\s*\])|\.\s*searchParams\b/;
 
@@ -42,7 +42,7 @@ export function productionBoundary(appRoot: string): Plugin {
       const path = id.split("?")[0].replaceAll("\\", "/");
       if (
         !path.startsWith(`${root}/`) &&
-        /\/work\/(?:iphone-qa|journey-browser|cloud-browser|community-tests)(?:\/|$)/.test(path)
+        (/\/qa\//.test(path) || /\/work\/(?:[^/]+-qa|journey-browser|cloud-browser|community-tests)(?:\/|$)/.test(path))
       )
         throw new Error(`Test workspace imports cannot ship: ${path}`);
       if (

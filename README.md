@@ -55,12 +55,12 @@ See the [QA guide](docs/QA.md) for browser and physical-device checks, and the [
 | `work/community-tests/` | Deterministic engine, renderer, layout, question-bank, license and production-boundary regressions |
 | `work/property-tests/` | Generated gameplay and local/cloud-save tests |
 | `work/renderer-fuzz.mjs` | Randomized canvas and scene checks |
-| `work/*-qa/` | Isolated browser and phone QA fixtures |
+| `qa/` | Shared web/Android/iOS QA preview, browser checks, device inspection, and archived scenarios |
 | `run.mjs`, `fuzz_game.py`, `terminal-dashboard.mjs` | Fuzz runner, optional Python launcher and terminal dashboard |
 | `docs/` | QA, fuzzing, validation and release notes |
 | `snapshot.json` | Historical import baseline for reproducibility; runs record current source hashes |
 
-`src/` contains the game, and `work/` contains its tests and QA fixtures. Both are maintained source directories. Generated builds, installed dependencies and QA results are ignored by Git.
+`src/` contains the game, `work/` contains automated engine/property tests, and `qa/` contains browser/device QA. These are maintained source directories. Generated builds, installed dependencies and QA results are ignored by Git.
 
 ## Making changes
 

@@ -39,38 +39,23 @@ See [FUZZING.md](FUZZING.md) for workload settings and exact failure replay. `sn
 
 Keep suite order, seed derivation constants, environment variable names and the report format stable when refactoring. Passed rounds, failed rounds, interruptions, runtime limits and changed source each have a separate counter; incomplete work must not count as passing.
 
-## Browser layout checks
+## Web, Android and iOS QA
 
-Install the browser once:
-
-```sh
-npx playwright install chromium
-```
-
-Start a fixture server in one terminal and its tests in another, both from the repository root:
+Use the [cross-platform QA framework](../qa/README.md) for current browser and device checks:
 
 ```sh
-npm run qa:licenses:serve
-npm run qa:licenses
+npm run qa:build
+npm run qa:test
+npm run qa:all
+npm run qa:preview
 ```
 
-```sh
-npm run qa:android:serve
-npm run qa:android
-```
+`qa:web`, `qa:android`, and `qa:ios` run individual browser profiles. The web and Android profiles use Chromium; iOS uses WebKit. Mobile profiles are simulations, not native performance measurements. Each uses clean browser contexts, isolated saves, blocked external requests, and timestamped reports under `results/qa/`.
 
-Licenses QA uses port 3029; Android large-text QA uses 3028. Tests write screenshots and JSON under their fixture directory. Text scaling is simulated in Chromium, not native Android hardware. The licenses suite checks lazy loading, original notices, no hyperlinks, focus, pause, retry and responsive layouts. Android QA checks result/pause layouts and high numeric values.
+For a physical device, open the exact built preview in normal Safari/Chrome and use `qa:device` with an explicitly selected URL and inspector target. The device guide covers Android USB forwarding and the iOS Web Inspector bridge. Measurement requires the unlocked, visible, focused preview and a real tap. The generic preview disables all Toy SDK/cloud access and maps saves before the current game loads. It works locally or as an authorized isolated hosted preview.
 
-The local fixtures may clear storage **on their own local origin**; use their dedicated ports and clean browser profiles, not a player's production origin. Fixtures are not release builds.
+## Historical scenarios
 
-## Physical iPhone / cart QA
+The former `work/*-qa/` directories are preserved in [`qa/archive/`](../qa/archive/) with their existing targeted scenarios and tests. Use `qa:archive:licenses`, `qa:archive:android`, `qa:archive:phone:build`, and `qa:archive:iphone:build` when reproducing those issues; see the framework guide for paired server commands and safety boundaries.
 
-`work/phone-cart-fix-qa/` is the focused cart harness; `work/iphone-qa/` retains the extended rendering/performance harness. Their bootstrap and SDK wrappers isolate test state from game saves. Build the focused harness with `npm run qa:phone:build`. Build the extended harness with `npm run qa:iphone:build`. Never upload either output as a production release. Obsolete font/DPR experiment scripts were not imported.
-
-To run through Toy, upload a separate test preview when authorized. Create `work/phone-cart-fix-qa/preview.json` locally with `{"preview_url":"THE_ACTUAL_TOY_PREVIEW_URL"}`. For the extended harness, use `work/iphone-qa/preview-20260910.json`. These configuration files are Git-ignored; none contains an inherited preview or password.
-
-The USB scripts require an independently configured Web Inspector/CDP bridge at `http://127.0.0.1:9223`; it is not bundled or automatically launched. Keep the wired iPhone unlocked, with normal Safari showing the exact isolated preview. A real tap on Start/Begin run is necessary for reliable Safari timing. Avoid a Safari Remote Automation session when the user needs to touch the page, since its testing popup interferes.
-
-Run `node work/phone-cart-fix-qa/usb.mjs status` to inspect the selected preview. The script validates the exact preview and isolated QA context before actions. Read the script's supported commands before arming a test. Physical-device results must be freshly collected; historical device identifiers, recordings and raw outputs were not imported.
-
-Manual checks should include all seasons, turning, boost expiry, cart approach/questions/exit, wrong-answer falls, share open/close, enlarged text, orientation, pause/resume and cloud-save conflict choices. Do not write real cloud saves merely to exercise a layout.
+Do not run archived fixtures on a player's production origin: some clear their own local storage, while the dated iPhone cloud harness uses separate test keys. Preview configuration, screenshots and raw device reports remain Git-ignored. Historical performance results are not current physical-device validation.
