@@ -143,8 +143,11 @@ class GitHub:
             with self.opener.open(request, timeout=20) as response:
                 return read_json(response.read(2 * 1024 * 1024 + 1), 2 * 1024 * 1024)
         except urllib.error.HTTPError as error:
-            if redirect and error.code == 302:
-                return error.headers["Location"]
+            error.close()
+            if redirect and error.code in (301, 302, 303, 307, 308):
+                location = error.headers.get("Location")
+                require(isinstance(location, str) and location, "Missing artifact download location")
+                return location
             # Error bodies and URLs can contain secrets; neither belongs in logs.
             raise ValueError(f"GitHub API request failed (HTTP {error.code})") from None
         except urllib.error.URLError:
@@ -212,7 +215,9 @@ def prepare(api, repo, run_id, attempt, downloader=download_report):
         # workflow_run can omit fork PRs. GitHub's commit association supplies
         # candidates; the live PR head and both repository IDs must still match.
         candidates = api.request(f"{prefix}/commits/{run['head_sha']}/pulls?per_page=100")
-    require(len(candidates) < 100)
+    # A full page may hide another matching PR. Without proving the complete
+    # association is unique, stop before reading artifacts or posting a comment.
+    require(len(candidates) < 100, "PR association page may be incomplete")
     matches = []
     for candidate in candidates:
         number = integer(candidate["number"], 1, 2**31 - 1)

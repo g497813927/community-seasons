@@ -6,7 +6,7 @@ The [Build and QA workflow](../.github/workflows/ci.yml) checks pull requests, p
 
 ## What runs
 
-1. `npm run setup` installs root and game dependencies at the exact versions recorded in their lockfiles. The archived cart harness installs from its own lockfile; all three lockfiles key the npm download cache.
+1. `node scripts/check-committed-notices.mjs` checks committed license notices before installing dependencies or generating files. Then `npm run setup` installs root and game dependencies at the exact versions recorded in their lockfiles. The archived cart harness installs from its own lockfile; all three lockfiles key the npm download cache.
 2. `npm --prefix src run questions:validate` checks committed question data before the build can regenerate it. Then `npm run build`, `npm test` and `npm run test:types` compile the production game and run deterministic regressions and property-generator type checks.
 3. `node run.mjs quick --rounds 1 --seed 20260914 --no-tui` runs one reproducible, bounded fuzz round and records current source hashes.
 4. `npm run qa:build` and `npm run qa:test` compile and test the general isolated QA preview and device-inspection helpers.
@@ -15,7 +15,7 @@ The [Build and QA workflow](../.github/workflows/ci.yml) checks pull requests, p
 
 Browser checks create their own local fixture server and fresh browser contexts. They verify startup, licenses, controls, pause/resume, storage isolation and blocked external requests. Android and iOS entries are browser simulations; a passing workflow does not establish physical-device performance or native Safari behavior. Follow the [QA guide](QA.md) for connected-device checks.
 
-The production build regenerates question data and dependency notices before compiling. Optional packages vary by operating system, so generated notices from the Linux runner can differ from a macOS installation. CI validates their content and freshness without requiring a clean Git diff after generation.
+The production build regenerates question data and dependency notices before compiling. The earlier read-only notice check compares the committed JSON inventory's `generatedFromLockfile` SHA-256 with `src/package-lock.json`, and checks that the committed text notice matches that inventory. A stale snapshot fails before prebuild can replace it. This check needs no installed packages: optional packages vary by operating system, so a valid macOS inventory can differ from the later Linux-generated inventory. Regression tests validate the regenerated content without requiring a clean Git diff.
 
 ## Investigating a failure
 

@@ -39,6 +39,12 @@ jobs:
             src/package-lock.json
             qa/archive/phone-cart-fix-qa/package-lock.json
 
+      - name: Validate committed license notices before generation
+        run: |
+          mkdir -p results/ci
+          node --test scripts/check-committed-notices.test.mjs 2>&1 | tee results/ci/committed-notices-tests.log
+          node scripts/check-committed-notices.mjs 2>&1 | tee results/ci/committed-notices.log
+
       - name: Install locked dependencies
         run: |
           mkdir -p results/ci

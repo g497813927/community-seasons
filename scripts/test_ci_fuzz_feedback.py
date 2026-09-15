@@ -212,6 +212,37 @@ class FeedbackTests(unittest.TestCase):
             api.request("/user")
         self.assertEqual(str(context.exception), "GitHub API request failed (HTTP 403)")
 
+    def test_artifact_redirects_are_returned_only_when_explicitly_requested(self):
+        api = GitHub("fake-credential")
+        location = "https://example.blob.core.windows.net/fixture"
+        class RedirectingOpener:
+            def __init__(self, code, headers):
+                self.code, self.headers = code, headers
+                self.calls = 0
+
+            def open(self, request, timeout):
+                self.calls += 1
+                raise urllib.error.HTTPError(request.full_url, self.code, "redirect", self.headers, None)
+
+        for code in (301, 302, 303, 307, 308):
+            with self.subTest(code=code):
+                api.opener = RedirectingOpener(code, {"Location": location})
+                self.assertEqual(api.request("/artifact/zip", redirect=True), location)
+                self.assertEqual(api.opener.calls, 1)  # No authenticated request to storage.
+                with self.assertRaises(ValueError):
+                    api.request("/artifact/zip")
+        api.opener = RedirectingOpener(302, {})
+        with self.assertRaisesRegex(ValueError, "Missing artifact download location"):
+            api.request("/artifact/zip", redirect=True)
+
+    def test_full_candidate_page_stops_before_pr_or_artifact_reads(self):
+        api = api_fixture(fork=True)
+        path = "/repos/owner/game/commits/" + "b" * 40 + "/pulls?per_page=100"
+        api.responses[path] = [{"number": number} for number in range(1, 101)]
+        with self.assertRaisesRegex(ValueError, "PR association page may be incomplete"):
+            prepare(api, "owner/game", 42, 1, lambda _: self.fail("downloaded ambiguous result"))
+        self.assertEqual(api.calls[-1][0], path)
+
     def test_bot_identity_required_before_comments(self):
         api = FakeAPI({"/users/github-actions%5Bbot%5D": {"login": "other", "id": 8}})
         with self.assertRaises(ValueError):
