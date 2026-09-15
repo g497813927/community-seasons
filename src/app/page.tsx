@@ -1832,7 +1832,7 @@ export default function Home() {
             </output>
           )}
         </div>
-        {feedback && !hud.rail && !(active && hud.time < 5) && (
+        {feedback && !hud.rail && !(active && hud.railReturnRemaining === 0) && (
           <output className="boost-feedback" aria-live="polite">
             {t(feedback)}
           </output>

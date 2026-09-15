@@ -62,6 +62,57 @@ async function state(page) {
   });
 }
 
+async function checkFeedback(page, row, placement, label) {
+  const outputs = page.locator('.boost-feedback');
+  const count = await outputs.count();
+  assert.equal(count, placement ? 1 : 0, `${label}: duplicate or missing feedback`);
+  if (!placement) {
+    row.feedback.push({ label, count });
+    return;
+  }
+  assert.equal(await page.locator(placement === 'tray'
+    ? '.run-bottom-hud .boost-feedback' : '.arena > .boost-feedback').count(), 1,
+  `${label}: incorrect feedback placement`);
+  assert.equal(await outputs.getAttribute('aria-live'), 'polite', `${label}: announcement lost`);
+  const text = await outputs.innerText();
+  assert.ok(text.trim(), `${label}: empty announcement`);
+  assert.match(text, row.locale === 'en' ? /activated!/ : /已激活！/, `${label}: translation missing`);
+  await scaleText(page, row.scale);
+  const box = await outputs.boundingBox();
+  const arena = await page.locator('.arena').boundingBox();
+  // This regression changes the active tray output. Paused-screen geometry is
+  // unchanged; still verify its single translated live announcement above.
+  if (placement === 'tray')
+    assert.ok(box && box.x >= arena.x - 1 && box.x + box.width <= arena.x + arena.width + 1 &&
+      box.y >= arena.y - 1 && box.y + box.height <= arena.y + arena.height + 1,
+    `${label}: feedback extends beyond the arena`);
+  row.feedback.push({ label, count, placement, text, box });
+}
+
+async function collectRoadBooster(page, kind) {
+  const before = await page.evaluate(kind => {
+    const s = window.__boostQA.live;
+    Object.assign(s, {
+      time: 30, distance: 400, mode: 'running', lane: 0, x: 0, jump: 0.46, slide: 0,
+      rail: null, railReturnRemaining: 0, sceneTransition: 0, turnRemaining: 0, fork: null,
+      obstacles: [], pickups: [], nextRow: 1e9, nextRelicAt: 1e9,
+      nextForkAt: 1e9, nextRailAt: 1e9, nextPortalAt: 1e9,
+    });
+    for (const key of Object.keys(s.boosts)) s.boosts[key] = 0;
+    s.relics = [{ id: s.nextId++, kind, lane: 0, at: s.distance + 0.05, taken: false }];
+    const count = s.collectedRelics[kind];
+    window.__boostQA.frozen = false;
+    return count;
+  }, kind);
+  try {
+    await page.waitForFunction(({ kind, before }) => window.__boostQA.live.collectedRelics[kind] === before + 1,
+      { kind, before });
+  } finally {
+    await page.evaluate(() => { window.__boostQA.frozen = true; });
+  }
+  assert.ok((await state(page)).boosts[kind] > 0, `${kind}: road pickup did not activate`);
+}
+
 async function measure(page) {
   return page.evaluate(() => {
     const rect = r => ({ x: r.x, y: r.y, right: r.right, bottom: r.bottom, width: r.width, height: r.height });
@@ -123,10 +174,14 @@ async function tapDisabled(page, selector, mobile) {
   }
 }
 
+const requestedCases = new Set((process.env.QA_CASES ?? '').split(',').filter(Boolean));
 const cases = (process.env.QA_QUICK === '1' ? [[320, 568]] : [[320, 568], [390, 844], [1280, 900]])
   .flatMap(([width, height]) => ['en', 'zh-CN'].flatMap(locale => [1, 2].map(scale => ({ width, height, locale, scale }))));
+const selectedCases = requestedCases.size
+  ? cases.filter(({ width, locale, scale }) => requestedCases.has(`${width}-${locale}-${scale}`)) : cases;
 try {
-  for (const config of cases) {
+  assert.ok(!requestedCases.size || selectedCases.length === requestedCases.size, 'Unknown QA_CASES selector');
+  for (const config of selectedCases) {
     const { width, height, locale, scale } = config;
     const mobile = width < 750;
     const context = await browser.newContext({ viewport: { width, height }, locale, isMobile: mobile, hasTouch: mobile });
@@ -134,7 +189,7 @@ try {
     page.on('pageerror', e => errors.push(String(e)));
     page.on('request', request => requests.push(request.url()));
     page.setDefaultTimeout(5000);
-    const row = { ...config, layoutErrors: [] };
+    const row = { ...config, layoutErrors: [], feedback: [] };
     const activate = selector => mobile ? page.locator(selector).tap() : page.locator(selector).click();
     const checkLayout = (layout, phase) => {
       try { assertLayout(layout, mobile); }
@@ -153,6 +208,7 @@ try {
       assert.equal(await page.locator('.boost-slot').count(), 4, 'opening controls missing');
       row.opening = await measure(page); checkLayout(row.opening, 'opening');
       await page.screenshot({ path: `tests/qa/archive/boost-controls-qa/${width}-${locale}-${scale}-opening.png` });
+      await checkFeedback(page, row, null, 'before activation');
 
       await mutate(page, { time: 4.999 });
       assert.equal(await page.locator('.boost-slot').count(), 4, 'opening controls removed too early');
@@ -170,6 +226,13 @@ try {
       await pointerStroke(page, '.boost-slot.shield');
       assert.deepEqual(await state(page), before, 'drag on booster changes gameplay');
       await activate('.boost-slot.shield');
+      await checkFeedback(page, row, 'tray', 'owned shield after five seconds');
+      await page.keyboard.press('p');
+      await page.waitForFunction(() => window.__boostQA.live.mode === 'paused');
+      await checkFeedback(page, row, 'standalone', 'owned shield while paused');
+      await page.keyboard.press('p');
+      await page.waitForFunction(() => window.__boostQA.live.mode === 'running');
+      await checkFeedback(page, row, 'tray', 'owned shield after resume');
       const shield = await state(page);
       assert.equal(shield.inventory.shield, 1);
       assert.equal(shield.boosts.shield, 1); assert.equal(shield.boosts.shieldTime, 12);
@@ -179,6 +242,7 @@ try {
       await pointerStroke(page, '.boost-slot.shield');
       assert.deepEqual(await state(page), shield, 'active booster tap or drag affects inventory, path or skill');
       await activate('.boost-slot.doubleCoins');
+      await checkFeedback(page, row, 'tray', 'owned shared rewards after five seconds');
       const rewards = await state(page);
       assert.equal(rewards.inventory.doubleCoins, 0); assert.equal(rewards.boosts.doubleCoins, 12);
       await mutate(page, { boosts: { shield: 0, shieldTime: 0, doubleCoins: 0 } });
@@ -205,6 +269,7 @@ try {
       assert.deepEqual(await state(page), beforeLateOpening, 'late Fresh Start or Season Pass consumes inventory');
       await page.keyboard.press('2');
       assert.equal((await state(page)).inventory.shield, 0, 'keyboard booster shortcut no longer works');
+      await checkFeedback(page, row, 'tray', 'keyboard shield activation');
 
       await mutate(page, { boosts: { shield: 0, shieldTime: 0 }, rail: {
         elapsed: 2, phase: 'question', questions: ['respectful-disagreement'], index: 0,
@@ -212,11 +277,14 @@ try {
         correct: null, correctCount: 0, failure: null, reward: 45,
       } });
       assert.equal(await page.locator('.boost-tray, .permanent-hud').count(), 0, 'boost controls appear during railway quiz');
+      await checkFeedback(page, row, null, 'railway suppresses booster feedback');
       const rail = await state(page); await page.keyboard.press('2'); await page.keyboard.press('e');
       assert.deepEqual(await state(page), rail, 'railway accepts booster or skill');
       await mutate(page, { rail: null, railReturnRemaining: 1 });
       assert.equal(await page.locator('.boost-tray, .permanent-hud').count(), 0, 'boost controls appear during railway exit');
+      await checkFeedback(page, row, 'standalone', 'railway return retains feedback');
       await mutate(page, { railReturnRemaining: 0 });
+      await checkFeedback(page, row, 'tray', 'road return restores tray feedback');
       await activate('.permanent-trigger');
       assert.equal((await state(page)).boosts.magnet, 12, 'permanent skill button no longer works');
       await mutate(page, { boosts: { magnet: 0 }, skillCharge: 100, skillRechargeLocked: false });
@@ -238,6 +306,16 @@ try {
       await scaleText(page, scale);
       row.active = await measure(page); checkLayout(row.active, 'active');
       await page.screenshot({ path: `tests/qa/archive/boost-controls-qa/${width}-${locale}-${scale}-active.png` });
+      const pickupInventory = (await state(page)).inventory;
+      for (const kind of ['shield', 'doubleCoins', 'magnet', 'rush']) {
+        await collectRoadBooster(page, kind);
+        await checkFeedback(page, row, 'tray', `road ${kind} pickup`);
+        if (width === 390 && scale === 2 && kind === 'shield')
+          await page.screenshot({ path: `tests/qa/archive/boost-controls-qa/${width}-${locale}-${scale}-road-pickup.png` });
+        assert.deepEqual((await state(page)).inventory, pickupInventory, `${kind}: road pickup changed stored purchases`);
+      }
+      await page.waitForFunction(() => document.querySelectorAll('.boost-feedback').length === 0);
+      await checkFeedback(page, row, null, 'feedback expires');
       assert.equal(requests.some(url => url.includes('toy-sdk.js') || !url.startsWith(base)), false, 'fixture contacted cloud/external origin');
       assert.deepEqual(errors, []);
       row.passed = row.layoutErrors.length === 0;
