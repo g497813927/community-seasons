@@ -35,7 +35,7 @@ Vercel 访问令牌[按团队限定范围](https://vercel.com/kb/guide/how-do-i-
 
 ## 本地触发
 
-使用 Node.js 24，在仓库根目录运行：
+使用 [.nvmrc](../.nvmrc) 指定的 Node.js 版本，在仓库根目录运行：
 
 ```sh
 npm run setup

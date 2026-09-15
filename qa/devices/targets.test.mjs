@@ -34,6 +34,13 @@ test('Vercel QA uses only an exact query-free HTTPS page after private access is
     assert.throws(() => validatePage(invalid));
 });
 
+test('Vercel hostnames require a dedicated QA suffix or both build and team segments', () => {
+  for (const hostname of ['community-seasons-qa-test.vercel.app', 'community-seasons-59sotdkkf-techzjc.vercel.app', 'community-seasons-59sotdkkf-example-team.vercel.app'])
+    assert.equal(validatePage(`https://${hostname}/`).hosted, false);
+  for (const hostname of ['community-seasons-evil.vercel.app', 'community-seasons-qa.vercel.app', 'community-seasons--team.vercel.app', 'community-seasons-build-.vercel.app', 'community-seasons-build--team.vercel.app', 'community-seasons-build-team.vercel.app.evil.example'])
+    assert.throws(() => validatePage(`https://${hostname}/`));
+});
+
 test('target selection never falls back to another page or an ambiguous ID', () => {
   const selected = { id: 'qa', type: 'page', url: local.url.href };
   const rows = [selected, { id: 'other', type: 'page', url: 'http://127.0.0.1:3001/' }, { id: 'worker', type: 'service_worker', url: local.url.href }];

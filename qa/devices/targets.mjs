@@ -31,8 +31,9 @@ export function validatePage(value) {
   const url = plainUrl(value, 'Selected preview');
   if (!['http:', 'https:'].includes(url.protocol)) throw Error('Selected preview must use HTTP(S).');
   if (url.search) throw Error('Selected preview cannot contain query parameters.');
-  // Vercel may shorten community-seasons-qa to community-seasons in generated URLs.
-  if (/^community-seasons-[a-z0-9-]+\.vercel\.app$/.test(url.hostname)) {
+  // Accept the dedicated qa-… suffix or a shortened <build>-<team> suffix.
+  // Both require at least two nonempty segments after community-seasons-.
+  if (/^community-seasons-[a-z0-9]+-[a-z0-9]+(?:-[a-z0-9]+)*\.vercel\.app$/.test(url.hostname)) {
     if (url.protocol !== 'https:' || url.port || url.search || !['/', '/index.html'].includes(url.pathname))
       throw Error('Open the private Vercel access link first, then select its query-free HTTPS QA page.');
     return { url, hosted: false };

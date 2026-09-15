@@ -35,7 +35,7 @@ For GitHub Actions, configure an environment named **qa-preview** with deploymen
 
 ## Local trigger
 
-Run from the repository root using Node.js 24:
+Run from the repository root using the Node.js version specified in [.nvmrc](../.nvmrc):
 
 ```sh
 npm run setup
