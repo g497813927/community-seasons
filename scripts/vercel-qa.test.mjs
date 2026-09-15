@@ -44,7 +44,7 @@ async function fixture(t) {
   return { root, report, reportFile };
 }
 
-function apiFixture({ protection = project, ready = deployment, anonymousStatus = 401, share = { protectionBypass: { [secret]: { scope: 'shareable-link', expires: timestamp + config.ttl * 1000 } } } } = {}) {
+function apiFixture({ protection = project, ready = deployment, anonymousStatus = 401, anonymousHeaders = {}, share = { protectionBypass: { [secret]: { scope: 'shareable-link', expires: timestamp + config.ttl * 1000 } } } } = {}) {
   const calls = [];
   const fetchImpl = async (url, options = {}) => {
     calls.push({ url, options });
@@ -60,7 +60,7 @@ function apiFixture({ protection = project, ready = deployment, anonymousStatus 
       return Response.json(value);
     }
     assert.equal(options.headers, undefined, 'bearer credentials must never be sent to a deployment');
-    return new Response('', { status: anonymousStatus });
+    return new Response('', { status: anonymousStatus, headers: anonymousHeaders });
   };
   return { calls, fetchImpl, now: () => timestamp };
 }
@@ -174,6 +174,27 @@ test('wrong project, production target or anonymous success never creates a shar
   for (const options of [{ ready: { ...deployment, projectId: 'prj_other' } }, { ready: { ...deployment, target: 'production' } }, { anonymousStatus: 200 }]) {
     const api = apiFixture(options);
     await assert.rejects(deployQA(config, { root: f.root, ...api }));
+    assert.equal(api.calls.some(call => call.options.method === 'PATCH'), false);
+  }
+});
+
+test('Vercel HTTPS SSO redirects confirm anonymous denial before a share link is requested', async t => {
+  for (const status of [302, 303, 307, 308]) {
+    const f = await fixture(t);
+    const api = apiFixture({ anonymousStatus: status, anonymousHeaders: { Location: 'https://vercel.com/sso-api?url=qa-preview' } });
+    const result = await deployQA(config, { root: f.root, ...api });
+    assert.equal(result.anonymousStatus, status);
+    const anonymousIndex = api.calls.findIndex(call => call.url === `https://${deployment.url}/`);
+    const shareIndex = api.calls.findIndex(call => call.options.method === 'PATCH');
+    assert.ok(anonymousIndex >= 0 && shareIndex > anonymousIndex);
+  }
+});
+
+test('missing, insecure, unexpected and lookalike SSO locations never create a share link', async t => {
+  const f = await fixture(t);
+  for (const location of [undefined, '/sso-api', 'http://vercel.com/sso-api', 'https://vercel.com/other', 'https://other.example/sso-api', 'https://vercel.com.evil.example/sso-api']) {
+    const api = apiFixture({ anonymousStatus: 302, anonymousHeaders: location ? { Location: location } : {} });
+    await assert.rejects(deployQA(config, { root: f.root, ...api }), /Anonymous access was not denied/);
     assert.equal(api.calls.some(call => call.options.method === 'PATCH'), false);
   }
 });
