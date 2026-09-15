@@ -30,6 +30,9 @@ test('Vercel QA uses only an exact query-free HTTPS page after private access is
   assert.equal(selectFrame({ frameTree: { frame: { id: 'vercel', url } } }, page).id, 'vercel');
   assert.doesNotThrow(() => validatePage(url + 'index.html'));
   assert.doesNotThrow(() => validatePage('https://community-seasons-5rx7lmmi5-techzjc.vercel.app/'));
+  assert.throws(() => validatePage(url + '?_vercel_share=secret'), {
+    message: 'Open the private Vercel access link first, then select its query-free HTTPS QA page.',
+  });
   for (const invalid of [url + '?_vercel_share=secret', url + 'other', url.replace('https:', 'http:'), url.replace('.app/', '.app:8443/'), 'https://community-seasons.vercel.app/', 'https://other-app.vercel.app/'])
     assert.throws(() => validatePage(invalid));
 });

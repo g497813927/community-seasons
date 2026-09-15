@@ -21,6 +21,11 @@ async function fixture(t) {
   const outputs = {
     'qa/preview/dist/index.html': '<meta name="community-seasons-qa" content="community-seasons-qa-v1"><script src="./assets/qa-test.js"></script>',
     'qa/preview/dist/assets/qa-test.js': 'window.__communitySeasonsQA={id:"community-seasons-qa-v1",storagePrefix:"qa-community-seasons-v1:",cloud:"disabled"};',
+    'qa/preview/dist/assets/main-test.js': 'export const fixtureGame = true;',
+    'qa/preview/dist/assets/main-test.css': 'body { margin: 0; }',
+    'qa/preview/dist/favicon.svg': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/></svg>',
+    'qa/preview/dist/open-source-licenses.json': JSON.stringify({ packages: [{ name: 'fixture-package', version: '1.0.0', license: 'MIT', text: 'Fixture license notice.' }] }),
+    'qa/preview/dist/THIRD-PARTY-NOTICES.txt': 'fixture-package 1.0.0 — MIT\nFixture license notice.\n',
     'qa/preview/dist/qa-build-info.json': JSON.stringify({ version: 1, sourceHashes }),
   };
   for (const [file, contents] of Object.entries({ ...source, ...outputs })) {
@@ -110,7 +115,10 @@ test('only the tested current static QA files are deployed as preview', async t 
   assert.equal(posted.project, config.projectId);
   assert.equal(posted.name, QA_PROJECT_NAME);
   for (const field of ['target', 'env', 'build', 'gitSource', 'customEnvironmentSlugOrId']) assert.equal(Object.hasOwn(posted, field), false);
-  assert.deepEqual(posted.files.map(file => file.file).sort(), ['assets/qa-test.js', 'index.html', 'qa-build-info.json']);
+  assert.deepEqual(posted.files.map(file => file.file).sort(), [
+    'THIRD-PARTY-NOTICES.txt', 'assets/main-test.css', 'assets/main-test.js', 'assets/qa-test.js',
+    'favicon.svg', 'index.html', 'open-source-licenses.json', 'qa-build-info.json',
+  ]);
   const bypass = api.calls.find(call => call.options.method === 'PATCH');
   assert.deepEqual(JSON.parse(bypass.options.body), { ttl: 3600 });
   const access = JSON.parse(await fs.readFile(result.accessFile, 'utf8'));
