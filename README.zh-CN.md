@@ -2,7 +2,13 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一款使用 React、TypeScript 和 Vite 开发的双语学习跑酷游戏，带你穿越四季社区。支持英语和简体中文，可通过键盘/WASD 或触屏滑动操作。独立运行时，游玩无需服务器账号、API 密钥或数据库。
+[![在 Toy 上游玩](https://img.shields.io/badge/Play-on_Toy-00A1D6)](https://www.bilibili.com/toy/community-seasons/index.html)
+
+《四季共建》将网络社区素养学习融入四季跑酷：躲避不当言论，通过案例讲解和铁路答题识别有害内容，练习更友善的回应。
+
+游戏支持英语和简体中文，可通过键盘/WASD 或触屏滑动操作。使用 React、TypeScript 和 Vite 开发，独立运行时无需服务器账号、API 密钥或数据库。
+
+![四季共建：穿越四季躲避不当言论，在铁路答题中选择尊重他人的回应。](docs/images/community-seasons-zh-CN.webp)
 
 ## 快速开始
 
@@ -20,6 +26,12 @@ npm run dev -- --port 3001
 下文所有命令均在仓库根目录执行。游戏代码位于 `src/`，所有测试和 QA 测试页面都直接使用这份源码。
 
 操作方式、存档和游戏规则请参阅[游戏说明](src/README.zh-CN.md)和[玩法指南](src/GAMEPLAY.zh-CN.md)。
+
+## 部署自己的副本
+
+[![使用 Vercel 部署](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fg497813927%2Fcommunity-seasons)
+
+保留 Vercel 的默认根目录（仓库根目录），项目配置会完成依赖安装和正式版构建。无需配置环境变量或密钥；此托管副本在各浏览器本地保存进度。
 
 ## 测试与构建
 
@@ -52,11 +64,7 @@ node tests/fuzz/run.mjs full
 | 路径 | 内容 |
 | --- | --- |
 | `src/` | 游戏源码、翻译、题库、资源和构建配置 |
-| `tests/unit/` | 游戏、渲染器、布局、许可与生产边界的确定性回归测试 |
-| `tests/fuzz/` | 带种子的引擎、经济与渲染器套件，以及 Node、Python 和 Shell 启动器 |
-| `tests/property/` | 生成式游戏/存档用例与带类型的属性生成器 |
-| `tests/helpers/` | 共用编译器与生成的测试模块 |
-| `tests/qa/` | 网页/Android/iOS QA 预览、设备检查、浏览器检查与历史场景 |
+| `tests/` | 自动化测试与网页/Android/iOS QA；详见[测试维护指南](tests/README.zh-CN.md) |
 | `docs/` | QA、模糊测试、验证记录和发布说明 |
 | `snapshot.json` | 用于复现的历史导入基线；每次测试都会记录当前源码的哈希值 |
 
