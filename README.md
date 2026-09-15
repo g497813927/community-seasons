@@ -4,10 +4,10 @@
 
 [![Play on Toy](https://img.shields.io/badge/Play-on_Toy-00A1D6)](https://www.bilibili.com/toy/community-seasons/index.html)
 
-[![View pull requests](https://img.shields.io/badge/PRs-view-blue)](https://github.com/g497813927/community-seasons/pulls)
-[![View issues](https://img.shields.io/badge/issues-view-blue)](https://github.com/g497813927/community-seasons/issues)
-[![View main build and QA runs](https://img.shields.io/badge/Build_%26_QA-view-blue)](https://github.com/g497813927/community-seasons/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
-[![MIT license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Open pull request count](https://community-seasons-badges.vercel.app/github/open-prs/g497813927/community-seasons)](https://github.com/g497813927/community-seasons/pulls)
+[![Open issue count](https://community-seasons-badges.vercel.app/github/open-issues/g497813927/community-seasons)](https://github.com/g497813927/community-seasons/issues)
+[![Latest main push build and QA status](https://community-seasons-badges.vercel.app/github/workflow/g497813927/community-seasons/ci.yml/main/push)](https://github.com/g497813927/community-seasons/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![Repository license](https://community-seasons-badges.vercel.app/github/license/g497813927/community-seasons)](LICENSE)
 [![Third-party license notices](https://img.shields.io/badge/third--party-notices-blue)](src/public/THIRD-PARTY-NOTICES.txt)
 
 Community Seasons is a runner about online community literacy. Travel through four seasons, dodge harmful posts, and learn to choose kinder responses through short explanations and railway quizzes.
