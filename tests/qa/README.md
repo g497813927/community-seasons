@@ -21,6 +21,8 @@ Use `qa:web`, `qa:android`, or `qa:ios` for one browser profile. Web uses Chromi
 
 Browser smoke checks install Playwright's clock before loading the page and pause it before starting gameplay. Keyboard and touch events still reach the real game; bounded clock advances run its animation callbacks. The pause check advances 300ms and requires unchanged distance, while resuming must increase distance after another 250ms. Android/English also waits six seconds of host time during the input sequence and verifies that this delay cannot move or end the run. This prevents slow CI input delivery from reaching a random obstacle before the pause check. Reports label timer/frame samples as synthetic; they are not performance measurements. Interactive previews and the physical-device inspector keep their normal clocks.
 
+Startup waits for the game's locale initialization to update `html.lang`; the report records the initial document language and the browser's requested languages. Before gameplay, the clock freezes at the observed page time without fast-forwarding outstanding timers. Regression tests exercise this transition against the installed Playwright clock, including slow control messages.
+
 ## Interactive and device checks
 
 ```sh

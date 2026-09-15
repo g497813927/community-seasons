@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, webkit, devices } from 'playwright';
 import { assertPreviewBuildIsCurrent, changedFiles, fileHashes, previewSourceHashes } from '../preview/build-info.mjs';
 import { fixtureHandler, initializeBrowserEmulation } from './runtime.mjs';
+import { freezeClockAtCurrentTime } from './clock.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const previewDist = path.join(root, 'tests/qa/preview/dist');
@@ -58,7 +59,7 @@ async function swipeChromium(page, from, to) {
   } finally { await session.detach(); }
 }
 
-async function runFlow(page, platform, locale, row, reportDirectory, sourceHashes, pauseAt) {
+async function runFlow(page, platform, locale, row, reportDirectory, sourceHashes) {
   const capture = name => page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-${name}.png`), fullPage: true, timeout: 10000 });
   const advance = async milliseconds => {
     await page.clock.runFor(milliseconds);
@@ -71,6 +72,14 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   };
   await page.locator('.start-screen .run-button').waitFor();
   await page.evaluate(() => document.fonts.ready);
+  row.localeInitialization = await page.evaluate(() => ({
+    navigatorLanguage: navigator.language,
+    navigatorLanguages: [...navigator.languages],
+    initialDocumentLanguage: document.documentElement.lang,
+  }));
+  // React renders the localized controls before its hydration effect updates
+  // html.lang. Wait for that effect without changing the browser's locale.
+  await page.waitForFunction(expected => document.documentElement.lang === expected, locale, { polling: 50 });
   assert.equal(await page.locator('html').getAttribute('lang'), locale);
   row.qa = await page.evaluate(() => window.__communitySeasonsQA?.report());
   assert.equal(row.qa?.id, markerId);
@@ -102,7 +111,7 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await page.locator('.controls-guide-done').click();
   // Freeze before gameplay starts: slow input round trips must not carry the
   // player into random obstacles while this test is checking UI controls.
-  await page.clock.pauseAt(pauseAt);
+  row.clock.pausedAt = await freezeClockAtCurrentTime(page);
   await page.locator('.run-setup-footer button[type=submit]').click();
   await advance(32);
   await page.locator('.arena.running').waitFor();
@@ -201,8 +210,7 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
   let timer;
   try {
     assert.deepEqual((await context.storageState()).origins, []);
-    const clockStart = Date.now();
-    await page.clock.install({ time: clockStart });
+    await page.clock.install({ time: Date.now() });
     await context.addInitScript(initializeBrowserEmulation, { entries: sentinelEntries, platform });
     await context.route('**/*', async route => {
       if (new URL(route.request().url()).origin !== origin) {
@@ -214,7 +222,7 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
       await page.goto(origin + previewPath);
       // Preserve emulation limitations even when the first UI assertion fails.
       row.emulation = await page.evaluate(() => window.__qaBrowserEmulation);
-      await runFlow(page, platform, locale, row, reportDirectory, sourceHashes, clockStart + 60000);
+      await runFlow(page, platform, locale, row, reportDirectory, sourceHashes);
     };
     await Promise.race([
       flow(),
