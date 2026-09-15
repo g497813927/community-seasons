@@ -2,7 +2,13 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-A bilingual learning runner through four seasonal communities, built with React, TypeScript and Vite. Play in English or Simplified Chinese with keyboard/WASD or touch/swipe controls. Standalone gameplay needs no server account, API key or database.
+[![Play on Toy](https://img.shields.io/badge/Play-on_Toy-00A1D6)](https://www.bilibili.com/toy/community-seasons/index.html)
+
+Community Seasons is a runner about online community literacy. Travel through four seasons, dodge harmful posts, and learn to choose kinder responses through short explanations and railway quizzes.
+
+Play in English or Simplified Chinese with keyboard/WASD or touch/swipe controls. Built with React, TypeScript and Vite, the game runs standalone without a server account, API key or database.
+
+![Community Seasons: dodge harmful posts across four seasons and choose respectful responses in railway quizzes.](docs/images/community-seasons-en.png)
 
 ## Quick start
 
@@ -20,6 +26,12 @@ Open [http://127.0.0.1:3001](http://127.0.0.1:3001). If you already have the rep
 Run all commands below from the repository root. Edit the game in `src/`; every test and QA fixture imports that same source.
 
 For controls, saved progress and game rules, see the [game README](src/README.md) and [gameplay guide](src/GAMEPLAY.md).
+
+## Deploy your own copy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fg497813927%2Fcommunity-seasons)
+
+Keep Vercel's Root Directory at the repository root; the included configuration handles installation and the production build. No environment variables or secrets are required. This hosted copy saves progress locally in each browser.
 
 ## Test and build
 
@@ -52,11 +64,7 @@ See the [QA guide](docs/QA.md) for browser and physical-device checks, and the [
 | Path | Contents |
 | --- | --- |
 | `src/` | Game source, translations, question bank, assets and build configuration |
-| `tests/unit/` | Deterministic game, renderer, layout, license and production-boundary regressions |
-| `tests/fuzz/` | Seeded engine, economy and renderer suites; Node, Python and shell launchers |
-| `tests/property/` | Generated gameplay/save cases and typed property generators |
-| `tests/helpers/` | Shared compiler and generated test modules |
-| `tests/qa/` | Web/Android/iOS QA preview, device inspection, browser checks and archived scenarios |
+| `tests/` | Automated tests and Web/Android/iOS QA; see the [test maintenance guide](tests/README.md) |
 | `docs/` | QA, fuzzing, validation and release notes |
 | `snapshot.json` | Historical import baseline for reproducibility; runs record current source hashes |
 
