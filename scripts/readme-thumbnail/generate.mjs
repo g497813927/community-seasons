@@ -12,7 +12,7 @@ if (args.length && !(args.length === 2 && args[0] === '--locale' && ['en', 'zh-C
   throw Error('Usage: node scripts/readme-thumbnail/generate.mjs [--locale en|zh-CN]');
 }
 const locale = args[1] ?? 'en';
-const output = path.join(root, 'docs/images', `community-seasons-${locale}.png`);
+const output = path.join(root, 'docs/images', `community-seasons-${locale}.webp`);
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'community-seasons-thumbnail-'));
 let browser, server;
 try {
@@ -48,7 +48,9 @@ try {
     throw error;
   }
   if (errors.length) throw Error(errors.join('\n'));
-  const data = await page.locator('#poster').evaluate(canvas => canvas.toDataURL('image/png').split(',')[1]);
+  const dataUrl = await page.locator('#poster').evaluate(canvas => canvas.toDataURL('image/webp', 0.9));
+  if (!dataUrl.startsWith('data:image/webp;base64,')) throw Error('This browser does not support WebP canvas export.');
+  const data = dataUrl.split(',')[1];
   await fs.mkdir(path.dirname(output), { recursive: true });
   await fs.writeFile(output, Buffer.from(data, 'base64'));
   console.log(`Rendered ${path.relative(root, output)} (1200 × 900, ${locale}) from the current game renderer.`);

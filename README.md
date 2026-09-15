@@ -8,7 +8,7 @@ Community Seasons is a runner about online community literacy. Travel through fo
 
 Play in English or Simplified Chinese with keyboard/WASD or touch/swipe controls. Built with React, TypeScript and Vite, the game runs standalone without a server account, API key or database.
 
-![Community Seasons: dodge harmful posts across four seasons and choose respectful responses in railway quizzes.](docs/images/community-seasons-en.png)
+![Community Seasons: dodge harmful posts across four seasons and choose respectful responses in railway quizzes.](docs/images/community-seasons-en.webp)
 
 ## Quick start
 

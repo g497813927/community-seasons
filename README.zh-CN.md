@@ -8,7 +8,7 @@
 
 游戏支持英语和简体中文，可通过键盘/WASD 或触屏滑动操作。使用 React、TypeScript 和 Vite 开发，独立运行时无需服务器账号、API 密钥或数据库。
 
-![四季共建：穿越四季躲避不当言论，在铁路答题中选择尊重他人的回应。](docs/images/community-seasons-zh-CN.png)
+![四季共建：穿越四季躲避不当言论，在铁路答题中选择尊重他人的回应。](docs/images/community-seasons-zh-CN.webp)
 
 ## 快速开始
 
