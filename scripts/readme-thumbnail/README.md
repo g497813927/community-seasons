@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-The Chinese README uses a WebP conversion of the original 1200 × 900 [Toy cover](https://i0.hdslb.com/bfs/static/toy/app/community-seasons/poster_13585.png), saved as `docs/images/community-seasons-zh-CN.webp`. The English version adapts the original Canvas cover generator with localized text and the current game renderer. No image-generation service is used.
+The Chinese README uses the repository's [1200 × 900 WebP copy of the original Toy cover](../../docs/images/community-seasons-zh-CN.webp). Use this checked-in asset when linking to the cover; the Toy CDN URL can return HTTP 403 for external requests. The English version adapts the original Canvas cover generator with localized text and the current game renderer. No image-generation service is used.
 
 From the repository root, after `npm run setup`:
 
