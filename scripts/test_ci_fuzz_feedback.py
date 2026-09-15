@@ -8,7 +8,7 @@ import unittest
 import urllib.error
 import zipfile
 
-from ci_fuzz_feedback import GitHub, collect, decode_prepared, format_comment, format_details, prepare, publish, unpack_report, validate_report
+from ci_fuzz_feedback import ARCHIVE_LIMIT, LIMIT, GitHub, collect, decode_prepared, format_comment, format_details, prepare, publish, unpack_report, validate_report
 
 
 def report():
@@ -139,6 +139,24 @@ class FeedbackTests(unittest.TestCase):
             result = prepare(api, "owner/game", 42, 1, lambda _: report())
             self.assertEqual(result, prepared())
             self.assertTrue(all(method == "GET" for _, method, _ in api.calls))
+
+    def test_maximum_json_allows_zip_overhead_but_keeps_both_bounds(self):
+        payload = json.dumps(report()).encode().ljust(LIMIT, b" ")
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w", zipfile.ZIP_STORED) as zipped:
+            zipped.writestr("report.json", payload)
+        archive = output.getvalue()
+        self.assertGreater(len(archive), LIMIT)
+        self.assertEqual(unpack_report(archive), report())
+        with self.assertRaises(ValueError):
+            unpack_report(archive.ljust(ARCHIVE_LIMIT + 1, b" "))
+        api = api_fixture()
+        artifact = api.responses["/repos/owner/game/actions/runs/42/artifacts?per_page=100"]["artifacts"][0]
+        artifact["size_in_bytes"] = len(archive)
+        self.assertEqual(prepare(api, "owner/game", 42, 1, lambda _: unpack_report(archive)), prepared())
+        artifact["size_in_bytes"] = ARCHIVE_LIMIT + 1
+        with self.assertRaises(ValueError):
+            prepare(api, "owner/game", 42, 1, lambda _: self.fail("downloaded oversized archive"))
 
     def test_comment_prefers_verified_full_artifact_and_rejects_spoofed_details(self):
         api = api_fixture()

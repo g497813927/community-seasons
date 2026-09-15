@@ -15,6 +15,9 @@ import urllib.request
 import zipfile
 
 LIMIT = 65536
+# Allow ZIP headers/metadata around a maximum-size report without increasing the
+# inner JSON or prepared-message limits.
+ARCHIVE_LIMIT = LIMIT + 4096
 BOT = "github-actions[bot]"
 FUZZ_STEP = "Run bounded fuzz tests"
 SUITES = {
@@ -149,7 +152,7 @@ class GitHub:
 
 
 def unpack_report(data):
-    require(len(data) <= LIMIT, "Feedback archive exceeds size limit")
+    require(len(data) <= ARCHIVE_LIMIT, "Feedback archive exceeds size limit")
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
         files = archive.infolist()
         require(len(files) == 1 and files[0].filename == "report.json", "Unexpected feedback archive contents")
@@ -174,7 +177,7 @@ def download_report(url):
     try:
         # Separate, unauthenticated request: never forward the API token to storage.
         with urllib.request.build_opener(NoRedirect).open(url, timeout=20) as response:
-            return unpack_report(response.read(LIMIT + 1))
+            return unpack_report(response.read(ARCHIVE_LIMIT + 1))
     except (urllib.error.URLError, urllib.error.HTTPError):
         raise ValueError("Feedback artifact download failed") from None
 
@@ -224,7 +227,7 @@ def prepare(api, repo, run_id, attempt, downloader=download_report):
     matches_artifact = [item for item in artifacts["artifacts"] if item["name"] == expected]
     require(len(matches_artifact) == 1, "Expected one fuzz feedback artifact")
     artifact = matches_artifact[0]
-    require(not artifact["expired"] and 0 < artifact["size_in_bytes"] <= LIMIT)
+    require(not artifact["expired"] and 0 < artifact["size_in_bytes"] <= ARCHIVE_LIMIT)
     source = artifact["workflow_run"]
     require(source["id"] == run_id and source["repository_id"] == run["repository"]["id"]
             and source["head_repository_id"] == run["head_repository"]["id"]
