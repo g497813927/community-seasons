@@ -1,0 +1,159 @@
+name: Rail question / 铁路题目
+description: Suggest a new bilingual rail question or improve an existing one. / 提交双语铁路新题或修改现有题目。
+title: "[Rail question] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Submit one question per issue using the fields below; no JSON or document edits are needed. For corrections, supply the existing question ID and the complete replacement text in both languages, including unchanged fields.
+
+        每个 issue 提交一道题，填写以下字段即可，无需编写 JSON 或修改文档。修改现有题目时，请填写原题标识，并提供完整的双语替换内容，包括未改动的字段。
+
+        Keep the translations equivalent, with exactly one defensible correct answer and an explanation specific to each choice. Use fictional, redacted scenarios without real people's identities or private information. Keep option labels concise for phone screens. See the [question review guide](https://github.com/g497813927/community-seasons/blob/main/src/QUESTION_BANK.md).
+
+        请保持双语含义一致，每题只有一个明确正确答案，并为每个选项提供对应解析。使用虚构、脱敏的情境，不包含真实人物身份或私人信息。选项应简短，适合手机屏幕。详见[题库审阅指南](https://github.com/g497813927/community-seasons/blob/main/src/QUESTION_BANK.zh-CN.md)。
+
+        Automated checks report the first structural error, check new IDs and duplicate prompts against the question bank, and require an existing ID for corrections. Edit the issue body to rerun the checks. A passing check still requires human content review; it does not import, approve, or publish the question.
+
+        自动检查会报告首个格式问题，核对新题标识及重复题干，修改题目时还会确认原题存在。编辑 issue 正文即可重新检查。检查通过后仍需人工审阅内容，不会自动导入、批准或发布题目。
+  - type: dropdown
+    id: submission-type
+    attributes:
+      label: Submission type / 提交类型
+      options:
+        - New question / 新增题目
+        - Improve existing question / 修改现有题目
+    validations:
+      required: true
+  - type: input
+    id: question-id
+    attributes:
+      label: Question ID / 题目标识
+      description: "Use lowercase letters, numbers and single hyphens, starting with a letter. For corrections, keep the existing ID. / 使用小写字母、数字和单个连字符，以字母开头。修改题目时保留原题标识。"
+      placeholder: check-before-sharing
+    validations:
+      required: true
+  - type: input
+    id: topic
+    attributes:
+      label: Topic / 主题
+      description: "Use lowercase letters, numbers and single hyphens, starting with a letter. / 使用小写字母、数字和单个连字符，以字母开头。"
+      placeholder: information-literacy
+    validations:
+      required: true
+  - type: textarea
+    id: prompt-en
+    attributes:
+      label: Prompt (English)
+      description: "English question; at most 180 characters. / 英文题干，最多 180 个字符。"
+    validations:
+      required: true
+  - type: textarea
+    id: prompt-zh
+    attributes:
+      label: Prompt (简体中文)
+      description: "Equivalent Simplified Chinese question; at most 90 characters. / 含义一致的简体中文题干，最多 90 个字符。"
+    validations:
+      required: true
+  - type: input
+    id: option-1-en
+    attributes:
+      label: Option 1 (English)
+      description: "First choice; at most 72 characters. / 第一项的英文文本，最多 72 个字符。"
+    validations:
+      required: true
+  - type: input
+    id: option-1-zh
+    attributes:
+      label: Option 1 (简体中文)
+      description: "First choice; at most 36 characters. / 第一项的简体中文文本，最多 36 个字符。"
+    validations:
+      required: true
+  - type: textarea
+    id: explanation-1-en
+    attributes:
+      label: Explanation 1 (English)
+      description: "Explain why option 1 is correct or incorrect; at most 240 characters. / 解释第一项为何正确或错误，英文最多 240 个字符。"
+    validations:
+      required: true
+  - type: textarea
+    id: explanation-1-zh
+    attributes:
+      label: Explanation 1 (简体中文)
+      description: "Equivalent explanation for option 1; at most 120 characters. / 第一项含义一致的简体中文解析，最多 120 个字符。"
+    validations:
+      required: true
+  - type: input
+    id: option-2-en
+    attributes:
+      label: Option 2 (English)
+      description: "Second choice; at most 72 characters. / 第二项的英文文本，最多 72 个字符。"
+    validations:
+      required: true
+  - type: input
+    id: option-2-zh
+    attributes:
+      label: Option 2 (简体中文)
+      description: "Second choice; at most 36 characters. / 第二项的简体中文文本，最多 36 个字符。"
+    validations:
+      required: true
+  - type: textarea
+    id: explanation-2-en
+    attributes:
+      label: Explanation 2 (English)
+      description: "Explain why option 2 is correct or incorrect; at most 240 characters. / 解释第二项为何正确或错误，英文最多 240 个字符。"
+    validations:
+      required: true
+  - type: textarea
+    id: explanation-2-zh
+    attributes:
+      label: Explanation 2 (简体中文)
+      description: "Equivalent explanation for option 2; at most 120 characters. / 第二项含义一致的简体中文解析，最多 120 个字符。"
+    validations:
+      required: true
+  - type: input
+    id: option-3-en
+    attributes:
+      label: Option 3 (English)
+      description: "Third choice; at most 72 characters. / 第三项的英文文本，最多 72 个字符。"
+    validations:
+      required: true
+  - type: input
+    id: option-3-zh
+    attributes:
+      label: Option 3 (简体中文)
+      description: "Third choice; at most 36 characters. / 第三项的简体中文文本，最多 36 个字符。"
+    validations:
+      required: true
+  - type: textarea
+    id: explanation-3-en
+    attributes:
+      label: Explanation 3 (English)
+      description: "Explain why option 3 is correct or incorrect; at most 240 characters. / 解释第三项为何正确或错误，英文最多 240 个字符。"
+    validations:
+      required: true
+  - type: textarea
+    id: explanation-3-zh
+    attributes:
+      label: Explanation 3 (简体中文)
+      description: "Equivalent explanation for option 3; at most 120 characters. / 第三项含义一致的简体中文解析，最多 120 个字符。"
+    validations:
+      required: true
+  - type: dropdown
+    id: correct-option
+    attributes:
+      label: Correct option / 正确选项
+      description: "Choose the one correct option above. Positions shuffle in the game. / 选择上方唯一正确的选项，游戏会打乱选项位置。"
+      options:
+        - "1"
+        - "2"
+        - "3"
+    validations:
+      required: true
+  - type: textarea
+    id: review-notes
+    attributes:
+      label: Review notes / 审阅说明
+      description: "Optional rationale, correction details and public source references. These notes are for human review only and are never automatically imported into the game. / 可填写出题理由、修改说明及公开来源。仅供人工审阅，绝不会自动导入游戏。"
+    validations:
+      required: false
