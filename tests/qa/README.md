@@ -23,6 +23,8 @@ Browser smoke checks install Playwright's clock before loading the page and paus
 
 Startup waits for the game's locale initialization to update `html.lang`; the report records the initial document language and the browser's requested languages. Before gameplay, the clock freezes at the observed page time without fast-forwarding outstanding timers. Regression tests exercise this transition against the installed Playwright clock, including slow control messages.
 
+After closing licenses, checks wait for the popup and backdrop to disappear, the original document scrolling styles to return, and focus to return to the launcher. WebKit gets 30 seconds per action and 120 seconds per scenario because its native layout and scroll work can exceed 10 seconds under hosted CPU load; Chromium retains 10-second actions and 60-second scenarios. Reports record these limits and host action durations for diagnosing the runner, not measuring game performance.
+
 ## Interactive and device checks
 
 ```sh

@@ -24,6 +24,28 @@ export function fixtureHandler(previewDist, previewPath, files = fs) {
   };
 }
 
+// Both helpers are serialized into the page; keep them self-contained.
+export function snapshotDocumentScrollStyles() {
+  return {
+    html: { overflowX: document.documentElement.style.overflowX, overflowY: document.documentElement.style.overflowY },
+    body: { overflowX: document.body.style.overflowX, overflowY: document.body.style.overflowY },
+  };
+}
+
+export function licensesCloseIsComplete(baseline) {
+  const launcher = document.querySelector('.licenses-launcher');
+  if (!launcher || document.activeElement !== launcher ||
+      document.querySelector('.licenses-dialog') ||
+      document.querySelector('[data-slot="dialog-overlay"]') ||
+      document.querySelector('[data-base-ui-scroll-locked]')) return false;
+  // Base UI releases its iOS overflow lock in a deferred timer, after the
+  // popup can already be detached and focus can already be restored.
+  return document.documentElement.style.overflowX === baseline.html.overflowX &&
+    document.documentElement.style.overflowY === baseline.html.overflowY &&
+    document.body.style.overflowX === baseline.body.overflowX &&
+    document.body.style.overflowY === baseline.body.overflowY;
+}
+
 // Playwright serializes this function into the page; keep it self-contained.
 export function initializeBrowserEmulation({ entries, platform }) {
   for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, value);

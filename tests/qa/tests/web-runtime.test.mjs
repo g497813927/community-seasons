@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import vm from 'node:vm';
-import { fixtureHandler, initializeBrowserEmulation } from '../web/runtime.mjs';
+import { fixtureHandler, initializeBrowserEmulation, snapshotDocumentScrollStyles, licensesCloseIsComplete } from '../web/runtime.mjs';
 
 async function request(handler, method, url) {
   const response = {};
@@ -82,4 +82,47 @@ test('the iOS correction survives replacement native orientation objects without
   assert.equal(replacement.angle, 0, 'WebKit replacement objects must keep the portrait correction');
   replacement.type = 'landscape-primary';
   assert.equal(replacement.angle, 90, 'A consistent landscape orientation must retain its native angle');
+});
+
+function closingLicensesFixture() {
+  const launcher = {};
+  const nodes = new Map([['.licenses-launcher', launcher]]);
+  const document = {
+    documentElement: { style: { overflowX: 'visible', overflowY: 'auto' } },
+    body: { style: { overflowX: '', overflowY: 'scroll' } },
+    activeElement: launcher,
+    querySelector: selector => nodes.get(selector) ?? null,
+  };
+  const evaluate = (fn, argument) => vm.runInNewContext(`(${fn.toString()})(${JSON.stringify(argument)})`, { document });
+  const baseline = evaluate(snapshotDocumentScrollStyles);
+  return { document, launcher, nodes, baseline, complete: () => evaluate(licensesCloseIsComplete, baseline) };
+}
+
+test('detached licenses with restored focus remain incomplete until deferred iOS scrolling cleanup', () => {
+  const fixture = closingLicensesFixture();
+  assert.equal(fixture.complete(), true);
+  fixture.document.body.style.overflowX = 'hidden';
+  fixture.document.body.style.overflowY = 'hidden';
+  assert.equal(fixture.complete(), false, 'Popup removal and focus return do not release the document overflow lock');
+  Object.assign(fixture.document.body.style, fixture.baseline.body);
+  fixture.document.documentElement.style.overflowY = 'hidden';
+  assert.equal(fixture.complete(), false, 'The lock may be applied to html instead of body');
+  Object.assign(fixture.document.documentElement.style, fixture.baseline.html);
+  assert.equal(fixture.complete(), true, 'Actual original overflow values must be restored, including non-empty styles');
+});
+
+test('licenses cleanup also requires return focus and removal of popup, backdrop and lock marker', () => {
+  const fixture = closingLicensesFixture();
+  fixture.document.activeElement = {};
+  assert.equal(fixture.complete(), false, 'Deferred focus return must finish before the next interaction');
+  fixture.document.activeElement = fixture.launcher;
+  for (const selector of ['.licenses-dialog', '[data-slot="dialog-overlay"]', '[data-base-ui-scroll-locked]']) {
+    fixture.nodes.set(selector, {});
+    assert.equal(fixture.complete(), false, `${selector} still blocks completed cleanup`);
+    fixture.nodes.delete(selector);
+  }
+  assert.equal(fixture.complete(), true);
+  fixture.nodes.delete('.licenses-launcher');
+  fixture.document.activeElement = null;
+  assert.equal(fixture.complete(), false, 'A missing return target cannot count as restored focus');
 });

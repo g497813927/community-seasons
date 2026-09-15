@@ -56,6 +56,8 @@ Browser gameplay checks use Playwright's controlled clock, with bounded advances
 
 The runner waits for locale initialization before checking the page language and freezes gameplay time at the current page timestamp. It does not skip ahead to a future minute or expire pending timers to establish the pause.
 
+Closing licenses must also restore document scrolling and focus before the next interaction. WebKit allows 30 seconds per action and 120 seconds per scenario under CI load; Chromium uses 10 and 60 seconds. The report includes host action durations to diagnose slow browser automation.
+
 For a physical device, open the exact built preview in normal Safari/Chrome and use `qa:device` with an explicitly selected URL and inspector target. The device guide covers Android USB forwarding and the iOS Web Inspector bridge. Measurement requires the unlocked, visible, focused preview and a real tap. The generic preview disables all Toy SDK/cloud access and maps saves before the current game loads. It works locally or as an authorized isolated hosted preview.
 
 ## Historical scenarios
