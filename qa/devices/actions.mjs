@@ -51,13 +51,18 @@ export async function runAction(session, page, action, {
     const changedSourceFiles = changedFiles(build.sourceHashes, current);
     return { status: changedSourceFiles.length ? 'stale' : 'current', changedSourceFiles };
   }
-  const report = async () => {
-    const observed = await evaluate(`return {environment:${environment},qa:qa.report(),build:qa.build ?? null};`);
+  const report = async (requireActive = false) => {
+    const observed = await evaluate(`return {environment:${environment},qa:qa.report(),build:qa.build ?? null};`, requireActive);
     return { ...observed, provenance: provenance(observed.build, await getSourceHashes()) };
   };
   function requireCurrent(result) {
     if (result.provenance.status !== 'current')
       throw Error(`QA measurement requires current build provenance (${result.provenance.status}). Run \`npm run qa:build\`, serve the built preview, and reload the selected page.`);
+  }
+  function requireUninterrupted(result) {
+    const events = result.qa?.metrics?.interruptions;
+    if (!events || !['visibilityLosses', 'pageHides', 'focusLosses'].every(key => events[key] === 0))
+      throw Error('QA measurement was interrupted by visibility, pagehide, or focus loss. Keep the preview foreground and retry.');
   }
   if (action === 'status') return report();
   if (action === 'screenshot') {
@@ -75,13 +80,15 @@ export async function runAction(session, page, action, {
   }
   const baseline = await report();
   requireCurrent(baseline);
-  await evaluate('qa.resetMetrics(); return true;', true);
+  requireUninterrupted({ qa: await evaluate('return qa.resetMetrics();', true) });
   for (let elapsed = 0; elapsed < seconds; elapsed++) {
     await wait(1000);
-    const build = await evaluate('return qa.build ?? null;', true);
-    requireCurrent({ provenance: provenance(build, baseline.build.sourceHashes) });
+    const observed = await evaluate('return {build:qa.build ?? null,qa:qa.report()};', true);
+    requireUninterrupted(observed);
+    requireCurrent({ provenance: provenance(observed.build, baseline.build.sourceHashes) });
   }
-  const result = await report();
+  const result = await report(true);
+  requireUninterrupted(result);
   requireCurrent(result);
   return { ...result, seconds };
 }

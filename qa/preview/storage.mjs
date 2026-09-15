@@ -1,12 +1,12 @@
 export const STORAGE_PREFIX = 'qa-community-seasons-v1:';
 
 // Installed before the game imports. Production key declarations stay untouched.
-export function isolateStorage(prototype) {
+export function isolateStorage(prototype, prefix = STORAGE_PREFIX) {
   const { getItem, setItem, removeItem, key } = prototype;
   const length = Object.getOwnPropertyDescriptor(prototype, 'length').get;
   const map = value => {
     const name = String(value);
-    return name.startsWith('community-seasons-') ? STORAGE_PREFIX + name : name;
+    return name.startsWith('community-seasons-') ? prefix + name : name;
   };
   Object.defineProperties(prototype, {
     getItem: { configurable: true, writable: true, value(name) { return getItem.call(this, map(name)); } },
@@ -16,7 +16,7 @@ export function isolateStorage(prototype) {
       // A fixture reset must never clear other applications' or players' saves.
       for (let index = length.call(this) - 1; index >= 0; index--) {
         const name = key.call(this, index);
-        if (name?.startsWith(STORAGE_PREFIX)) removeItem.call(this, name);
+        if (name?.startsWith(prefix)) removeItem.call(this, name);
       }
     } },
   });

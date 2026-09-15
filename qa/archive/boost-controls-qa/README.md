@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-This fixture loads the real game on a dedicated local origin, seeds purchases in a fresh context, disables Toy access, and freezes the run clock for deterministic UI checks. It must never be deployed or used against player saves.
+This fixture loads the real game on a dedicated local origin, seeds purchases in a fresh context, disables Toy access, and freezes the run clock for deterministic UI checks. Startup requires `http://127.0.0.1:3030` and maps game saves to `qa-archive-boost-controls:` before resetting fixture progress, preserving player and unrelated keys. It must never be deployed or used against player saves.
 
 From the repository root, run the fixture server and then the check in a second terminal:
 

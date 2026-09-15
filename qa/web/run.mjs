@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, devices } from 'playwright';
 import { assertPreviewBuildIsCurrent, changedFiles, fileHashes, previewSourceHashes } from '../preview/build-info.mjs';
+import { fixtureHandler, initializeBrowserEmulation } from './runtime.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const previewDist = path.join(root, 'qa/preview/dist');
@@ -40,22 +41,7 @@ are saved to results/qa/<timestamp>/. No Toy or physical device is contacted.`);
 }
 
 async function startFixtureServer() {
-  const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml', '.txt': 'text/plain' };
-  const server = http.createServer(async (request, response) => {
-    try {
-      const pathname = new URL(request.url, 'http://localhost').pathname;
-      const relative = decodeURIComponent(pathname.slice(previewPath.length)) || 'index.html';
-      const file = path.resolve(previewDist, relative);
-      if (!['GET', 'HEAD'].includes(request.method) || !pathname.startsWith(previewPath) || !file.startsWith(previewDist + path.sep)) {
-        response.writeHead(404); response.end(); return;
-      }
-      const contents = await fs.readFile(file);
-      response.writeHead(200, { 'content-type': types[path.extname(file)] || 'application/octet-stream', 'cache-control': 'no-store' });
-      response.end(request.method === 'HEAD' ? undefined : contents);
-    } catch {
-      response.writeHead(404); response.end();
-    }
-  });
+  const server = http.createServer(fixtureHandler(previewDist, previewPath));
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   return { server, origin: `http://127.0.0.1:${server.address().port}` };
 }
@@ -81,7 +67,6 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await page.locator('.start-screen .run-button').waitFor();
   await page.evaluate(() => document.fonts.ready);
   assert.equal(await page.locator('html').getAttribute('lang'), locale);
-  row.emulation = await page.evaluate(() => window.__qaBrowserEmulation);
   row.qa = await page.evaluate(() => window.__communitySeasonsQA?.report());
   assert.equal(row.qa?.id, markerId);
   assert.equal(row.qa?.storagePrefix, storagePrefix);
@@ -182,19 +167,7 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
   let timer;
   try {
     assert.deepEqual((await context.storageState()).origins, []);
-    await context.addInitScript(({ entries, platform }) => {
-      for (const [key, value] of Object.entries(entries)) localStorage.setItem(key, value);
-      const original = { type: screen.orientation?.type, angle: screen.orientation?.angle, windowOrientation: window.orientation };
-      window.__qaBrowserEmulation = { orientationBeforeAdjustment: original, orientationAdjusted: false };
-      // Playwright WebKit can expose portrait-primary with angle 90 on a portrait
-      // iPhone descriptor. Correct only that internally contradictory simulation;
-      // this does not validate actual Safari orientation or change game behavior.
-      if (platform === 'ios' && original.type?.startsWith('portrait') && Math.abs(original.angle) === 90 && original.windowOrientation === 0 && innerHeight > innerWidth) {
-        Object.defineProperty(screen.orientation, 'angle', { configurable: true, get: () => 0 });
-        window.__qaBrowserEmulation.orientationAdjusted = true;
-        window.__qaBrowserEmulation.reason = 'WebKit emulation exposed portrait-primary with angle 90; aligned the simulated angle with portrait viewport and window.orientation=0.';
-      }
-    }, { entries: sentinelEntries, platform });
+    await context.addInitScript(initializeBrowserEmulation, { entries: sentinelEntries, platform });
     await context.route('**/*', async route => {
       if (new URL(route.request().url()).origin !== origin) {
         row.blockedRequests.push(route.request().url()); await route.abort(); return;
@@ -203,6 +176,8 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
     });
     const flow = async () => {
       await page.goto(origin + previewPath);
+      // Preserve emulation limitations even when the first UI assertion fails.
+      row.emulation = await page.evaluate(() => window.__qaBrowserEmulation);
       await runFlow(page, platform, locale, row, reportDirectory, sourceHashes);
     };
     await Promise.race([

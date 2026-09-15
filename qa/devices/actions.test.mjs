@@ -8,6 +8,7 @@ function fixture() {
   const page = validatePage('http://127.0.0.1:3030/');
   const calls = [];
   let resets = 0;
+  const interruptions = { visibilityLosses: 0, pageHides: 0, focusLosses: 0 };
   const sourceHashes = { 'src/game.ts': 'a'.repeat(64), 'qa/preview/bootstrap.ts': 'b'.repeat(64) };
   const state = {
     location: { href: page.url.href },
@@ -17,8 +18,8 @@ function fixture() {
     __communitySeasonsQA: {
       id: QA_ID, storagePrefix: QA_PREFIX, cloud: 'disabled',
       build: { version: 1, sourceHashes: { ...sourceHashes } },
-      report: () => ({ metrics: { resets } }),
-      resetMetrics() { resets++; return this.report(); },
+      report: () => ({ metrics: { resets, interruptions: { ...interruptions } } }),
+      resetMetrics() { resets++; for (const key of Object.keys(interruptions)) interruptions[key] = 0; return this.report(); },
     },
   };
   state.window = state;
@@ -37,7 +38,7 @@ function fixture() {
       return {};
     },
   };
-  return { page, state, session, calls, sourceHashes, resetCount: () => resets };
+  return { page, state, session, calls, sourceHashes, interruptions, resetCount: () => resets };
 }
 
 function runFixture(fixture, name, options = {}) {
@@ -89,6 +90,30 @@ test('navigation and invalid durations cannot operate on another page', async ()
   const untouched = fixture();
   await assert.rejects(runFixture(untouched, 'measure', { seconds: 0 }), /1 to 60/);
   assert.equal(untouched.calls.length, 0);
+});
+
+test('measurements reject a brief interruption even when the page is active again before polling', async () => {
+  for (const event of ['visibilityLosses', 'pageHides', 'focusLosses']) {
+    const f = fixture();
+    await assert.rejects(runFixture(f, 'measure', { seconds: 2, wait: async () => {
+      f.interruptions[event]++;
+      // Polling sees an active page again; the event latch must still reject it.
+      assert.equal(f.state.document.visibilityState, 'visible');
+      assert.equal(f.state.document.hasFocus(), true);
+    } }), /measurement was interrupted/);
+    assert.equal(f.resetCount(), 1);
+  }
+});
+
+test('an interruption after the last timed poll is rejected by the final report', async () => {
+  const f = fixture();
+  const original = f.state.__communitySeasonsQA.report;
+  let reports = 0;
+  f.state.__communitySeasonsQA.report = () => {
+    if (++reports === 4) f.interruptions.pageHides++;
+    return original();
+  };
+  await assert.rejects(runFixture(f, 'measure', { seconds: 1, wait: async () => {} }), /measurement was interrupted/);
 });
 
 test('screenshot validates QA identity before capturing the selected page', async () => {
