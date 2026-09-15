@@ -177,19 +177,60 @@ async function verifyAccessProtection(deployment, config, request, fetchImpl) {
   return { url, anonymousStatus: anonymous.status };
 }
 
-async function mintShare(config, deployment, url, request, root, now) {
-  const linkRequestedAt = now();
-  const access = shareAccess(await request(`/aliases/${deployment.id}/protection-bypass`, { method: 'PATCH', body: { ttl: config.ttl }, phase: 'expiring share link' }), linkRequestedAt, config.ttl);
-  const accessUrl = new URL(url);
-  accessUrl.searchParams.set('_vercel_share', access.secret);
-  const directory = path.join(root, 'results/qa', `vercel-access-${new Date(now()).toISOString().replaceAll(':', '-')}-${deployment.id}`);
-  await fs.mkdir(directory, { recursive: true, mode: 0o700 });
-  const accessFile = path.join(directory, 'access.json');
-  await fs.writeFile(accessFile, JSON.stringify({ url: accessUrl.href, expiresAt: new Date(access.expiresAt).toISOString() }, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-  return { directory, accessFile, ttlSeconds: config.ttl, expiresAt: new Date(access.expiresAt).toISOString() };
+async function mintShare(config, deployment, url, request, root, now, { fsImpl, platform }) {
+  if (platform === 'win32')
+    throw Error('Private share links require a filesystem with POSIX permissions. On Windows, use --deploy-only and Vercel Authentication, or run qa:share on macOS/Linux.');
+  let directory, accessFile, handle, complete = false;
+  let phase = 'private file preparation';
+  const sameFile = (a, b) => a.dev === b.dev && a.ino === b.ino;
+  async function verifyPrivateFile() {
+    const folder = await fsImpl.lstat(directory);
+    const opened = await handle.stat();
+    const entry = await fsImpl.lstat(accessFile);
+    if (!folder.isDirectory() || (folder.mode & 0o777) !== 0o700 ||
+        !opened.isFile() || (opened.mode & 0o777) !== 0o600 || opened.nlink !== 1 ||
+        !entry.isFile() || !sameFile(opened, entry)) throw Error('Private file verification failed.');
+  }
+  try {
+    const parent = path.join(root, 'results/qa');
+    await fsImpl.mkdir(parent, { recursive: true });
+    directory = await fsImpl.mkdtemp(path.join(parent, `vercel-access-${new Date(now()).toISOString().replaceAll(':', '-')}-${deployment.id}-`));
+    await fsImpl.chmod(directory, 0o700);
+    const folder = await fsImpl.lstat(directory);
+    if (!folder.isDirectory() || (folder.mode & 0o777) !== 0o700) throw Error('Private directory verification failed.');
+    accessFile = path.join(directory, 'access.json');
+    handle = await fsImpl.open(accessFile, 'wx', 0o600);
+    await handle.chmod(0o600);
+    await verifyPrivateFile();
+    phase = 'share-link request';
+    const linkRequestedAt = now();
+    const access = shareAccess(await request(`/aliases/${deployment.id}/protection-bypass`, { method: 'PATCH', body: { ttl: config.ttl }, phase: 'expiring share link' }), linkRequestedAt, config.ttl);
+    const accessUrl = new URL(url);
+    accessUrl.searchParams.set('_vercel_share', access.secret);
+    phase = 'private file write';
+    await verifyPrivateFile();
+    await handle.writeFile(JSON.stringify({ url: accessUrl.href, expiresAt: new Date(access.expiresAt).toISOString() }, null, 2) + '\n');
+    await verifyPrivateFile();
+    await handle.close();
+    complete = true;
+    return { directory, accessFile, ttlSeconds: config.ttl, expiresAt: new Date(access.expiresAt).toISOString() };
+  } catch {
+    // Filesystem and request errors may contain payloads; only fixed phase names are logged.
+    throw Error(`QA sharing failed during ${phase}; no access URL was returned. Use a filesystem that enforces POSIX 0700/0600 permissions. See docs/QA_HOSTING.md.`);
+  } finally {
+    if (handle && !complete) {
+      await handle.truncate(0).catch(() => {});
+      const opened = await handle.stat().catch(() => null);
+      const entry = await fsImpl.lstat(accessFile).catch(() => null);
+      if (opened && entry && sameFile(opened, entry)) await fsImpl.unlink(accessFile).catch(() => {});
+    }
+    if (handle && !complete) await handle.close().catch(() => {});
+    // Never remove a pre-existing collision or recursively delete another entry.
+    if (directory && !complete) await fsImpl.rmdir(directory).catch(() => {});
+  }
 }
 
-export async function shareQA(config, { root = ROOT, fetchImpl = fetch, now = Date.now } = {}) {
+export async function shareQA(config, { root = ROOT, fetchImpl = fetch, now = Date.now, fsImpl = fs, platform = process.platform } = {}) {
   if (!Number.isInteger(config.ttl) || config.ttl < 60 || config.ttl > MAX_TTL) throw Error('A bounded access TTL is required.');
   if (!/^dpl_[A-Za-z0-9]+$/.test(config.deploymentId ?? '')) throw Error('Select an explicit deployment ID.');
   const request = apiClient(config, fetchImpl);
@@ -197,11 +238,11 @@ export async function shareQA(config, { root = ROOT, fetchImpl = fetch, now = Da
   const deployment = await request(`/v13/deployments/${config.deploymentId}`, { phase: 'deployment status' });
   if (deployment.id !== config.deploymentId) throw Error('Vercel deployment identity changed.');
   const verified = await verifyAccessProtection(deployment, config, request, fetchImpl);
-  const access = await mintShare(config, deployment, verified.url, request, root, now);
+  const access = await mintShare(config, deployment, verified.url, request, root, now, { fsImpl, platform });
   return { deploymentId: deployment.id, ...verified, ...access };
 }
 
-export async function deployQA(config, { root = ROOT, fetchImpl = fetch, now = Date.now, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), onStatus = () => {} } = {}) {
+export async function deployQA(config, { root = ROOT, fetchImpl = fetch, now = Date.now, wait = ms => new Promise(resolve => setTimeout(resolve, ms)), onStatus = () => {}, fsImpl = fs, platform = process.platform } = {}) {
   if (!Number.isInteger(config.ttl) || config.ttl < 60 || config.ttl > MAX_TTL) throw Error('A bounded access TTL is required.');
   const artifact = await readArtifact(root);
   const validation = await requirePassingQA(root, artifact);
@@ -232,7 +273,7 @@ export async function deployQA(config, { root = ROOT, fetchImpl = fetch, now = D
   }
   if (deployment?.readyState !== 'READY') throw Error('Vercel QA preview exceeded the five-minute readiness limit.');
   const verified = await verifyAccessProtection(deployment, config, request, fetchImpl);
-  const access = config.deployOnly ? {} : await mintShare(config, deployment, verified.url, request, root, now);
+  const access = config.deployOnly ? {} : await mintShare(config, deployment, verified.url, request, root, now, { fsImpl, platform });
   const directory = access.directory ?? path.join(root, 'results/qa', `vercel-deploy-${new Date(now()).toISOString().replaceAll(':', '-')}-${created.id}`);
   await fs.mkdir(directory, { recursive: true, mode: 0o700 });
   const report = { deploymentId: created.id, projectId: config.projectId, teamId: config.teamId, ...verified, target: 'preview', protection: 'all', ...(access.expiresAt ? { ttlSeconds: config.ttl, expiresAt: access.expiresAt } : {}), validation, artifactHashes: artifact.hashes };

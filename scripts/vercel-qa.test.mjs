@@ -65,6 +65,38 @@ function apiFixture({ protection = project, ready = deployment, anonymousStatus 
   return { calls, fetchImpl, now: () => timestamp };
 }
 
+// Real temporary files, but requested chmod modes are deliberately ignored.
+function privateFiles({ directoryMode = 0o700, fileMode = 0o600, failWrite = false } = {}) {
+  const state = { writes: 0 };
+  const fsImpl = {
+    ...fs,
+    async mkdtemp(prefix) {
+      state.directory = await fs.mkdtemp(prefix);
+      await fs.chmod(state.directory, directoryMode);
+      return state.directory;
+    },
+    async chmod() {},
+    async open(file, flags) {
+      state.file = file;
+      state.handle = await fs.open(file, flags, fileMode);
+      await state.handle.chmod(fileMode);
+      return {
+        async chmod() {},
+        stat: () => state.handle.stat(),
+        async writeFile(data) {
+          state.writes++;
+          await state.handle.writeFile(data);
+          if (failWrite) throw Error(data); // Must never reach an error message.
+        },
+        truncate: size => state.handle.truncate(size),
+        close: () => state.handle.close(),
+      };
+    },
+    async writeFile() { assert.fail('Credentials must be written through the verified handle.'); },
+  };
+  return { state, fsImpl };
+}
+
 test('configuration requires explicit QA identifiers, main CI ref and a bounded nonzero TTL', () => {
   const env = { VERCEL_TOKEN: config.token, VERCEL_PROJECT_ID: config.projectId, VERCEL_ORG_ID: config.teamId };
   assert.equal(configuration(env).ttl, 3600);
@@ -124,6 +156,7 @@ test('only the tested current static QA files are deployed as preview', async t 
   const access = JSON.parse(await fs.readFile(result.accessFile, 'utf8'));
   assert.equal(new URL(access.url).searchParams.get('_vercel_share'), secret);
   assert.equal((await fs.stat(result.accessFile)).mode & 0o777, 0o600);
+  assert.equal((await fs.stat(path.dirname(result.accessFile))).mode & 0o777, 0o700);
   assert.equal(JSON.stringify(result).includes(secret), false);
   const safeReport = await fs.readFile(path.join(path.dirname(result.accessFile), 'deployment.json'), 'utf8');
   assert.equal(safeReport.includes(config.token), false);
@@ -155,6 +188,83 @@ test('CI deploy-only never creates an inaccessible secret, and local sharing nev
   const otherApi = apiFixture({ ready: { ...deployment, meta: {} } });
   await assert.rejects(shareQA({ ...config, deploymentId: deployment.id }, { root: f.root, ...otherApi }), /created by/);
   assert.equal(otherApi.calls.some(call => call.options.method === 'PATCH'), false);
+});
+
+test('both share entry points reject ignored private modes before minting or writing a credential', async t => {
+  for (const mode of [{ directoryMode: 0o755 }, { fileMode: 0o644 }, { fileMode: 0o660 }]) {
+    for (const operation of [deployQA, shareQA]) {
+      const f = await fixture(t), api = apiFixture(), files = privateFiles(mode);
+      await assert.rejects(operation({ ...config, deploymentId: deployment.id }, { root: f.root, ...api, fsImpl: files.fsImpl }), /private file preparation/);
+      assert.equal(api.calls.some(call => call.options.method === 'PATCH'), false);
+      assert.equal(files.state.writes, 0);
+      if (files.state.handle) assert.equal(files.state.handle.fd, -1);
+      await assert.rejects(fs.stat(files.state.directory), { code: 'ENOENT' });
+    }
+  }
+});
+
+test('an empty private file is verified before minting and the same handle writes the credential', async t => {
+  const f = await fixture(t), api = apiFixture(), files = privateFiles();
+  const fetchImpl = async (url, options) => {
+    if (options?.method === 'PATCH') {
+      assert.equal((await files.state.handle.stat()).mode & 0o777, 0o600);
+      assert.equal((await fs.stat(files.state.directory)).mode & 0o777, 0o700);
+      assert.equal(await fs.readFile(files.state.file, 'utf8'), '');
+    }
+    return api.fetchImpl(url, options);
+  };
+  const result = await shareQA({ ...config, deploymentId: deployment.id }, { root: f.root, now: api.now, fetchImpl, fsImpl: files.fsImpl });
+  assert.equal(files.state.writes, 1);
+  assert.equal(files.state.handle.fd, -1);
+  assert.equal(new URL(JSON.parse(await fs.readFile(result.accessFile, 'utf8')).url).searchParams.get('_vercel_share'), secret);
+  const again = await shareQA({ ...config, deploymentId: deployment.id }, { root: f.root, ...api });
+  assert.notEqual(again.directory, result.directory, 'Identical timestamps must still create unique directories.');
+});
+
+test('a pre-existing access-file collision is neither changed nor deleted', async t => {
+  const f = await fixture(t), api = apiFixture();
+  let collision;
+  const fsImpl = { ...fs, async open(file, flags, mode) {
+    collision = file;
+    await fs.writeFile(file, 'preserve-existing-file', { flag: 'wx', mode: 0o644 });
+    return fs.open(file, flags, mode);
+  } };
+  await assert.rejects(shareQA({ ...config, deploymentId: deployment.id }, { root: f.root, ...api, fsImpl }), /private file preparation/);
+  assert.equal(await fs.readFile(collision, 'utf8'), 'preserve-existing-file');
+  assert.equal((await fs.stat(collision)).mode & 0o777, 0o644);
+  assert.equal(api.calls.some(call => call.options.method === 'PATCH'), false);
+});
+
+test('request failure, changed permissions and write failure close and remove only the new private file', async t => {
+  for (const failure of ['request', 'permissions', 'write']) {
+    const f = await fixture(t), api = apiFixture(), files = privateFiles({ failWrite: failure === 'write' });
+    const fetchImpl = async (url, options) => {
+      if (options?.method === 'PATCH') {
+        if (failure === 'request') throw Error(secret);
+        if (failure === 'permissions') await files.state.handle.chmod(0o644);
+      }
+      return api.fetchImpl(url, options);
+    };
+    await assert.rejects(shareQA({ ...config, deploymentId: deployment.id }, { root: f.root, now: api.now, fetchImpl, fsImpl: files.fsImpl }), error =>
+      /QA sharing failed/.test(error.message) && !error.message.includes(secret) && !error.message.includes(config.token));
+    assert.equal(files.state.writes, failure === 'write' ? 1 : 0);
+    assert.equal(files.state.handle.fd, -1);
+    await assert.rejects(fs.stat(files.state.file), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(files.state.directory), { code: 'ENOENT' });
+  }
+});
+
+test('Windows sharing rejects before minting while deploy-only needs no private-file support', async t => {
+  const f = await fixture(t);
+  for (const operation of [shareQA, deployQA]) {
+    const api = apiFixture();
+    await assert.rejects(operation({ ...config, deploymentId: deployment.id }, { root: f.root, ...api, platform: 'win32', fsImpl: {} }), /POSIX permissions/);
+    assert.equal(api.calls.some(call => call.options.method === 'PATCH'), false);
+  }
+  const api = apiFixture();
+  const result = await deployQA({ ...config, deployOnly: true }, { root: f.root, ...api, platform: 'win32', fsImpl: {} });
+  assert.equal(result.accessFile, undefined);
+  assert.equal(api.calls.some(call => call.options.method === 'PATCH'), false);
 });
 
 test('stale source, changed assets, partial scenarios and failed QA prevent upload', async t => {
