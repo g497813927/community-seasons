@@ -52,6 +52,8 @@ npm run qa:preview
 
 `qa:web`, `qa:android`, and `qa:ios` run individual browser profiles. The web and Android profiles use Chromium; iOS uses WebKit. Mobile profiles are simulations, not native performance measurements. Each uses clean browser contexts, isolated saves, blocked external requests, and timestamped reports under `results/qa/`.
 
+Browser gameplay checks use Playwright's controlled clock, with bounded advances between real input events. Pause and resume assertions advance that clock too, so stopping the clock cannot falsely satisfy the pause test. Android/English includes a six-second host-delay regression. Browser timer/frame samples are therefore synthetic; use the normal-clock interactive preview and selected physical-device checks for performance observations.
+
 For a physical device, open the exact built preview in normal Safari/Chrome and use `qa:device` with an explicitly selected URL and inspector target. The device guide covers Android USB forwarding and the iOS Web Inspector bridge. Measurement requires the unlocked, visible, focused preview and a real tap. The generic preview disables all Toy SDK/cloud access and maps saves before the current game loads. It works locally or as an authorized isolated hosted preview.
 
 ## Historical scenarios

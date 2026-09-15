@@ -33,13 +33,24 @@ export function initializeBrowserEmulation({ entries, platform }) {
   // Correct only Playwright WebKit's contradictory portrait simulation. This
   // never establishes actual Safari orientation support or changes game code.
   if (platform !== 'ios' || !original.type?.startsWith('portrait') || Math.abs(original.angle) !== 90 || original.windowOrientation !== 0 || innerHeight <= innerWidth) return;
-  const descriptor = Object.getOwnPropertyDescriptor(screen.orientation, 'angle');
+  const orientation = screen.orientation;
+  const descriptor = Object.getOwnPropertyDescriptor(orientation, 'angle');
   if (descriptor?.configurable === false) {
     metadata.orientationAdjustmentError = 'screen.orientation.angle is not configurable.';
     return;
   }
   try {
-    Object.defineProperty(screen.orientation, 'angle', { configurable: true, get: () => 0 });
+    // WebKit can replace the orientation object after init scripts. Correct
+    // its native getter so the same contradictory simulation stays aligned.
+    const prototype = Object.getPrototypeOf(orientation);
+    const nativeAngle = prototype && Object.getOwnPropertyDescriptor(prototype, 'angle')?.get;
+    Object.defineProperty(nativeAngle ? prototype : orientation, 'angle', {
+      configurable: true,
+      get() {
+        const angle = nativeAngle ? nativeAngle.call(this) : original.angle;
+        return this.type?.startsWith('portrait') && Math.abs(angle) === 90 && window.orientation === 0 && innerHeight > innerWidth ? 0 : angle;
+      },
+    });
     metadata.orientationAdjusted = true;
     metadata.reason = 'WebKit emulation exposed portrait-primary with angle 90; aligned the simulated angle with portrait viewport and window.orientation=0.';
   } catch (error) {

@@ -72,3 +72,14 @@ test('host rejection is recorded while a supported contradictory simulation is c
   assert.equal(emulate(android, 'android').orientationAdjusted, false);
   assert.equal(android.angle, 90);
 });
+
+test('the iOS correction survives replacement native orientation objects without masking landscape', () => {
+  const nativePrototype = { get angle() { return 90; } };
+  const first = Object.assign(Object.create(nativePrototype), { type: 'portrait-primary' });
+  assert.equal(emulate(first).orientationAdjusted, true);
+  assert.equal(first.angle, 0);
+  const replacement = Object.assign(Object.create(nativePrototype), { type: 'portrait-primary' });
+  assert.equal(replacement.angle, 0, 'WebKit replacement objects must keep the portrait correction');
+  replacement.type = 'landscape-primary';
+  assert.equal(replacement.angle, 90, 'A consistent landscape orientation must retain its native angle');
+});
