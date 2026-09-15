@@ -1,6 +1,7 @@
 import { isolateStorage, STORAGE_PREFIX } from './storage.mjs';
 import { readEmbeddedBuildInfo } from './provenance.mjs';
 import { createFrameMetrics } from './frame-metrics.mjs';
+import { inputProbe } from './input-probe.mjs';
 
 export function installProbe(host = window) {
   const { document, performance, navigator } = host;
@@ -46,6 +47,7 @@ export function installProbe(host = window) {
   };
   host.__communitySeasonsQA = Object.freeze({
     id: 'community-seasons-qa-v1', storagePrefix: STORAGE_PREFIX, cloud: 'disabled', build, report,
+    inputs: inputProbe.inputs,
     resetMetrics() {
       intervals.reset(); errors.length = 0;
       for (const key of Object.keys(interruptions)) interruptions[key] = 0;
