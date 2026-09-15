@@ -15,14 +15,14 @@ const { createRun, act, update, jumpHeight } = await import(new URL('engine.mjs'
 const { createProgress, activatePermanentSkill } = await import(new URL('store.mjs', compiledURL));
 const { skillDefinition } = await import(new URL('boosts.mjs', compiledURL));
 
-function fixture() {
+function fixture(chargeCoins = skillDefinition('shield').chargeCoins) {
   let run = createRun(4182);
   Object.assign(run, { mode: 'running', permanentSkill: 'shield' });
   const progress = createProgress();
   progress.skills.shield.unlocked = true;
   const availability = { storeOpen: false, setupOpen: false, shieldUnlocked: true };
   const probe = createInputProbe();
-  const detach = probe.attach(() => run, () => availability, jumpHeight, skillDefinition('shield').chargeCoins);
+  const detach = probe.attach(() => run, () => availability, jumpHeight, chargeCoins);
   return { probe, inputs: probe.inputs, run, progress, availability, detach, replace(next) { run = next; } };
 }
 
@@ -49,7 +49,7 @@ test('input snapshots observe real engine outcomes without returning writable st
   assert.equal(f.inputs.snapshot().shield, 0);
   assert.deepEqual(Object.keys(sliding).sort(), [
     'mode', 'lane', 'x', 'jump', 'slide', 'height', 'distance', 'permanentSkill',
-    'skillCharge', 'skillRechargeLocked', 'shield', 'shieldTime',
+    'skillCharge', 'skillChargeRequired', 'skillRechargeLocked', 'shield', 'shieldTime',
   ].sort());
   assert.ok(Object.isFrozen(f.inputs));
   assert.deepEqual(Object.keys(f.inputs).sort(), ['prepare', 'snapshot']);
@@ -64,6 +64,7 @@ test('fixed preparation enables real skill activation and preserves course, cloc
   const before = structuredClone(f.run), saved = structuredClone(f.progress);
   const baseline = f.inputs.prepare({ distance: 99999, seed: 0 });
   assert.equal(baseline.skillCharge, skillDefinition('shield').chargeCoins);
+  assert.equal(baseline.skillChargeRequired, skillDefinition('shield').chargeCoins);
   assert.equal(baseline.shield, 0);
   assert.equal(baseline.shieldTime, 0);
   assert.equal(baseline.skillRechargeLocked, false);
@@ -81,6 +82,21 @@ test('fixed preparation enables real skill activation and preserves course, cloc
   assert.equal(activated.skillRechargeLocked, true);
   assert.equal(activated.shield, 1);
   assert.ok(activated.shieldTime > 0);
+});
+
+test('the reported charge requirement follows the game definition independently of current charge', () => {
+  for (const chargeCoins of [75, 150]) {
+    const f = fixture(chargeCoins);
+    const baseline = f.inputs.prepare();
+    assert.equal(baseline.skillCharge, chargeCoins);
+    assert.equal(baseline.skillChargeRequired, chargeCoins);
+    baseline.skillChargeRequired = 1;
+    for (const charge of [chargeCoins - 1, 0]) {
+      f.run.skillCharge = charge;
+      assert.equal(f.inputs.snapshot().skillCharge, charge);
+      assert.equal(f.inputs.snapshot().skillChargeRequired, chargeCoins);
+    }
+  }
 });
 
 test('preparation refuses unavailable gameplay and never repairs failed prerequisites', () => {

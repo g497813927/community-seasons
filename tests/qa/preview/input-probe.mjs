@@ -7,13 +7,14 @@ export function createInputProbe() {
     return binding;
   };
   const snapshot = () => {
-    const { read, jumpHeight } = current();
+    const { read, jumpHeight, chargeCoins } = current();
     const run = read();
     return {
       mode: run.mode, lane: run.lane, x: run.x,
       jump: run.jump, slide: run.slide, height: jumpHeight(run),
       distance: run.distance, permanentSkill: run.permanentSkill,
-      skillCharge: run.skillCharge, skillRechargeLocked: run.skillRechargeLocked,
+      skillCharge: run.skillCharge, skillChargeRequired: chargeCoins,
+      skillRechargeLocked: run.skillRechargeLocked,
       shield: run.boosts.shield, shieldTime: run.boosts.shieldTime,
     };
   };

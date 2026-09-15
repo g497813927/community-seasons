@@ -3,18 +3,19 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { inputCases, installInputGate, assertInputOutcome, InputOutcomeError, verifyInputCase } from '../web/inputs.mjs';
 
-const neutral = () => ({ mode: 'running', lane: 0, x: 0, jump: 0, slide: 0, height: 0,
-  distance: 0, permanentSkill: 'shield', skillCharge: 100, skillRechargeLocked: false, shield: 0, shieldTime: 0 });
+const neutral = (chargeCoins = 100) => ({ mode: 'running', lane: 0, x: 0, jump: 0, slide: 0, height: 0,
+  distance: 0, permanentSkill: 'shield', skillCharge: chargeCoins, skillChargeRequired: chargeCoins,
+  skillRechargeLocked: false, shield: 0, shieldTime: 0 });
 const effects = {
   left: { lane: -1, x: -.5 }, right: { lane: 1, x: .5 },
   jump: { jump: .85, height: .4 }, slide: { slide: .73 },
   skill: { skillCharge: 0, shield: 1, shieldTime: 11.9, skillRechargeLocked: true },
 };
 
-function fixture({ noEffect = false, brokenGate = false, sendError = false } = {}) {
+function fixture({ noEffect = false, brokenGate = false, sendError = false, chargeCoins = 100 } = {}) {
   let state, blocked = false, events = [];
   return {
-    prepare: async () => { state = neutral(); return { ...state }; },
+    prepare: async () => { state = neutral(chargeCoins); return { ...state }; },
     snapshot: async () => ({ ...state }),
     setBlocked: async value => { blocked = value; events = []; },
     blockedEvents: async () => events,
@@ -58,6 +59,32 @@ test('target lane alone, wrong motion and partial skill activation cannot satisf
     ['slide', { slide: .7, jump: .2 }], ['skill', { shield: 1, shieldTime: 12 }],
     ['skill', { skillCharge: 0, shield: 1, shieldTime: 12 }],
   ]) assert.throws(() => assertInputOutcome({ id: outcome, outcome }, neutral(), { ...neutral(), ...incomplete }), InputOutcomeError);
+});
+
+test('charged baselines follow changed game thresholds for every input and its negative control', async () => {
+  for (const chargeCoins of [75, 150]) {
+    for (const input of inputCases) {
+      const result = await verifyInputCase(input, fixture({ chargeCoins }));
+      assert.equal(result.positive.passed, true);
+      assert.equal(result.negativeControl.passed, true);
+      assert.equal(result.positive.before.skillCharge, chargeCoins);
+    }
+  }
+});
+
+test('missing or invalid charge requirements and incomplete charge fail before input dispatch', async () => {
+  const baselines = [
+    ...[undefined, null, '150', NaN, Infinity, 0, -1].map(skillChargeRequired => ({ ...neutral(), skillChargeRequired })),
+    ...[undefined, null, '150', NaN, Infinity, 0, 100, 149, 151].map(skillCharge => ({ ...neutral(150), skillCharge })),
+  ];
+  for (const baseline of baselines) {
+    let sent = false;
+    await assert.rejects(verifyInputCase(inputCases.at(-1), {
+      ...fixture(), prepare: async () => baseline,
+      send: async () => { sent = true; },
+    }), /charge/);
+    assert.equal(sent, false, 'Invalid prerequisites must not reach either input trial');
+  }
 });
 
 test('a broken gate, failed sender or invalid baseline never counts as a passing negative control', async () => {

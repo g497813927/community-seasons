@@ -38,7 +38,9 @@ function assertBaseline(before) {
   assert.equal(before.mode, 'running');
   for (const field of ['lane', 'x', 'jump', 'slide', 'height', 'shield', 'shieldTime']) assert.equal(before[field], 0, `Non-neutral input baseline: ${field}`);
   assert.equal(before.permanentSkill, 'shield');
-  assert.equal(before.skillCharge, 100);
+  assert.ok(Number.isFinite(before.skillChargeRequired) && before.skillChargeRequired > 0,
+    'Input baseline needs a finite positive skill charge requirement');
+  assert.equal(before.skillCharge, before.skillChargeRequired, 'Input baseline must start with a fully charged skill');
   assert.equal(before.skillRechargeLocked, false);
 }
 
