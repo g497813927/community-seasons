@@ -2,7 +2,7 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-中文 README 使用原始 1200 × 900 [Toy 封面](https://i0.hdslb.com/bfs/static/toy/app/community-seasons/poster_13585.png)转为 WebP 后的图片，保存为 `docs/images/community-seasons-zh-CN.webp`。英文版沿用原封面的 Canvas 绘制方式，替换文案并使用当前游戏渲染器生成画面，不使用图像生成服务。
+中文 README 使用仓库中保存的[原始 Toy 封面的 1200 × 900 WebP 副本](../../docs/images/community-seasons-zh-CN.webp)。引用封面时请使用这个已纳入版本控制的资源；Toy CDN 链接在外部访问时可能返回 HTTP 403。英文版沿用原封面的 Canvas 绘制方式，替换文案并使用当前游戏渲染器生成画面，不使用图像生成服务。
 
 在仓库根目录执行 `npm run setup` 后运行：
 
