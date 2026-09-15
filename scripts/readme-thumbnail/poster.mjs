@@ -142,6 +142,8 @@ for (const [i, [scene, name]] of scenes.entries()) {
     label(name, x + 8, 432, 134, '#123b3bed', ink, chinese ? 14 : 12);
 }
 const question = RAIL_QUESTIONS.find(q => q.id === 'respectful-disagreement');
+if (!question)
+    throw Error('Thumbnail question "respectful-disagreement" is missing from the question bank. Update the thumbnail fixture to use an existing question.');
 const rail = { phase: 'question', questions: [question.id, 'private-address', 'login-code'], index: 0, remaining: 3, duration: 10, elapsed: 7, optionOrder: [0, 1, 2], answerLane: null, correct: null, correctCount: 0, failure: null, reward: 0 };
 artFrame(sceneArt('summer', 474, 314, { rail, distance: 1075, railEntryDistance: 1075, lane: 0, x: 0 }), 678, 492, 474, 314, 20);
 round(690, 504, 450, 93, 14, '#10383bf5', '#cfe6cd26');
@@ -152,11 +154,10 @@ for (const [i, option] of question.options.entries()) {
     const x = 690 + i * 154;
     round(x, 734, optionWidth, 60, 10, i === 0 ? '#ead49b' : '#123a3beb', i === 0 ? '#ffedb9' : '#b9d4c738');
     text(['A', 'B', 'C'][i], x + 11, 756, 15, i === 0 ? '#164243' : gold, 750);
-    const label = chinese ? option.label.zh.replace('你的不同', '你的\n不同').replace('是[', '是\n[').replace('刷爆对方', '刷爆\n对方') : option.label.en;
-    const bottom = wrap(label, x + 31, chinese ? 755 : 750, 101, chinese ? 13 : 12, i === 0 ? '#164243' : '#e0e8d9', 600, chinese ? 18 : 15);
+    const optionLabel = chinese ? option.label.zh.replace('你的不同', '你的\n不同').replace('是[', '是\n[').replace('刷爆对方', '刷爆\n对方') : option.label.en;
+    const bottom = wrap(optionLabel, x + 31, chinese ? 755 : 750, 101, chinese ? 13 : 12, i === 0 ? '#164243' : '#e0e8d9', 600, chinese ? 18 : 15);
     if (bottom > 788)
         throw Error('Answer text exceeds its card');
-    ;
 }
 text(copy('跑过四季，把友善留在社区。', 'Run through the seasons. Make room for respect.'), 48, 857, chinese ? 25 : 23, gold, 650);
 text(copy('跑酷 · 收集 · 判断', 'Run · Collect · Reflect'), 1152, 855, 19, '#b1cec5', 550, 'right');

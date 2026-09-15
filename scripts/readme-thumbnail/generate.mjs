@@ -41,7 +41,12 @@ try {
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
   await page.goto(origin);
-  await page.waitForFunction(() => window.thumbnailReady, undefined, { timeout: 15000 });
+  try {
+    await page.waitForFunction(() => window.thumbnailReady, undefined, { timeout: 15000 });
+  } catch (error) {
+    if (errors.length) throw Error(`Thumbnail rendering failed: ${errors.join('\n')}`);
+    throw error;
+  }
   if (errors.length) throw Error(errors.join('\n'));
   const data = await page.locator('#poster').evaluate(canvas => canvas.toDataURL('image/png').split(',')[1]);
   await fs.mkdir(path.dirname(output), { recursive: true });
