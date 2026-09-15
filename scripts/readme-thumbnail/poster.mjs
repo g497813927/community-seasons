@@ -152,10 +152,11 @@ wrap(question.prompt[chinese ? 'zh' : 'en'], 707, 557, 416, chinese ? 20 : 18, i
 const optionWidth = 142;
 for (const [i, option] of question.options.entries()) {
     const x = 690 + i * 154;
-    round(x, 734, optionWidth, 60, 10, i === 0 ? '#ead49b' : '#123a3beb', i === 0 ? '#ffedb9' : '#b9d4c738');
-    text(['A', 'B', 'C'][i], x + 11, 756, 15, i === 0 ? '#164243' : gold, 750);
+    const correct = i === question.correctIndex;
+    round(x, 734, optionWidth, 60, 10, correct ? '#ead49b' : '#123a3beb', correct ? '#ffedb9' : '#b9d4c738');
+    text(['A', 'B', 'C'][i], x + 11, 756, 15, correct ? '#164243' : gold, 750);
     const optionLabel = chinese ? option.label.zh.replace('你的不同', '你的\n不同').replace('是[', '是\n[').replace('刷爆对方', '刷爆\n对方') : option.label.en;
-    const bottom = wrap(optionLabel, x + 31, chinese ? 755 : 750, 101, chinese ? 13 : 12, i === 0 ? '#164243' : '#e0e8d9', 600, chinese ? 18 : 15);
+    const bottom = wrap(optionLabel, x + 31, chinese ? 755 : 750, 101, chinese ? 13 : 12, correct ? '#164243' : '#e0e8d9', 600, chinese ? 18 : 15);
     if (bottom > 788)
         throw Error('Answer text exceeds its card');
 }
