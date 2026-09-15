@@ -4,6 +4,12 @@
 
 [![在 Toy 上游玩](https://img.shields.io/badge/Play-on_Toy-00A1D6)](https://www.bilibili.com/toy/community-seasons/index.html)
 
+[![查看拉取请求](https://img.shields.io/badge/PRs-view-blue)](https://github.com/g497813927/community-seasons/pulls)
+[![查看问题](https://img.shields.io/badge/issues-view-blue)](https://github.com/g497813927/community-seasons/issues)
+[![查看主分支构建与 QA 记录](https://img.shields.io/badge/Build_%26_QA-view-blue)](https://github.com/g497813927/community-seasons/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
+[![MIT 许可证](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![第三方许可声明](https://img.shields.io/badge/third--party-notices-blue)](src/public/THIRD-PARTY-NOTICES.txt)
+
 《四季共建》将网络社区素养学习融入四季跑酷：躲避不当言论，通过案例讲解和铁路答题识别有害内容，练习更友善的回应。
 
 游戏支持英语和简体中文，可通过键盘/WASD 或触屏滑动操作。使用 React、TypeScript 和 Vite 开发，独立运行时无需服务器账号、API 密钥或数据库。
