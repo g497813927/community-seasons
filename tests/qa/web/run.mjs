@@ -5,13 +5,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, webkit, devices } from 'playwright';
 import { assertPreviewBuildIsCurrent, changedFiles, fileHashes, previewSourceHashes } from '../preview/build-info.mjs';
-import { fixtureHandler, initializeBrowserEmulation } from './runtime.mjs';
+import { fixtureHandler, initializeBrowserEmulation, licensesCloseIsComplete, snapshotDocumentScrollStyles } from './runtime.mjs';
+import { freezeClockAtCurrentTime } from './clock.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const previewDist = path.join(root, 'tests/qa/preview/dist');
 const previewPath = '/qa/community-seasons/';
 const markerId = 'community-seasons-qa-v1';
 const storagePrefix = 'qa-community-seasons-v1:';
+const timerMeasurement = 'Playwright controls browser time during gameplay checks. Timer/frame samples are synthetic and cannot measure browser or device performance.';
 const sentinelEntries = {
   'community-seasons-best': '918273645',
   'qa-unrelated-sentinel': 'preserve-this-value',
@@ -19,7 +21,8 @@ const sentinelEntries = {
 const platforms = {
   web: { engine: 'chromium', browser: chromium, simulation: 'desktop browser', context: { viewport: { width: 1280, height: 900 } } },
   android: { engine: 'chromium', browser: chromium, simulation: 'Android phone emulation; not physical Android', context: devices['Pixel 7'] },
-  ios: { engine: 'webkit', browser: webkit, simulation: 'iPhone emulation in Playwright WebKit; not physical iOS Safari', context: devices['iPhone 13'] },
+  // Hosted WebKit's native layout/scroll actions can exceed 10s under CPU load.
+  ios: { engine: 'webkit', browser: webkit, simulation: 'iPhone emulation in Playwright WebKit; not physical iOS Safari', context: devices['iPhone 13'], actionTimeoutMs: 30000, scenarioTimeoutMs: 120000 },
 };
 
 function parsePlatform(args) {
@@ -58,7 +61,21 @@ async function swipeChromium(page, from, to) {
 }
 
 async function runFlow(page, platform, locale, row, reportDirectory, sourceHashes) {
-  const capture = name => page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-${name}.png`), fullPage: true, timeout: 10000 });
+  const action = async (name, perform) => {
+    const timing = { name, elapsedMs: null, completed: false };
+    row.actionTimings.push(timing);
+    const started = performance.now();
+    try {
+      const result = await perform();
+      timing.completed = true;
+      return result;
+    } finally { timing.elapsedMs = performance.now() - started; }
+  };
+  const capture = name => action(`screenshot-${name}`, () => page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-${name}.png`), fullPage: true, timeout: row.timeouts.actionMs }));
+  const advance = async milliseconds => {
+    await page.clock.runFor(milliseconds);
+    row.clock.advancedMs += milliseconds;
+  };
   const checkOverflow = async label => {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     row[`${label}OverflowPx`] = overflow;
@@ -66,6 +83,14 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   };
   await page.locator('.start-screen .run-button').waitFor();
   await page.evaluate(() => document.fonts.ready);
+  row.localeInitialization = await page.evaluate(() => ({
+    navigatorLanguage: navigator.language,
+    navigatorLanguages: [...navigator.languages],
+    initialDocumentLanguage: document.documentElement.lang,
+  }));
+  // React renders the localized controls before its hydration effect updates
+  // html.lang. Wait for that effect without changing the browser's locale.
+  await page.waitForFunction(expected => document.documentElement.lang === expected, locale, { polling: 50 });
   assert.equal(await page.locator('html').getAttribute('lang'), locale);
   row.qa = await page.evaluate(() => window.__communitySeasonsQA?.report());
   assert.equal(row.qa?.id, markerId);
@@ -77,7 +102,8 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await capture('home');
 
   assert.equal(row.requests.filter(url => url.endsWith('/open-source-licenses.json')).length, 0, 'Notices should load only when opened');
-  await page.locator('.licenses-launcher').click();
+  const homeScrollStyles = await page.evaluate(snapshotDocumentScrollStyles);
+  await action('open-licenses', () => page.locator('.licenses-launcher').click());
   await page.locator('.license-entry').first().waitFor();
   const inventory = JSON.parse(await fs.readFile(path.join(previewDist, 'open-source-licenses.json'), 'utf8'));
   row.licensePackages = await page.locator('.license-entry').count();
@@ -85,52 +111,82 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   assert.equal(await page.locator('.licenses-dialog a, .licenses-dialog [role=link]').count(), 0);
   await page.locator('.licenses-search input').fill('react');
   assert.ok(await page.locator('.license-entry').count() > 0);
-  await page.locator('.license-entry summary').first().click();
+  await action('expand-license', () => page.locator('.license-entry summary').first().click());
   assert.ok((await page.locator('.license-entry[open] pre').first().innerText()).includes('Permission'));
   await capture('licenses');
   await page.locator('.licenses-search input').fill('');
-  await page.locator('.licenses-close').click();
-  await page.locator('.licenses-dialog').waitFor({ state: 'detached' });
+  await action('close-licenses', () => page.locator('.licenses-close').click());
+  await action('restore-home-scroll-and-focus', () => page.waitForFunction(licensesCloseIsComplete, homeScrollStyles, { polling: 50 }));
 
-  await page.locator('.start-screen .run-button').click();
-  await page.locator('.controls-guide-done').click();
-  await page.locator('.controls-guide-done').click();
-  await page.locator('.run-setup-footer button[type=submit]').click();
+  await action('start-journey', () => page.locator('.start-screen .run-button').click());
+  await action('complete-first-guide', () => page.locator('.controls-guide-done').click());
+  await action('complete-second-guide', () => page.locator('.controls-guide-done').click());
+  // Freeze before gameplay starts: slow input round trips must not carry the
+  // player into random obstacles while this test is checking UI controls.
+  row.clock.pausedAt = await freezeClockAtCurrentTime(page);
+  await action('submit-run-setup', () => page.locator('.run-setup-footer button[type=submit]').click());
+  await advance(32);
   await page.locator('.arena.running').waitFor();
   await page.locator('.boost-tray').waitFor();
   assert.equal(await page.locator('.boost-slot').count(), 4);
   row.inputs = [];
   if (platform === 'web') {
-    for (const key of ['ArrowUp', 'w', 'Space', 'ArrowDown', 's', 'ArrowLeft', 'ArrowRight']) await page.keyboard.press(key);
+    for (const key of ['ArrowUp', 'w', 'Space', 'ArrowDown', 's', 'ArrowLeft', 'ArrowRight']) {
+      await page.keyboard.press(key);
+      await advance(32);
+    }
     row.inputs.push('Arrow keys, W, S, Space');
   } else {
     const bounds = await page.locator('canvas.world').boundingBox();
     assert.ok(bounds, 'Game canvas is visible');
     const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height * .65;
     if (platforms[platform].engine === 'chromium') {
-      for (const [dx, dy] of [[0, -70], [0, 70], [-70, 0], [70, 0]]) await swipeChromium(page, [x, y], [x + dx, y + dy]);
+      for (const [dx, dy] of [[0, -70], [0, 70], [-70, 0], [70, 0]]) {
+        await swipeChromium(page, [x, y], [x + dx, y + dy]);
+        await advance(32);
+      }
       row.inputs.push('CDP touch swipes up/down/left/right');
     }
     await page.touchscreen.tap(x, y);
+    await advance(32);
     await page.touchscreen.tap(x, y);
+    await advance(32);
     row.inputs.push('Two touchscreen taps');
     if (platform === 'ios') row.inputs.push('Swipe and native orientation behavior require physical-device QA');
   }
-  await page.getByRole('button', { name: locale === 'en' ? 'Pause game' : '暂停游戏', exact: true }).click();
+  if (platform === 'android' && locale === 'en') {
+    // The first obstacle can arrive after about four seconds. Wait longer in
+    // the host without advancing browser time to reproduce slow CI delivery.
+    const before = await page.locator('.score-block .distance').innerText();
+    const started = performance.now();
+    await new Promise(resolve => setTimeout(resolve, 6000));
+    const after = await page.locator('.score-block .distance').innerText();
+    assert.equal(after, before, 'Host input delays must not advance gameplay');
+    assert.equal(await page.locator('.arena.running').count(), 1, 'Host input delays must not end the run');
+    row.clock.delayedInputCheck = { requestedHostMs: 6000, elapsedHostMs: performance.now() - started, distanceBefore: before, distanceAfter: after, passed: true };
+  }
+  await action('pause-game', () => page.getByRole('button', { name: locale === 'en' ? 'Pause game' : '暂停游戏', exact: true }).click());
   await page.locator('.arena.paused').waitFor();
   const distance = await page.locator('.score-block .distance').innerText();
-  await page.waitForTimeout(300);
+  // A frozen clock alone cannot prove the pause handler stops progress.
+  await advance(300);
   assert.equal(await page.locator('.score-block .distance').innerText(), distance);
   await checkOverflow('paused');
   await capture('paused');
-  await page.locator('.result-panel .run-button').click();
+  await action('resume-game', () => page.locator('.result-panel .run-button').click());
   await page.locator('.arena.running').waitFor();
-  await page.waitForFunction(previous => document.querySelector('.score-block .distance').textContent.trim() !== previous, distance);
-  await page.locator('.licenses-launcher').click();
+  await advance(250);
+  assert.notEqual(await page.locator('.score-block .distance').innerText(), distance, 'Resuming must advance gameplay when browser time advances');
+  const gameScrollStyles = await page.evaluate(snapshotDocumentScrollStyles);
+  await action('open-licenses-during-game', () => page.locator('.licenses-launcher').click());
   await page.locator('.license-entry').first().waitFor();
   await page.locator('.arena.paused').waitFor();
-  await page.locator('.licenses-close').click();
-  await page.locator('.licenses-dialog').waitFor({ state: 'detached' });
+  // The game is safely paused now. Let Base UI's real animation completion
+  // and its timer/RAF cleanup finish together when closing the dialog.
+  await page.clock.resume();
+  row.clock.resumedForModalCleanup = true;
+  await action('close-licenses-during-game', () => page.locator('.licenses-close').click());
+  await action('restore-game-scroll-and-focus', () => page.waitForFunction(licensesCloseIsComplete, gameScrollStyles, { polling: 50 }));
   await page.locator('.arena.paused').waitFor();
   assert.equal(row.requests.filter(url => url.endsWith('/open-source-licenses.json')).length, 1, 'Notices are cached after the first open');
 
@@ -155,10 +211,11 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
 
 async function runCase(browser, platform, locale, origin, reportDirectory, sourceHashes) {
   const config = platforms[platform];
-  const row = { platform, locale, engine: config.engine, browserVersion: browser.version(), simulation: config.simulation, passed: false, errors: [], badResponses: [], failedRequests: [], blockedRequests: [], requests: [] };
+  const timeouts = { actionMs: config.actionTimeoutMs ?? 10000, scenarioMs: config.scenarioTimeoutMs ?? 60000 };
+  const row = { platform, locale, engine: config.engine, browserVersion: browser.version(), simulation: config.simulation, timerMeasurement, clock: { mode: 'controlled', advancedMs: 0 }, timeouts, actionTimings: [], passed: false, errors: [], badResponses: [], failedRequests: [], blockedRequests: [], requests: [] };
   const context = await browser.newContext({ ...config.context, locale, serviceWorkers: 'block' });
   const page = await context.newPage();
-  page.setDefaultTimeout(10000);
+  page.setDefaultTimeout(timeouts.actionMs);
   page.setDefaultNavigationTimeout(15000);
   page.on('pageerror', error => row.errors.push(String(error)));
   page.on('response', response => { if (response.status() >= 400) row.badResponses.push({ url: response.url(), status: response.status() }); });
@@ -167,6 +224,7 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
   let timer;
   try {
     assert.deepEqual((await context.storageState()).origins, []);
+    await page.clock.install({ time: Date.now() });
     await context.addInitScript(initializeBrowserEmulation, { entries: sentinelEntries, platform });
     await context.route('**/*', async route => {
       if (new URL(route.request().url()).origin !== origin) {
@@ -182,13 +240,13 @@ async function runCase(browser, platform, locale, origin, reportDirectory, sourc
     };
     await Promise.race([
       flow(),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Smoke scenario exceeded the 60-second limit')), 60000); }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`Smoke scenario exceeded the ${timeouts.scenarioMs / 1000}-second limit`)), timeouts.scenarioMs); }),
     ]);
     row.passed = true;
   } catch (error) {
     row.error = String(error);
     row.stack = error.stack;
-    await page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-failure.png`), fullPage: true, timeout: 3000 }).catch(() => {});
+    await page.screenshot({ path: path.join(reportDirectory, `${platform}-${locale}-failure.png`), fullPage: true, timeout: timeouts.actionMs }).catch(() => {});
   } finally {
     clearTimeout(timer);
     await context.close();
@@ -204,7 +262,7 @@ async function main() {
   const sourcesBefore = await assertPreviewBuildIsCurrent(root, previewDist);
   const reportDirectory = path.join(root, 'results/qa', new Date().toISOString().replace(/[:.]/g, '-'));
   await fs.mkdir(reportDirectory, { recursive: true });
-  const report = { version: 1, startedAt: new Date().toISOString(), requestedPlatform: selected, nodeVersion: process.version, method: 'Source-backed isolated QA preview, temporary localhost server, fresh browser contexts, external requests blocked. Browser emulation is not physical-device QA or native-device performance evidence.', sourceHashes: sourcesBefore, distHashes: await fileHashes(root, [previewDist]), rows: [], errors: [], serverClosed: false };
+  const report = { version: 1, startedAt: new Date().toISOString(), requestedPlatform: selected, nodeVersion: process.version, method: 'Source-backed isolated QA preview, temporary localhost server, fresh browser contexts, external requests blocked. Browser emulation is not physical-device QA or native-device performance evidence.', timerMeasurement, sourceHashes: sourcesBefore, distHashes: await fileHashes(root, [previewDist]), rows: [], errors: [], serverClosed: false };
   let server;
   try {
     const fixture = await startFixtureServer();
