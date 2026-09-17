@@ -8,7 +8,7 @@ const railway = await import('../../../helpers/compiled/railway.mjs');
 const mockReadingWindows = [14, 18, 22, 24];
 const mockRailwaySeconds = Math.ceil(mockReadingWindows.reduce((sum, value) => sum + value, 0) + 4 * 1.6 + 20);
 
-function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 66 }], initiallyPaused = false, blockingOverlay = null, realForks = false, realRailways = false } = {}) {
+function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 66 }], initiallyPaused = false, blockingOverlay = null, realForks = false, realRailways = false, railEntryDelay = 0 } = {}) {
   let clock = 0, ui = initialUi, answers = 0, railStartedAt = null, resetAt = 0;
   let currentScenario = null;
   let railwayStage = 'first';
@@ -31,10 +31,13 @@ function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 
     if (elapsed < 0) return;
     for (let index = 0; index < questions; index++) {
       const duration = mockReadingWindows[index];
-      if (elapsed >= duration + 1.6) { elapsed -= duration + 1.6; continue; }
+      const countdownDuration = fault === 'fast-countdown' || (fault === 'fast-final-countdown' && index === questions - 1)
+        ? duration / 2 : duration;
+      if (elapsed >= countdownDuration + 1.6) { elapsed -= countdownDuration + 1.6; continue; }
       ride.index = index;
-      ride.phase = elapsed < duration ? 'question' : 'feedback';
+      ride.phase = elapsed < countdownDuration ? 'question' : 'feedback';
       ride.duration = ride.phase === 'question' ? duration : 1.6;
+      ride.remaining = ride.phase === 'question' ? duration * (1 - elapsed / countdownDuration) : countdownDuration + 1.6 - elapsed;
       if (fault === 'short-reading') ride.duration = duration - 1;
       if (fault === 'long-reading') ride.duration = duration + 1;
       if (fault === 'drifting-reading' && elapsed > 1) ride.duration = duration - 1;
@@ -116,15 +119,16 @@ function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 
     __phoneQA: qa, document, performance: { now: () => clock }, navigator: { userActivation: { hasBeenActive: false } },
     getComputedStyle: () => ({ visibility: 'visible' }), console: { log: value => lines.push(value) },
     setTimeout(callback, ms) { queueMicrotask(() => {
-      clock += ms;
+      const elapsedMs = ms + (railStartedAt !== null && clock < railStartedAt + 4000 && clock + ms >= railStartedAt + 4000 ? railEntryDelay : 0);
+      clock += elapsedMs;
       if (run.mode === 'running') {
         if ((realForks && currentScenario === 'fork') || (realRailways && currentScenario === 'rail')) {
-          for (let remaining=ms/1000;remaining>1e-8;) {
+          for (let remaining=elapsedMs/1000;remaining>1e-8;) {
             const dt=Math.min(1/60,remaining),previous=run.lastForkAt;
             engine.update(run,dt);remaining-=dt;
             if (run.lastForkAt!==previous) forkPasses.push({at:run.lastForkAt,direction:run.turnDirection,blockedDirection:run.lastForkBlockedDirection});
           }
-        } else { run.time += ms / 1000; run.distance += ms / 1000 * 20; }
+        } else { run.time += elapsedMs / 1000; run.distance += elapsedMs / 1000 * 20; }
       }
       if (!(realRailways && currentScenario === 'rail')) advanceRail();callback();
     }); },
@@ -165,6 +169,8 @@ test('suite follows real UI, measures mid/max boosts, and waits for four questio
   assert.equal(rail.checks.returned, true);
   assert.equal(rail.checks.speed, 20);
   assert.deepEqual(Array.from(rail.checks.readingWindows), mockReadingWindows);
+  assert.equal(rail.checks.observedReadingSeconds.length, 4);
+  assert.ok(rail.checks.observedReadingSeconds.every((elapsed, index) => Math.abs(elapsed - mockReadingWindows[index]) <= .25));
   const maxRail = h.qa.suiteResults.find(r => r.phase === 'railway-max-correct:protected');
   assert.equal(maxRail.checks.speed, 30);
   assert.equal(maxRail.checks.completionReward, 118);
@@ -381,6 +387,8 @@ test('the current engine completes both real railway paces with full reading win
   for (const { checks, seconds } of railways) {
     assert.ok(checks.questions === 3 || checks.questions === 4);
     assert.equal(checks.readingWindows.length, checks.questions);
+    assert.equal(checks.observedReadingSeconds.length, checks.questions);
+    assert.ok(checks.observedReadingSeconds.every((elapsed, index) => elapsed >= checks.readingWindows[index] - .25));
     assert.ok(checks.readingWindows.every(value => value >= 12 && Object.values(h.qa.railQuestionDurations).includes(value)));
     assert.ok(seconds >= checks.readingWindows.reduce((total, value) => total + value, 0));
     assert.equal(checks.coinDelta, checks.completionReward);
@@ -398,6 +406,35 @@ test('railway validation rejects incorrect or drifting reading windows and the r
     assert.equal(h.qa.suiteStatus.outcome, 'interrupted');
     assert.match(h.qa.suiteStatus.error, message);
     assert.equal(h.qa.suiteStatus.phase, 'railway-correct');
+  }
+});
+
+test('railway validation rejects accelerated countdowns even when duration metadata remains correct', async () => {
+  for (const [fault, questionNumber] of [['fast-countdown', 1], ['fast-final-countdown', 4]]) {
+    const h = harness({ fault });
+    h.context.navigator.userActivation.hasBeenActive = true;
+    h.qa.startSuite();
+    await h.finish();
+    assert.equal(h.qa.suiteStatus.outcome, 'interrupted');
+    assert.match(h.qa.suiteStatus.error, new RegExp(`question ${questionNumber} ended before its ${mockReadingWindows[questionNumber - 1]}s reading budget elapsed`));
+    assert.equal(h.qa.suiteStatus.phase, 'railway-correct');
+    assert.ok(h.qa.suiteInterrupted);
+    assert.ok(!h.qa.suiteResults.some(result => result.phase === 'railway-correct:protected'));
+  }
+});
+
+test('railway elapsed checks tolerate a delayed first observation without assuming early submission', async () => {
+  const h = harness({ railEntryDelay: 2000 });
+  h.context.navigator.userActivation.hasBeenActive = true;
+  h.qa.startSuite();
+  await h.finish();
+  assert.equal(h.qa.suiteStatus.outcome, 'complete', h.qa.suiteStatus.error);
+  const railways = h.qa.suiteResults.filter(result => result.phase.startsWith('railway-'));
+  assert.equal(railways.length, 2);
+  for (const { checks } of railways) {
+    assert.equal(checks.readingWindows[0], 14);
+    assert.equal(checks.observedReadingSeconds[0], 12, 'polling missed the first two seconds of the full window');
+    assert.equal(checks.observedReadingSeconds.length, 4);
   }
 });
 

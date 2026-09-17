@@ -133,12 +133,26 @@
     const seenQuestions = [];
     let questionCount = null, completed = false, returned = false;
     let speed = null, entryNormalSpeed = null, completionReward = null, startCoins = null, startDistance = null;
-    const readingWindows = [];
+    const readingWindows = [], observedReadingSeconds = [];
+    let questionTiming = null, previousObservationAt = performance.now();
     while (performance.now() < until) {
       check(token);
       const s = qa.run, ride = s?.rail;
+      const observedAt = performance.now();
       if (s?.mode !== 'running') throw new Error(`Unexpected railway game mode: ${s?.mode}.`);
       protect();
+      if (questionTiming && (!ride || ride.phase !== 'question' || ride.index !== questionTiming.index)) {
+        const elapsed = (observedAt - questionTiming.startedAt) / 1000;
+        observedReadingSeconds.push(round(elapsed));
+        // The question may start between polls. Include that actual entry gap
+        // when bounding its elapsed time; do not trust countdown metadata to
+        // prove the full reading window was available. This runner selects a
+        // lane only and never requests the player's optional early submission.
+        if (elapsed + questionTiming.entryGapSeconds + 1e-8 < questionTiming.duration) {
+          throw new Error(`Railway question ${questionTiming.index + 1} ended before its ${questionTiming.duration}s reading budget elapsed.`);
+        }
+        questionTiming = null;
+      }
       if (ride) {
         if (questionCount === null) {
           questionCount = ride.questions.length;
@@ -166,6 +180,8 @@
           if (!seenQuestions.includes(ride.index)) {
             seenQuestions.push(ride.index);
             readingWindows.push(ride.duration);
+            questionTiming = {index:ride.index,duration:expectedDuration,startedAt:observedAt,
+              entryGapSeconds:(observedAt - previousObservationAt) / 1000};
           }
           qa.answer(true);
         }
@@ -189,8 +205,9 @@
         const coinDelta = s.coins - startCoins;
         if (coinDelta !== completionReward) throw new Error('Railway completion reward was not banked exactly once.');
         return {questions: questionCount, observedQuestions: seenQuestions.length, completed, returned: true,
-          speed,entryNormalSpeed,readingWindows,completionReward,coinDelta,startDistance,endDistance:s.distance};
+          speed,entryNormalSpeed,readingWindows,observedReadingSeconds,completionReward,coinDelta,startDistance,endDistance:s.distance};
       }
+      previousObservationAt = observedAt;
       await wait(Math.min(250, Math.max(1, until - performance.now())));
     }
     throw new Error(`Railway did not finish all questions and return within ${seconds}s (${seenQuestions.length}/${questionCount ?? '?'} questions; exit ${completed}; return ${returned}).`);
