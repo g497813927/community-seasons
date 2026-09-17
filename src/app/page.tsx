@@ -63,6 +63,7 @@ import { createRailQuestionDeck, type RailRide, type RailQuestion } from "@/lib/
 import { CloudSaveDialog } from "@/components/cloud-save-dialog";
 import { CloudSaveStatus } from "@/components/cloud-save-status";
 import { ShareDialog } from "@/components/share-dialog";
+import { HelpDialog } from "@/components/help-dialog";
 import { LicensesDialog } from "@/components/licenses-dialog";
 import type { SharePosterSnapshot } from "@/lib/game/share-poster";
 import type { LessonShareSnapshot } from "@/lib/game/lesson-share-poster";
@@ -223,6 +224,10 @@ export default function Home() {
   const [shareSnapshot, setShareSnapshot] = useState<SharePosterSnapshot | null>(null);
   const [lessonShareSnapshot, setLessonShareSnapshot] = useState<LessonShareSnapshot | null>(null);
   const shareOpenRef = useRef(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const helpOpenRef = useRef(false);
+  const helpButtonRef = useRef<HTMLButtonElement>(null);
+  const helpDetailRef = useRef<"guide" | "licenses" | null>(null);
   const [licensesOpen, setLicensesOpen] = useState(false);
   const licensesOpenRef = useRef(false);
   const licensesButtonRef = useRef<HTMLButtonElement>(null);
@@ -432,7 +437,7 @@ export default function Home() {
     if (next !== progressRef.current) saveProgress(next);
   }
   function changeStore(open: boolean) {
-    if (open && (shareOpenRef.current || licensesOpenRef.current)) return;
+    if (open && (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current)) return;
     if (open && startAfterCloudRef.current) return;
     if (open && game.current.mode === "ready" && cloudBlocksEntry()) return;
     if (open && game.current.review) return;
@@ -452,8 +457,39 @@ export default function Home() {
       changeSetup(true);
     }
   }
+  function changeHelp(open: boolean) {
+    if (open && (shareOpenRef.current || licensesOpenRef.current || storeOpenRef.current ||
+      setupOpenRef.current || guideOpenRef.current || startAfterCloudRef.current ||
+      game.current.review || rotateRequiredRef.current)) return;
+    swipeRef.current = null;
+    lastTapRef.current = null;
+    lastRailUpRef.current = null;
+    helpOpenRef.current = open;
+    setHelpOpen(open);
+    if (open) {
+      helpDetailRef.current = null;
+      if (game.current.mode === "running") {
+        game.current.mode = "paused";
+        bankRewards();
+        recordBest();
+      }
+    }
+    sync();
+  }
+  function openHelpDetail(detail: "guide" | "licenses") {
+    helpDetailRef.current = detail;
+    changeHelp(false);
+    if (detail === "guide") changeGuide(true);
+    else changeLicenses(true);
+  }
+  function helpReturnFocus() {
+    // The header can disappear after resizing to desktop while a dialog is open.
+    return helpButtonRef.current?.getClientRects().length
+      ? helpButtonRef.current
+      : licensesButtonRef.current ?? false;
+  }
   function changeLicenses(open: boolean) {
-    if (open && (shareOpenRef.current || storeOpenRef.current || setupOpenRef.current ||
+    if (open && (helpOpenRef.current || shareOpenRef.current || storeOpenRef.current || setupOpenRef.current ||
       guideOpenRef.current || startAfterCloudRef.current || game.current.review || rotateRequiredRef.current)) return;
     swipeRef.current = null;
     lastTapRef.current = null;
@@ -476,8 +512,9 @@ export default function Home() {
     setSetupOpen(open);
   }
   function changeGuide(open: boolean) {
-    if (open && (shareOpenRef.current || licensesOpenRef.current)) return;
+    if (open && (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current)) return;
     if (open && startAfterCloudRef.current) return;
+    if (open && startAfterGuideRef.current) helpDetailRef.current = null;
     guideOpenRef.current = open;
     setGuideOpen(open);
     if (!open) {
@@ -578,7 +615,7 @@ export default function Home() {
     if (
       run.mode !== "over" ||
       run.review ||
-      shareOpenRef.current || licensesOpenRef.current ||
+      shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current ||
       storeOpenRef.current ||
       setupOpenRef.current ||
       guideOpenRef.current ||
@@ -611,7 +648,7 @@ export default function Home() {
     copy: Pick<LessonShareSnapshot, "kind" | "title" | "example" | "guidance" | "explanation">,
     trigger: HTMLButtonElement,
   ) {
-    if (shareOpenRef.current || licensesOpenRef.current || storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || rotateRequiredRef.current) return;
+    if (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current || storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || rotateRequiredRef.current) return;
     swipeRef.current = null;
     lastTapRef.current = null;
     lastRailUpRef.current = null;
@@ -645,7 +682,7 @@ export default function Home() {
     openLessonShare({ title: lesson.title, example: lesson.example, guidance: lesson.response, explanation: lesson.why }, trigger);
   }
   function goHome() {
-    if (shareOpenRef.current || licensesOpenRef.current) return;
+    if (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     startAfterCloudRef.current = false;
     bankRewards();
     recordBest();
@@ -661,7 +698,7 @@ export default function Home() {
     void cloudRef.current?.refresh();
   }
   async function start() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (
       storeOpenRef.current ||
       guideOpenRef.current ||
@@ -692,7 +729,7 @@ export default function Home() {
     }
   }
   function openRunSetup() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (storeOpenRef.current || guideOpenRef.current || game.current.review) return;
     bankRewards();
     if (game.current.mode === "running") game.current.mode = "paused";
@@ -708,7 +745,7 @@ export default function Home() {
     sync();
   }
   function beginRun(kind: SkillKind | null) {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (
       storeOpenRef.current ||
       guideOpenRef.current ||
@@ -750,7 +787,7 @@ export default function Home() {
     cloudRef.current?.markDirty();
   }
   function control(action: Action) {
-    if (rotateRequiredRef.current || licensesOpenRef.current) return;
+    if (rotateRequiredRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current) return;
     lastRailUpRef.current = null;
     const oldStumbles = game.current.stumbles;
@@ -778,7 +815,7 @@ export default function Home() {
     }
   }
   function submitRailChoice() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || startAfterCloudRef.current) return;
     if (!submitRailAnswer(game.current)) return;
     swipeRef.current = null;
@@ -884,7 +921,7 @@ export default function Home() {
     } catch {}
   }
   function pause() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     swipeRef.current = null;
     lastTapRef.current = null;
     lastRailUpRef.current = null;
@@ -899,7 +936,7 @@ export default function Home() {
     }
   }
   function continueAfterReview() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (!finishReview(game.current)) return;
     swipeRef.current = null;
     lastTapRef.current = null;
@@ -1049,7 +1086,7 @@ export default function Home() {
           !storeOpenRef.current &&
           !setupOpenRef.current &&
           !guideOpenRef.current &&
-          !licensesOpenRef.current,
+          !licensesOpenRef.current && !helpOpenRef.current,
         onChange: updateCloudState,
       });
       cloudRef.current = controller;
@@ -1143,7 +1180,7 @@ export default function Home() {
           !storeOpenRef.current &&
           !setupOpenRef.current &&
           !guideOpenRef.current &&
-          !licensesOpenRef.current &&
+          !licensesOpenRef.current && !helpOpenRef.current &&
           !cloudStateRef.current.conflict);
       // A paused run is a still image. Keep event/audio bookkeeping alive, but
       // avoid rebuilding thousands of polygons behind pause and lesson dialogs.
@@ -1171,7 +1208,7 @@ export default function Home() {
     }
     raf = requestAnimationFrame(frame);
     function onGameSpace(e: KeyboardEvent) {
-      if (shareOpenRef.current || licensesOpenRef.current) return;
+      if (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
       if (
         rotateRequiredRef.current &&
         !e.ctrlKey &&
@@ -1196,7 +1233,7 @@ export default function Home() {
       )
         return;
       const target = e.target as HTMLElement | null;
-      if (target?.closest(".licenses-launcher")) return;
+      if (target?.closest(".licenses-launcher, .help-launcher")) return;
       // Answer cards and Go retain native keyboard activation during a quiz.
       if (game.current.rail && target?.closest(".rail-answers button")) return;
       if (
@@ -1218,7 +1255,7 @@ export default function Home() {
       // modifiers, other keys and events in dialogs discard the first press.
       const lastRailUp = lastRailUpRef.current;
       lastRailUpRef.current = null;
-      if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+      if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const key = e.key;
       // Physical WASD keys also work while a non-Latin input method is active.
@@ -1458,6 +1495,12 @@ export default function Home() {
             {t(progress.wallet.toLocaleString())}
           </span>
         </Button>
+        <Button ref={helpButtonRef} variant="outline" className="help-launcher"
+          onClick={() => changeHelp(true)} aria-label={l("Help & information", "帮助与信息")}
+          title={l("Help & information", "帮助与信息")} aria-haspopup="dialog"
+          aria-expanded={helpOpen} aria-controls="help-panel">
+          <CircleHelp size={20} aria-hidden="true" />
+        </Button>
       </header>
       <section
         className={`arena ${hud.mode} ${hud.rail ? "rail-active" : ""} ${active && hud.time < 5 ? "opening-boosters" : ""} ${active && hud.celebratingRecord ? "record-celebrating" : ""}`}
@@ -1581,7 +1624,7 @@ export default function Home() {
               <Button
                 variant="ghost"
                 className="how-to-play"
-                onClick={() => changeGuide(true)}
+                onClick={() => { helpDetailRef.current = null; changeGuide(true); }}
                 disabled={cloudActionPending}
               >
                 <CircleHelp size={15} /> {l("How to play", "操作指南")}
@@ -1782,6 +1825,7 @@ export default function Home() {
           !storeOpen &&
           !setupOpen &&
           !guideOpen &&
+          !helpOpen &&
           !hud.review && (
             <RailTravel
               frame={railTravelFrame(game.current)}
@@ -1917,7 +1961,8 @@ export default function Home() {
             !storeOpen &&
             !setupOpen &&
             !guideOpen &&
-            !licensesOpen
+            !licensesOpen &&
+            !helpOpen
           }
           locale={locale}
           localSnapshot={cloudState.conflict.local}
@@ -1929,8 +1974,13 @@ export default function Home() {
           onStayLocal={() => void chooseCloudSave("local-only")}
         />
       )}
-      <ControlsGuide open={guideOpen} onOpenChange={changeGuide} locale={locale} />
-      <LicensesDialog open={licensesOpen} onOpenChange={changeLicenses} locale={locale} returnFocus={licensesButtonRef} />
+      <HelpDialog open={helpOpen} onOpenChange={changeHelp} locale={locale}
+        onGuide={() => openHelpDetail("guide")} onLicenses={() => openHelpDetail("licenses")}
+        returnFocus={() => guideOpenRef.current || licensesOpenRef.current ? false : helpReturnFocus()} />
+      <ControlsGuide open={guideOpen} onOpenChange={changeGuide} locale={locale}
+        returnFocus={helpDetailRef.current === "guide" ? helpReturnFocus : undefined} />
+      <LicensesDialog open={licensesOpen} onOpenChange={changeLicenses} locale={locale}
+        returnFocus={() => helpDetailRef.current === "licenses" ? helpReturnFocus() : licensesButtonRef.current ?? false} />
       <PostReviewDialog
         review={hud.review}
         ended={hud.mode === "over"}
@@ -2039,7 +2089,7 @@ export default function Home() {
       </footer>
       <footer className="credits-footer">
         <button ref={licensesButtonRef} type="button" className="licenses-launcher"
-          onClick={() => changeLicenses(true)} aria-haspopup="dialog" aria-expanded={licensesOpen}
+          onClick={() => { helpDetailRef.current = null; changeLicenses(true); }} aria-haspopup="dialog" aria-expanded={licensesOpen}
           aria-controls="licenses-panel">
           <ScrollText size={16} aria-hidden="true" />{l("Open-source licenses", "开源许可")}
         </button>

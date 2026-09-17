@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronDown, ScrollText, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Locale } from "@/lib/game/i18n";
@@ -23,7 +23,7 @@ export function LicensesDialog({ open, onOpenChange, locale, returnFocus }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locale: Locale;
-  returnFocus: RefObject<HTMLButtonElement | null>;
+  returnFocus: () => HTMLElement | false;
 }) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [inventory, setInventory] = useState<LicenseInventory | null>(null);

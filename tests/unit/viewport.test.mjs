@@ -118,7 +118,7 @@ test("actual gameplay actions and keyboard capture cannot bypass rotate overlay"
     "triggerBooster",
     "continueAfterReview",
   ]) {
-    const c = { rotateRequiredRef: { current: true }, shareOpenRef: { current: false }, licensesOpenRef: { current: false } };
+    const c = { rotateRequiredRef: { current: true }, shareOpenRef: { current: false }, helpOpenRef: { current: false }, licensesOpenRef: { current: false } };
     vm.createContext(c);
     await vm.runInContext(compile(functions.get(name)) + `;${name}()`, c);
   }
@@ -128,7 +128,7 @@ test("actual gameplay actions and keyboard capture cannot bypass rotate overlay"
     const c = {
       rotateRequiredRef: { current: true },
       shareOpenRef: { current: false },
-      licensesOpenRef: { current: false },
+      helpOpenRef: { current: false }, licensesOpenRef: { current: false },
       e: { key, preventDefault: () => prevented++, stopImmediatePropagation: () => stopped++ },
     };
     vm.createContext(c);
@@ -198,7 +198,7 @@ test("actual animation predicate does not repaint home autoplay behind the rotat
     storeOpenRef: { current: false },
     setupOpenRef: { current: false },
     guideOpenRef: { current: false },
-    licensesOpenRef: { current: false },
+    helpOpenRef: { current: false }, licensesOpenRef: { current: false },
     cloudStateRef: { current: { conflict: null } },
   };
   vm.createContext(c);

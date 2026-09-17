@@ -59,7 +59,7 @@ Reports and screenshots: results/qa/responsive-<timestamp>/.`);
 }
 
 // Serialized into the browser. These measurements exclude the fixture's fixed
-// diagnostics UI and compare the page tail with the real final game footer.
+// diagnostics UI and compare the page tail with the final visible game section.
 function layoutSnapshot() {
   const rect = element => {
     const bounds = element.getBoundingClientRect();
@@ -67,6 +67,8 @@ function layoutSnapshot() {
   };
   const start = document.querySelector('.start-screen');
   const credits = document.querySelector('.credits-footer');
+  const tail = [...document.querySelectorAll('.arena, .game-shell > footer')]
+    .filter(element => element.getClientRects().length).at(-1);
   const doc = document.scrollingElement;
   const viewportHeight = window.visualViewport?.height ?? innerHeight;
   return {
@@ -76,7 +78,8 @@ function layoutSnapshot() {
     arena: rect(document.querySelector('.arena')),
     title: { ...rect(start), clientHeight: start.clientHeight, scrollHeight: start.scrollHeight, scrollTop: start.scrollTop, overflowY: getComputedStyle(start).overflowY },
     credits: rect(credits),
-    blankTail: doc.scrollHeight - Math.max(doc.clientHeight, credits.getBoundingClientRect().bottom + scrollY),
+    tail: { className: tail.className, ...rect(tail) },
+    blankTail: doc.scrollHeight - Math.max(doc.clientHeight, tail.getBoundingClientRect().bottom + scrollY),
   };
 }
 
@@ -387,7 +390,14 @@ async function inspectLayout(frame, row) {
   assert.ok(doc.scrollWidth <= doc.width + 1, `Document overflows horizontally by ${doc.scrollWidth - doc.width}px`);
   assert.ok(!/^(auto|scroll)$/.test(title.overflowY) || title.scrollHeight <= title.clientHeight + 1,
     `Home title has its own ${title.scrollHeight - title.clientHeight}px vertical scroll range`);
-  assert.ok(blankTail <= 24, `Blank space after credits footer: ${blankTail}px`);
+  assert.ok(blankTail <= 24, `Blank space after final visible game section: ${blankTail}px`);
+  const compactHelp = row.layout.viewport.width <= 750;
+  assert.equal(await frame.locator('.help-launcher').isVisible(), compactHelp, 'Top help follows the small-screen breakpoint');
+  const visibleFooters = await frame.locator('.keyboard-controls, .swipe-guide, .credits-footer').evaluateAll(elements =>
+    elements.filter(element => element.getClientRects().length).map(element => element.className));
+  row.visibleFooters = visibleFooters;
+  if (compactHelp) assert.deepEqual(visibleFooters, [], 'Small screens remove all bottom help content');
+  else assert.ok(visibleFooters.some(className => className.includes('credits-footer')), 'Larger screens retain footer licenses');
 
   // Exercise actual scrolling before measuring clipping. A visible DOM node
   // alone does not prove a control can be reached inside overflow:hidden.
@@ -487,6 +497,25 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
         assert.deepEqual(row.blockedRequests, []);
         await frame.evaluate(() => window.scrollTo(0, 0));
         await page.screenshot({ path: screenshot, fullPage: true });
+        if (profile.textScale && profile.width <= 750) {
+          await frame.locator('.help-launcher').click();
+          const help = frame.locator('.help-dialog');
+          await help.waitFor();
+          await settleLayout(frame, profile.textScale);
+          row.helpActions = [];
+          assert.ok(await help.evaluate(element => element.scrollWidth - element.clientWidth <= 1), 'Enlarged help must not overflow horizontally');
+          for (const button of await help.locator('button').all()) {
+            await button.scrollIntoViewIfNeeded();
+            const measured = await button.evaluate(actionSnapshot);
+            row.helpActions.push(measured);
+            assertReachable(measured, 'Enlarged help action');
+            assert.ok(measured.width >= 44 && measured.height >= 44, 'Help actions retain touch targets with enlarged text');
+          }
+          await help.evaluate(element => element.scrollTo(0, 0));
+          await page.screenshot({ path: screenshot.replace('.png', '-help.png'), fullPage: true });
+          await frame.locator('.help-close').click();
+          await frame.waitForFunction(() => !document.querySelector('.help-dialog') && document.activeElement === document.querySelector('.help-launcher'));
+        }
       })(),
       new Promise((_, reject) => { timer = setTimeout(() => reject(Error('Responsive scenario exceeded its 120-second bound')), 120000); }),
     ]);

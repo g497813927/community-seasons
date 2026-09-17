@@ -33,9 +33,11 @@ export function snapshotDocumentScrollStyles() {
 }
 
 export function licensesCloseIsComplete(baseline) {
-  const launcher = document.querySelector('.licenses-launcher');
+  const launcher = document.querySelector(baseline.returnFocusSelector ?? '.licenses-launcher');
   if (!launcher || document.activeElement !== launcher ||
       document.querySelector('.licenses-dialog') ||
+      document.querySelector('.help-dialog') ||
+      document.querySelector('.controls-guide-dialog') ||
       document.querySelector('[data-slot="dialog-overlay"]') ||
       document.querySelector('[data-base-ui-scroll-locked]')) return false;
   // Base UI releases its iOS overflow lock in a deferred timer, after the
