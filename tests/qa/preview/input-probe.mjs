@@ -20,6 +20,27 @@ export function createInputProbe() {
   };
   const inputs = Object.freeze({
     snapshot,
+    // Read-only observations for natural-clock device traversal. Copies keep
+    // an inspector from mutating the live engine or accessing saved progress.
+    course() {
+      const run = current().read();
+      return {
+        mode: run.mode, time: run.time, distance: run.distance, speed: run.speed,
+        scene: run.scene, seed: run.seed, lane: run.lane, x: run.x,
+        jump: run.jump, slide: run.slide, review: !!run.review,
+        rail: run.rail ? { phase: run.rail.phase } : null,
+        railReturnRemaining: run.railReturnRemaining, nextRailAt: run.nextRailAt,
+        fork: run.fork ? { ...run.fork } : null,
+        nextForkAt: run.nextForkAt, lastForkAt: run.lastForkAt,
+        turnRemaining: run.turnRemaining, turnDirection: run.turnDirection,
+        sceneTransition: run.sceneTransition,
+        nextPortalAt: run.nextPortalAt, portalLane: run.portalLane,
+        boosts: { ...run.boosts },
+        obstacles: run.obstacles
+          .filter(o => o.at >= run.distance - 2 && o.at <= run.distance + run.speed * 5)
+          .map(({ id, kind, lane, at, resolved }) => ({ id, kind, lane, at, resolved })),
+      };
+    },
     prepare() {
       const { read, availability, chargeCoins } = current();
       const run = read();
