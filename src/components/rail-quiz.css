@@ -17,6 +17,36 @@
   border-radius: 12px;
   box-shadow: 0 8px 28px #072c3026;
 }
+/* Let longer questions and enlarged text grow the arena and scroll with the
+   page. Absolute question/answer panels would overlap on short phones. */
+.rail-phase-question {
+  --rail-question-top: 112px;
+  --rail-answer-bottom: 44px;
+  position: relative;
+  inset: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding-block: var(--rail-question-top) var(--rail-answer-bottom);
+  gap: 24px;
+}
+.rail-phase-question .rail-question,
+.rail-phase-question .rail-answer-area {
+  position: relative;
+  top: auto;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  flex-shrink: 0;
+  margin-inline: auto;
+}
+.rail-phase-question .rail-answer-area {
+  margin-top: auto;
+}
+.arena.running.rail-active,
+.arena.paused.rail-active {
+  touch-action: pan-y pinch-zoom;
+}
 .rail-eyebrow {
   display: flex;
   align-items: center;
@@ -48,7 +78,8 @@
   font-weight: 600;
   cursor: pointer;
 }
-.rail-answers button:disabled {
+.rail-answers button:disabled,
+.rail-submit:disabled {
   cursor: default;
 }
 .rail-question h2 {
@@ -105,12 +136,54 @@
   color: #ead7a9;
   font-size: 12px;
 }
-.rail-answers {
+.rail-answer-column {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: 1fr auto;
+  flex: 1 1 5em;
+  min-width: 0;
+  border: 1px solid #7ba69b;
+  border-radius: 10px;
+  background: #123731f5;
+  color: #f3ead6;
+}
+.rail-answer-column[data-selected="true"] {
+  background: #ecce88;
+  border-color: #fff4c7;
+  color: #163830;
+  box-shadow: 0 0 0 2px #fff4c733;
+}
+.rail-submit-slot {
+  padding: 0 8px 8px;
+}
+.rail-answer-hint svg {
+  flex-shrink: 0;
+}
+.rail-submit {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #163830;
+  border-radius: 9px;
+  background: #123731;
+  color: #fff4c7;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.rail-submit:disabled {
+  opacity: 0.55;
+}
+.rail-answers {
+  display: flex;
+  flex-wrap: wrap;
   gap: 9px;
 }
-.rail-answers button {
+.rail-answer-choice {
   pointer-events: auto;
   display: flex;
   flex-direction: column;
@@ -119,27 +192,22 @@
   min-width: 0;
   min-height: 124px;
   padding: 13px 10px;
-  border: 1px solid #7ba69b;
-  border-radius: 10px;
-  background: #123731f5;
-  color: #f3ead6;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
 }
-.rail-answers button[aria-pressed="true"] {
-  background: #ecce88;
-  border-color: #fff4c7;
-  color: #163830;
-  box-shadow: 0 0 0 2px #fff4c733;
-}
-.rail-answers button:focus-visible {
+.rail-answers button:focus-visible,
+.rail-submit:focus-visible {
   outline: 3px solid #ffffff;
   outline-offset: 3px;
 }
 .rail-answer-letter {
   display: grid;
   place-items: center;
-  width: 27px;
-  height: 27px;
+  width: 2em;
+  height: 2em;
   border: 1px solid currentColor;
   border-radius: 50%;
   font-size: 13px;
@@ -250,6 +318,10 @@
   top: 50%;
 }
 @media (max-width: 600px) {
+  .rail-phase-question {
+    --rail-question-top: 86px;
+    --rail-answer-bottom: 18px;
+  }
   .rail-question {
     top: 86px;
     width: calc(100% - 24px);
@@ -278,7 +350,7 @@
   .rail-answers {
     gap: 6px;
   }
-  .rail-answers button {
+  .rail-answer-choice {
     padding: 10px 6px;
     min-height: 128px;
     gap: 7px;
@@ -287,8 +359,6 @@
     font-size: 12px;
   }
   .rail-answer-letter {
-    width: 23px;
-    height: 23px;
     font-size: 12px;
   }
   .rail-eyebrow {
@@ -297,6 +367,10 @@
   }
 }
 @media (max-height: 600px) and (min-width: 601px) {
+  .rail-phase-question {
+    --rail-question-top: 80px;
+    --rail-answer-bottom: 15px;
+  }
   .rail-question {
     top: 80px;
     padding: 10px 18px;
@@ -307,7 +381,7 @@
   .rail-answer-area {
     bottom: 15px;
   }
-  .rail-answers button {
+  .rail-answer-choice {
     min-height: 84px;
     flex-direction: row;
     padding: 8px;
@@ -317,6 +391,10 @@
   }
 }
 @media (max-width: 360px), (max-width: 600px) and (max-height: 700px) {
+  .rail-phase-question {
+    --rail-question-top: 76px;
+    --rail-answer-bottom: 12px;
+  }
   .rail-question {
     top: 76px;
     padding: 10px 12px;
@@ -362,7 +440,7 @@
     padding: 4px 8px;
     font-size: 10px;
   }
-  .rail-answers button {
+  .rail-answer-choice {
     min-height: 112px;
     padding: 8px 5px;
     gap: 5px;

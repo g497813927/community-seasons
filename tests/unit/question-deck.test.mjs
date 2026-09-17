@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import ts from '../../src/node_modules/typescript/lib/typescript.js';
 import '../helpers/compile.mjs';
 
-const { RAIL_QUESTIONS, createRailQuestionDeck, createRailRide, beginRailQuestion } =
+const { RAIL_QUESTIONS, railQuestion, railQuestionDuration, createRailQuestionDeck, createRailRide, beginRailQuestion } =
   await import('../helpers/compiled/railway.mjs');
 const { createRun, update, selectRailLane, currentRailQuestion, togglePause, advancePreview } =
   await import('../helpers/compiled/engine.mjs');
@@ -21,7 +21,7 @@ function showRide(ride, random, shown) {
     assert.ok(!shown.slice(-8).includes(id), `question ${id} repeated among the previous eight`);
     shown.push(id);
     assert.deepEqual([...ride.optionOrder].sort(), [0, 1, 2]);
-    assert.ok(ride.duration >= 9 && ride.duration <= 11);
+    assert.equal(ride.duration, railQuestionDuration(railQuestion(id)));
   }
 }
 

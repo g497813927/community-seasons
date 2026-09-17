@@ -552,6 +552,41 @@ export function selectRailLane(s: RunState, lane: -1 | 0 | 1): boolean {
   s.lane = lane;
   return true;
 }
+function judgeRailAnswer(s: RunState) {
+  const ride = s.rail!;
+  const question = currentRailQuestion(s)!;
+  const optionIndex = ride.optionOrder[s.lane + 1];
+  ride.answerLane = s.lane;
+  ride.correct = optionIndex === question.correctIndex;
+  if (ride.correct) {
+    ride.correctCount++;
+    ride.phase = "feedback";
+    ride.duration = 1.6;
+    ride.remaining = 1.6;
+  } else {
+    ride.failure = { questionId: question.id, optionIndex, correctIndex: question.correctIndex };
+    ride.phase = "falling";
+    ride.duration = 1.2;
+    ride.remaining = 1.2;
+  }
+}
+export function submitRailAnswer(s: RunState): boolean {
+  if (
+    s.mode !== "running" ||
+    !s.rail ||
+    s.rail.phase !== "question" ||
+    s.review ||
+    s.sceneTransition > 0 ||
+    s.turnRemaining > 0 ||
+    s.railReturnRemaining > 0 ||
+    ![-1, 0, 1].includes(s.lane)
+  )
+    return false;
+  // Submit the selected lane now without simulating the unused reading time.
+  // The ordinary feedback/fall and end-of-ride reward still run exactly once.
+  judgeRailAnswer(s);
+  return true;
+}
 function startRail(s: RunState) {
   s.rail = createRailRide(() => random(s), s.railQuestionDeck ??= createRailQuestionDeck());
   s.rail.entryNormalSpeed = normalSpeedAt(s.distance);
@@ -594,21 +629,7 @@ function stepRail(s: RunState, dt: number) {
   if (ride.phase === "boarding") {
     beginRailQuestion(ride, () => random(s));
   } else if (ride.phase === "question") {
-    const question = currentRailQuestion(s)!;
-    const optionIndex = ride.optionOrder[s.lane + 1];
-    ride.answerLane = s.lane;
-    ride.correct = optionIndex === question.correctIndex;
-    if (ride.correct) {
-      ride.correctCount++;
-      ride.phase = "feedback";
-      ride.duration = 1.6;
-      ride.remaining = 1.6;
-    } else {
-      ride.failure = { questionId: question.id, optionIndex, correctIndex: question.correctIndex };
-      ride.phase = "falling";
-      ride.duration = 1.2;
-      ride.remaining = 1.2;
-    }
+    judgeRailAnswer(s);
   } else if (ride.phase === "feedback") {
     if (ride.index + 1 < ride.questions.length) {
       ride.index++;

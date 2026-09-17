@@ -1,0 +1,9 @@
+# Rail answer submission regression
+
+[English](README.md) | [简体中文](README.zh-CN.md)
+
+Run `node tests/qa/rail-submit/check.mjs` from the repository root after source edits are complete. It builds a dedicated preview and runs a bounded Chromium matrix in English and Simplified Chinese at desktop, 320×568 phone, and 320×568 with 200% computed text sizes. Install the locked workspace/game dependencies and Playwright Chromium first, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an installed Chrome/Chromium executable.
+
+The fixture imports the real game. Its game-tool alias observes the live run and prepares a fixed question; production keyboard, pointer, button, submission, and update functions remain intact. Shortened fixture-only question/feedback deadlines exercise stale double inputs across natural phase transitions. Playwright keyboard/touch events check single/double key hits, held-key repeat, same-key pairing, touch double-taps that must not submit, answer-card selection followed by Go inside that card, keyboard activation with Enter and Space, pause, new questions, layout, and touch targets. The answer selector and Go remain separate sibling buttons. Layout cases use the longest combined prompt/answer text in the current language. The blur lifecycle check explicitly dispatches a synthetic blur event. Browser time is controlled, so these are interaction/layout regressions, not native-device performance evidence.
+
+The runner creates its own temporary `127.0.0.1` server, blocks external requests, disables Toy imports, and maps game storage to `qa-rail-submit-v1:` before loading the game. Fresh contexts preserve and verify unprefixed sentinels. Reports and screenshots include current source/build hashes under `results/qa/rail-submit-<timestamp>/`. Do not deploy this fixture or mix it with production `src/dist/`.

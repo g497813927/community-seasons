@@ -7,6 +7,7 @@ const out = new URL('./renderer-fuzz/', import.meta.url);
 const sourceHashes = compileGameModules(new URL('compiled/', out));
 const { Renderer } = await import('./renderer-fuzz/compiled/render.mjs');
 const E = await import('./renderer-fuzz/compiled/engine.mjs');
+const { railQuestion, railQuestionDuration } = await import('./renderer-fuzz/compiled/railway.mjs');
 const Store = await import('./renderer-fuzz/compiled/store.mjs');
 const { nextScene } = await import('./renderer-fuzz/compiled/scenes.mjs');
 globalThis.window = { devicePixelRatio: 2 };
@@ -130,7 +131,10 @@ try {
     scenario(seed,'rail',scene,(random,renderer)=>{
       const s=base(seed,scene,[980,4500,10000][seed%3]);s.nextRailAt=s.distance+.1;E.update(s,.025);assert.ok(s.rail,'rail never entered');
       const wrong=seed%2===0;let last='',sawReturn=false;
-      for(let i=0;i<300;i++){
+      // Allow the whole content-sized ride plus boarding, feedback and return.
+      const rideSeconds=s.rail.questions.reduce((seconds,id)=>seconds+railQuestionDuration(railQuestion(id)),0);
+      const maximumTicks=Math.ceil((rideSeconds+12)/.25);
+      for(let i=0;i<maximumTicks;i++){
         if(s.rail?.phase==='question'){
           const question=E.currentRailQuestion(s),index=s.rail.optionOrder.indexOf(question.correctIndex);
           E.selectRailLane(s,((wrong&&s.rail.index===seed%3)?(index+1)%3:index)-1);
