@@ -52,7 +52,35 @@ test('input snapshots observe real engine outcomes without returning writable st
     'skillCharge', 'skillChargeRequired', 'skillRechargeLocked', 'shield', 'shieldTime',
   ].sort());
   assert.ok(Object.isFrozen(f.inputs));
-  assert.deepEqual(Object.keys(f.inputs).sort(), ['prepare', 'snapshot']);
+  assert.deepEqual(Object.keys(f.inputs).sort(), ['course', 'prepare', 'snapshot']);
+});
+
+test('course observations follow the current run without sharing writable engine state or saves', () => {
+  const f = fixture();
+  f.run.fork = { at: 100, blockedDirection: -1 };
+  f.run.obstacles = [
+    { id: 1, kind: 'block', lane: 0, at: 10, resolved: false },
+    { id: 2, kind: 'arch', lane: 1, at: 10000, resolved: false },
+  ];
+  const before = structuredClone(f.run), saved = structuredClone(f.progress);
+  const course = f.inputs.course();
+  assert.equal(course.obstacles.length, 1);
+  assert.equal(course.time, f.run.time);
+  assert.equal(course.speed, f.run.speed);
+  course.fork.at = 0;
+  course.obstacles[0].at = 0;
+  course.boosts.shield = 100;
+  course.distance = 10000;
+  assert.deepEqual(f.run, before);
+  assert.deepEqual(f.progress, saved);
+  assert.equal('wallet' in course, false);
+  assert.equal('railQuestionDeck' in course, false);
+  const replacement = createRun(23);
+  replacement.distance = 12;
+  f.replace(replacement);
+  assert.equal(f.inputs.course().distance, 12);
+  f.detach();
+  assert.throws(() => f.inputs.course(), /not attached/);
 });
 
 test('fixed preparation enables real skill activation and preserves course, clocks and progress', () => {

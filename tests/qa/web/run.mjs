@@ -75,6 +75,32 @@ async function swipeWebKit(page, from, to) {
   }, { from, to });
 }
 
+// Registered after the game's observer: sample in the same resize delivery,
+// before a later animation frame could hide a cleared-canvas flash.
+function sampleCanvasAtResize({ height, originalStyle }) {
+  const canvas = document.querySelector('canvas.world');
+  const before = { cssHeight: canvas.getBoundingClientRect().height, width: canvas.width, height: canvas.height };
+  return new Promise(resolve => {
+    const observer = new ResizeObserver(entries => {
+      if (!entries.some(entry => entry.contentRect.height !== before.cssHeight)) return;
+      observer.disconnect();
+      const width = Math.max(1, Math.floor(canvas.width / 2));
+      const height = Math.max(1, Math.floor(canvas.height / 2));
+      const pixels = canvas.getContext('2d').getImageData(Math.floor(canvas.width / 4), Math.floor(canvas.height / 4), width, height).data;
+      let nonBlackPixels = 0, nonUniform = false;
+      for (let index = 0; index < pixels.length; index += 4) {
+        if (pixels[index] || pixels[index + 1] || pixels[index + 2]) nonBlackPixels += 1;
+        if (pixels[index] !== pixels[0] || pixels[index + 1] !== pixels[1] || pixels[index + 2] !== pixels[2]) nonUniform = true;
+      }
+      resolve({ before, after: { cssHeight: canvas.getBoundingClientRect().height, width: canvas.width, height: canvas.height }, sampledPixels: width * height, nonBlackPixels, nonUniform });
+    });
+    observer.observe(canvas);
+    if (!originalStyle) canvas.style.setProperty('height', `${height}px`, 'important');
+    else if (originalStyle.value) canvas.style.setProperty('height', originalStyle.value, originalStyle.priority);
+    else canvas.style.removeProperty('height');
+  });
+}
+
 async function runFlow(page, platform, locale, row, reportDirectory, sourceHashes) {
   const action = async (name, perform) => {
     const timing = { name, elapsedMs: null, completed: false };
@@ -194,6 +220,17 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   // A frozen clock alone cannot prove the pause handler stops progress.
   await advance(300);
   assert.equal(await page.locator('.score-block .distance').innerText(), distance);
+  const canvasStyle = await page.locator('canvas.world').evaluate(canvas => ({
+    value: canvas.style.getPropertyValue('height'), priority: canvas.style.getPropertyPriority('height'), height: canvas.getBoundingClientRect().height,
+  }));
+  try {
+    row.pausedCanvasResize = await action('paused-canvas-resize-before-next-frame', () => page.evaluate(sampleCanvasAtResize, { height: canvasStyle.height - 8 }));
+    assert.ok(row.pausedCanvasResize.after.height !== row.pausedCanvasResize.before.height, 'The regression must actually resize the canvas bitmap');
+    assert.ok(row.pausedCanvasResize.nonBlackPixels > 0 && row.pausedCanvasResize.nonUniform, 'Canvas resize must repaint a nonblank scene before the next frame, including while paused');
+  } finally {
+    row.pausedCanvasRestore = await action('restore-paused-canvas-size', () => page.evaluate(sampleCanvasAtResize, { originalStyle: canvasStyle }));
+  }
+  assert.ok(row.pausedCanvasRestore.nonBlackPixels > 0 && row.pausedCanvasRestore.nonUniform, 'Restoring the canvas size must also repaint synchronously');
   await checkOverflow('paused');
   await capture('paused');
   await action('resume-game', () => page.locator('.result-panel .run-button').click());

@@ -26,6 +26,7 @@ export class Renderer {
   ctx: CanvasRenderingContext2D;
   w = 0;
   h = 0;
+  pixelRatio = 0;
   focal = 0;
   center = 0;
   horizon = 0;
@@ -67,12 +68,21 @@ export class Renderer {
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect();
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.round(rect.width * ratio);
+    const height = Math.round(rect.height * ratio);
+    const changed = this.w !== rect.width || this.h !== rect.height || this.pixelRatio !== ratio ||
+      this.canvas.width !== width || this.canvas.height !== height;
+    if (!changed) return false;
     this.w = rect.width;
     this.h = rect.height;
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    this.canvas.width = Math.round(this.w * ratio);
-    this.canvas.height = Math.round(this.h * ratio);
+    this.pixelRatio = ratio;
+    // Assigning even the same canvas dimensions clears its visible bitmap.
+    // Mobile viewport/layout notifications must not blank an unchanged frame.
+    if (this.canvas.width !== width) this.canvas.width = width;
+    if (this.canvas.height !== height) this.canvas.height = height;
     this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    return true;
   }
   turnPoint(along: number, direction = this.curveDirection): [number, number, number] {
     return camera.turnPoint(this, along, direction);

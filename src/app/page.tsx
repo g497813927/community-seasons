@@ -1066,8 +1066,15 @@ export default function Home() {
     let drawnLocale = localeRef.current;
     let drawnFlash = 0;
     const ro = new ResizeObserver(() => {
-      renderer.resize();
-      needsRedraw = true;
+      if (!renderer.resize()) return;
+      // Resizing clears the canvas after this frame's animation callback.
+      // Paint before the browser composites it, including when a run is paused.
+      renderer.render(game.current, performance.now() / 1000, false, localeRef.current);
+      needsRedraw = false;
+      drawnRun = game.current;
+      drawnMode = game.current.mode;
+      drawnLocale = localeRef.current;
+      drawnFlash = game.current.flash;
     });
     ro.observe(canvasRef.current!);
     let raf = 0,
