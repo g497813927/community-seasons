@@ -39,11 +39,13 @@ export function scenery(renderer: Renderer, scene: SceneKind, row: number, z: nu
       renderer.layer = layer;
       renderer.sceneryTemplates.set(key, template);
     }
-    // Both sides of both outgoing streets exist before choosing a turn.
-    // Keep the rejected street in the same world until it leaves the view.
+    // Keep every open street in the same world throughout the turn. A dead
+    // end has no outgoing street or boardwalk platforms beyond its stub.
     const junction = renderer.sceneryForkAt;
     const branches = junction !== null && row * 14 - junction > 14 ? [-1, 1] : [side];
-    for (const branch of branches)
+    for (const branch of branches) {
+      if (branch === renderer.forkBlockedDirection && junction !== null && row * 14 > junction + 4)
+        continue;
       for (const face of template) {
         const cameraSpace = junction !== null;
         const points: V[] = face.points.map(([x, y, pz]) => {
@@ -62,6 +64,7 @@ export function scenery(renderer: Renderer, scene: SceneKind, row: number, z: nu
           z: view.reduce((sum, point) => sum + point[2], 0) / view.length,
         });
       }
+    }
   }
 }
 

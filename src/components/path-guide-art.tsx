@@ -15,7 +15,11 @@ export function PathGuideArt({
             stroke="#dfc88f"
             strokeWidth="15"
           />
-          <path d="m42 14-14 3 9 13m81-16 14 3-9 13" fill="none" stroke="#91d5b6" strokeWidth="5" />
+          <path d="m118 14 14 3-9 13" fill="none" stroke="#91d5b6" strokeWidth="5" />
+          <path d="m49 6 6-4v30l-6 4Z" fill="#803c48" />
+          <rect x="21" y="6" width="28" height="30" fill="#bb6260" />
+          <path d="m19 6 6-4h32l-6 4Z" fill="#eccd90" />
+          <path d="m27 13 16 16m0-16-16 16" stroke="#ffe2b1" strokeWidth="3" />
           <rect x="64" y="21" width="32" height="20" rx="3" fill="#bb6260" />
           <path d="m72 24 16 14m0-14-16 14" stroke="#ffe2b1" strokeWidth="3" />
         </>

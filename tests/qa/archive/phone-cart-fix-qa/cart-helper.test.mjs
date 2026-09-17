@@ -17,17 +17,17 @@ for (const name of ['boosts', 'scenes', 'railway', 'engine', 'cart-helper']) {
 const engine = await import('./cart-compiled/engine.mjs');
 const helper = await import('./cart-compiled/cart-helper.mjs');
 
-test('checkpoint is the exact natural failing opening after its real fork and warmup', () => {
+test('checkpoint is a deterministic natural repair opening after its real fork and warmup', () => {
   const a = helper.deriveCartCheckpoint(), b = helper.deriveCartCheckpoint();
   assert.deepEqual(a, b);
-  assert.equal(a.metadata.seed, 1017116225);
+  assert.equal(a.metadata.seed, 11);
   assert.equal(a.metadata.simulatedElapsed, 62);
   assert.equal(a.run.mode, 'running');
   assert.equal(a.run.rail, null);
   assert.equal(a.run.railPreparedAt, a.run.nextRailAt);
   assert.ok(Math.abs(a.run.nextRailAt - 1031.6330301672783) < 1e-9);
   assert.ok(Math.abs(a.run.lastForkAt - 468.65977200653) < 1e-9);
-  assert.ok(a.run.obstacles.some(o => Math.abs(o.at - 953.5459164150096) < 1e-9));
+  assert.ok(a.run.obstacles.some(o => Math.abs(o.at - 999.1551894050917) < 1e-9), 'the repaired final row is retained');
   for (const kind of ['rush', 'headstart', 'portal']) assert.equal(a.run.boosts[kind], 0);
 });
 
@@ -51,7 +51,7 @@ test('fixed approach stays within its clear-runway pacing bound and stops at the
   assert.equal(result.status, 'complete');
   assert.equal(run.rail.phase, 'question');
   assert.equal(run.rail.index, 0);
-  assert.ok(result.lastObstacleAt > 953.5459164150096, 'the formerly missing final obstacle row is present');
+  assert.ok(Math.abs(result.lastObstacleAt - 999.1551894050917) < 1e-9, 'the repaired final obstacle row is passed');
   const approach = result.intervals.lastObstacleToBoarding.simulationSeconds;
   assert.ok(approach >= 1 && approach <= 4.2, `unsafe or long approach: ${approach}`);
   assert.ok(Math.abs(result.intervals.lastObstacleToFirstQuestion.simulationSeconds - approach - 2) < .001);

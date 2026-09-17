@@ -98,14 +98,14 @@
     const s = qa.run;
     if (s?.mode !== 'running') return;
     // Protection is for ordinary obstacles only; forks still require an actual
-    // lane input. A max-speed 20s sample can reach a second scheduled fork after
+    // lane input. A long max-speed sample can reach a second scheduled fork after
     // the first turn recenters the runner. Do not mistake that missed turn for
     // a performance failure, and do not erase the second event from the course.
     s.boosts.grace = Math.max(s.boosts.grace, 5);
     const gateAt = s.fork?.at ?? s.nextForkAt;
     if (s.rail || s.sceneTransition > 0 || s.railReturnRemaining > 0 || s.turnRemaining > 0) return;
     if (!Number.isFinite(gateAt) || gateAt < s.distance || gateAt - s.distance > Math.max(12, s.speed ?? 12) * 3) return;
-    const target = active?.forkDirection ?? (s.x < 0 ? -1 : 1);
+    const target = s.fork?.blockedDirection ? -s.fork.blockedDirection : active?.forkDirection ?? (s.x < 0 ? -1 : 1);
     if (s.lane !== target && typeof qa.action === 'function') {
       qa.action(target < s.lane ? 'left' : 'right');
     }

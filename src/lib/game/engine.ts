@@ -49,9 +49,10 @@ export interface RelicPickup {
   taken: boolean;
 }
 export interface RunState {
-  fork: { at: number; preparedFrom?: number } | null;
+  fork: { at: number; preparedFrom?: number; blockedDirection?: -1 | 1 } | null;
   nextForkAt: number;
   lastForkAt: number | null;
+  lastForkBlockedDirection: -1 | 0 | 1;
   turnDirection: -1 | 0 | 1;
   turnEntryX: number;
   turnRemaining: number;
@@ -176,6 +177,7 @@ export function createRun(
     fork: null,
     nextForkAt: 430 + ((seed >>> 0) % 90),
     lastForkAt: null,
+    lastForkBlockedDirection: 0,
     turnDirection: 0,
     turnEntryX: 0,
     turnRemaining: 0,
@@ -268,9 +270,11 @@ export function act(s: RunState, action: Action): boolean {
     const direction = action === "left" ? -1 : 1;
     if (boostedForkApproach(s)) {
       // Near a boosted fork, a direction chooses the branch directly. Requiring
-      // a center-lane stop would let auto-left override a deliberate right turn.
-      const changed = s.lane !== direction;
-      s.lane = direction;
+      // a center-lane stop would override a deliberate choice. A closed branch
+      // cannot replace the safe route selected by the active speed boost.
+      const safeDirection = s.fork!.blockedDirection === direction ? -direction : direction;
+      const changed = s.lane !== safeDirection;
+      s.lane = safeDirection;
       return changed;
     }
     const reversing = direction * (s.lane * LANE_WIDTH - s.x) < 0;
@@ -507,7 +511,11 @@ function prepareSpecialEvents(s: RunState) {
       s.nextForkAt = s.distance + 145;
     s.nextForkAt = separateEvent(s.nextForkAt, s.nextRailAt, s);
     if (s.time >= FORK_UNLOCK_TIME && s.nextForkAt <= s.distance + 135) {
-      s.fork = { at: s.nextForkAt };
+      const route = random(s);
+      s.fork = {
+        at: s.nextForkAt,
+        blockedDirection: route < 0.25 ? -1 : route < 0.5 ? 1 : undefined,
+      };
     }
   }
   if (s.fork) {
@@ -901,25 +909,35 @@ function step(s: RunState, dt: number, levels: Record<BoostKind, BoostLevel>) {
   const speedBoosted = s.boosts.rush > 0 || s.boosts.headstart > 0 || s.boosts.portal > 0;
   if (boostedForkApproach(s)) {
     // Choose a safe default before the sign, using the ordinary lane animation
-    // and camera follow. Keep an outer branch the player has already selected.
-    if (s.lane === 0) s.lane = -1;
+    // and camera follow. A dead end overrides an unsafe earlier lane choice.
+    if (s.fork!.blockedDirection) s.lane = -s.fork!.blockedDirection;
+    else if (s.lane === 0) s.lane = -1;
   }
   const oldDistance = s.distance;
   s.distance += s.speed * dt;
   if (s.fork && s.distance >= s.fork.at) {
     const insideCenter = Math.abs(s.x) < LANE_WIDTH * 0.5;
-    if (insideCenter && !speedBoosted) {
+    const physicalDirection = s.x < 0 ? -1 : 1;
+    const blockedDirection = s.fork.blockedDirection;
+    if (!speedBoosted && (insideCenter || physicalDirection === blockedDirection)) {
       s.mode = "over";
-      s.reason = "The center route is closed. Choose the left or right branch at a fork.";
+      s.reason = blockedDirection === -1
+        ? "The left branch is a dead end. Take the right branch at this fork."
+        : blockedDirection === 1
+          ? "The right branch is a dead end. Take the left branch at this fork."
+          : "The center route is closed. Choose the left or right branch at a fork.";
       s.score = Math.floor(s.distance * 10) + s.coins * 50;
       return;
     }
     s.lastForkAt = s.fork.at;
+    s.lastForkBlockedDirection = blockedDirection ?? 0;
     // Normally commit the track the body reaches. A boost activated too late
-    // to leave center can still turn safely, retaining its actual entry pose
+    // to leave center or a dead end can still turn safely, retaining its entry pose
     // so the camera and runner ease onto the branch without a sideways snap.
     s.turnEntryX = s.x;
-    s.turnDirection = insideCenter ? (s.lane > 0 ? 1 : -1) : s.x < 0 ? -1 : 1;
+    s.turnDirection = speedBoosted && blockedDirection
+      ? blockedDirection === -1 ? 1 : -1
+      : insideCenter ? (s.lane > 0 ? 1 : -1) : physicalDirection;
     s.turnRemaining = TURN_DURATION;
     s.lane = 0;
     s.x = 0;
@@ -1077,6 +1095,7 @@ export function advancePreview(s: RunState, seconds: number) {
   s.nextForkAt = Infinity;
   s.nextRailAt = Infinity;
   s.fork = null;
+  s.lastForkBlockedDirection = 0;
   s.rail = null;
   s.railReturnRemaining = 0;
   s.turnDirection = 0;

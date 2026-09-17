@@ -113,7 +113,7 @@ function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 
           for (let remaining=ms/1000;remaining>1e-8;) {
             const dt=Math.min(1/60,remaining),previous=run.lastForkAt;
             engine.update(run,dt);remaining-=dt;
-            if (run.lastForkAt!==previous) forkPasses.push({at:run.lastForkAt,direction:run.turnDirection});
+            if (run.lastForkAt!==previous) forkPasses.push({at:run.lastForkAt,direction:run.turnDirection,blockedDirection:run.lastForkBlockedDirection});
           }
         } else { run.time += ms / 1000; run.distance += ms / 1000 * 20; }
       }
@@ -317,16 +317,19 @@ test('continuation preserves the interrupted pass and completes both generated m
   h.qa.suiteResults=previous;
   h.qa.suiteStatus={running:false,profile:'extended',outcome:'interrupted',phase:'fork-max-left',completed:12};
   h.qa.suiteInterrupted=interrupted;
-  h.qa.startContinuation();await h.finish();
+  h.qa.startContinuation({forkSeconds:25});await h.finish();
   assert.equal(h.qa.suiteStatus.profile,'continuation');
   assert.equal(h.qa.suiteStatus.outcome,'complete');
-  assert.equal(h.qa.suiteStatus.plannedSeconds,495);
+  assert.equal(h.qa.suiteStatus.plannedSeconds,505);
   assert.equal(h.qa.suiteResults.length,13);
   assert.equal(h.qa.suiteHistory[0].results,previous);
   assert.equal(h.qa.suiteHistory[0].interrupted,interrupted);
   assert.equal(previous.length,12);
-  assert.deepEqual(h.forkPasses.map(f=>f.at),[9265,10300,9265,10300]);
-  assert.deepEqual(h.forkPasses.map(f=>f.direction),[-1,-1,1,1]);
+  assert.equal(h.forkPasses.length,4);
+  assert.deepEqual(h.forkPasses.map(f=>f.at),[9265,10469.888683676687,9265,10469.888683676687]);
+  assert.ok(h.forkPasses[1].at>9265+800,'the second scheduled fork is retained');
+  assert.deepEqual(h.forkPasses.map(f=>f.direction),h.forkPasses.map((f,i)=>f.blockedDirection?-f.blockedDirection:i<2?-1:1));
+  assert.ok(h.forkPasses.every(f=>f.direction!==f.blockedDirection),'each turn takes an open branch');
   assert.ok(h.actions.includes('left')&&h.actions.includes('right'),'the second forks need actual lane input');
   assert.equal(h.qa.suiteResults.filter(r=>r.phase.startsWith('soak-')).length,5);
   assert.equal(h.qa.suiteResults.find(r=>r.phase==='railway-correct:protected').checks.returned,true);
@@ -337,13 +340,20 @@ test('unsteered second fork reproduces physical failure despite collision grace'
   const s=engine.createRun(4182,'winter');
   Object.assign(s,{mode:'running',distance:9100,time:100,speed:66,nextRow:9150,nextRelicAt:9260,nextForkAt:1e9,nextRailAt:1e9,nextPortalAt:1e9});
   engine.generateAhead(s);s.lane=-1;s.x=-engine.LANE_WIDTH;s.nextForkAt=9265;
-  for(let i=0;i<20*60&&s.mode==='running';i++) {
+  for(let i=0;i<25*60&&s.mode==='running';i++) {
     if(i%15===0)s.boosts.grace=Math.max(s.boosts.grace,1);
+    if(s.lastForkAt===null&&s.fork) {
+      const target=s.fork.blockedDirection===-1?1:-1;
+      if(s.lane!==target)engine.act(s,target<s.lane?'left':'right');
+    }
     engine.update(s,1/60);
   }
   assert.equal(s.mode,'over');
-  assert.match(s.reason,/center route is closed/);
-  assert.ok(Math.abs(s.distance-10300)<1);
+  assert.equal(s.lastForkAt,9265,'the first open branch was traversed');
+  assert.ok(s.fork&&s.fork.at>s.lastForkAt+800,'the failure is at the unsteered second fork');
+  assert.match(s.reason,/center route is closed|branch is a dead end/);
+  assert.ok(Math.abs(s.x)<engine.LANE_WIDTH*.5,'the runner stayed centered after the first turn');
+  assert.ok(Math.abs(s.distance-s.fork.at)<1);
   assert.ok(s.boosts.grace>.8,'collision grace was still active at the failed fork');
 });
 

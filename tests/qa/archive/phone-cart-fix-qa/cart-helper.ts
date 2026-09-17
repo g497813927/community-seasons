@@ -1,6 +1,8 @@
 import * as engine from '../../../../src/lib/game/engine';
 
-export const CART_SEED = 1017116225;
+// Fork availability consumes a seeded draw. This current-source seed preserves
+// the pre-unlock station repair exercised by the original historical fixture.
+export const CART_SEED = 11;
 export const CHECKPOINT_STEP = 0.025;
 export const CHECKPOINT_STEPS = 2480;
 export const MAX_CART_SAMPLES = 1200;
@@ -12,8 +14,10 @@ export function deriveCartCheckpoint() {
   // Match the regression's contact-only immunity, not an active speed boost.
   run.boosts.grace = 1e9;
   for (let frame = 0; frame < CHECKPOINT_STEPS; frame++) {
-    if (run.fork && (run.fork.at - run.distance) / run.speed < 2.2 &&
-      !run.turnRemaining && run.lane !== -1) engine.act(run, 'left');
+    if (run.fork && (run.fork.at - run.distance) / run.speed < 2.2 && !run.turnRemaining) {
+      const target = run.fork.blockedDirection === -1 ? 1 : -1;
+      if (run.lane !== target) engine.act(run, target < run.lane ? 'left' : 'right');
+    }
     engine.update(run, CHECKPOINT_STEP);
     if (run.mode !== 'running' || run.rail) throw Error('Exact natural checkpoint no longer reaches the pre-station road.');
   }

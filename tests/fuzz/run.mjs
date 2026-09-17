@@ -22,6 +22,8 @@ const engineRegressions = [
   'tests/unit/rail-approach-warmup.test.mjs',
   'tests/unit/railway-forks.test.mjs',
   'tests/unit/boost-fork-assist.test.mjs',
+  'tests/unit/fork-dead-ends.test.mjs',
+  'tests/unit/fork-dead-end-render.test.mjs',
   'tests/unit/cottage-roof-visibility.test.mjs',
   'tests/unit/summer-boardwalk-supports.test.mjs',
   'tests/unit/boost-barrier-protection.test.mjs',

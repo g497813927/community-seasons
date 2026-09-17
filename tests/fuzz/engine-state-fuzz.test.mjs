@@ -89,6 +89,8 @@ function validate(s) {
   check((s.boosts.shield === 0) === (s.boosts.shieldTime === 0), "shield-lifetime");
   check(!s.review || ["paused", "over"].includes(s.mode), "review-must-freeze");
   check(!(s.rail && (s.sceneTransition || s.turnRemaining || s.railReturnRemaining)), "overlapping-cinematics");
+  check(!s.fork || s.fork.blockedDirection === undefined || [-1, 1].includes(s.fork.blockedDirection), "fork-blocked-direction");
+  check([-1, 0, 1].includes(s.lastForkBlockedDirection), "last-fork-blocked-direction");
   check(s.sceneTransition ? scenes.includes(s.sceneTransitionFrom) : s.sceneTransitionFrom === null, "transition-source-lifetime");
   check(!s.pendingScene || s.sceneTransition > 0, "orphaned-destination");
   for (const collection of [s.obstacles, s.pickups, s.relics]) {
@@ -168,11 +170,13 @@ class Session {
         const elapsedBeforeEntry = Math.max(0, (Math.ceil((elapsedAtEntry - 1e-8) * 120) - 1) / 120);
         const speedBoosted = ["rush", "headstart", "portal"].some((kind) => before.boosts[kind] > elapsedBeforeEntry);
         const centered = Math.abs(s.turnEntryX) < LANE_WIDTH * 0.5;
-        this.forkEntry = { at: s.lastForkAt, speedBoosted, centered };
+        const redirected = speedBoosted && s.lastForkBlockedDirection !== 0;
+        this.forkEntry = { at: s.lastForkAt, speedBoosted, centered, redirected };
+        check(s.turnDirection !== s.lastForkBlockedDirection, "entered-fork-dead-end");
         if (centered) {
           check(speedBoosted, "unboosted-center-entered-fork");
-          check(s.turnDirection === (before.lane > 0 ? 1 : -1), "boosted-fork-ignores-selected-route");
-        } else check(Math.sign(s.turnEntryX) === s.turnDirection, "fork-ignores-physical-lane");
+          if (!redirected) check(s.turnDirection === (before.lane > 0 ? 1 : -1), "boosted-fork-ignores-selected-route");
+        } else if (!redirected) check(Math.sign(s.turnEntryX) === s.turnDirection, "fork-ignores-physical-lane");
       }
       if (before.rail && s.rail === before.rail) {
         check(s.time === before.time, "rail-advances-normal-clock");
@@ -223,13 +227,17 @@ class Session {
       if (command.rule === "fork-ended") {
         if (command.closed) check(s.mode === "over", "closed-fork-did-not-fail");
         else if (s.mode === "over") {
-          // A sufficiently early reversal can genuinely bring the body back
-          // into the blocked center. That is a valid loss, not a snapped turn.
-          check(command.reversed && Math.abs(s.x) < LANE_WIDTH * 0.5 && s.reason.includes("center route"), "fork-outcome");
+          // A sufficiently early reversal can bring the body back into the
+          // blocked center or opposite dead end instead of completing a turn.
+          const centered = Math.abs(s.x) < LANE_WIDTH * 0.5;
+          const blockedBranch = s.fork?.blockedDirection === Math.sign(s.x);
+          check(command.reversed && (centered || blockedBranch) &&
+            (s.reason.includes("center route") || s.reason.includes("dead end")), "fork-outcome");
         } else {
           check(s.lastForkAt !== null && s.mode === "running" && !s.turnRemaining, "fork-stalled");
-          const boostedCenter = this.forkEntry?.at === s.lastForkAt && this.forkEntry.speedBoosted && this.forkEntry.centered;
-          check(boostedCenter || Math.sign(s.turnEntryX) === s.turnDirection, "fork-ignores-physical-lane");
+          const boostedAssist = this.forkEntry?.at === s.lastForkAt && this.forkEntry.speedBoosted &&
+            (this.forkEntry.centered || this.forkEntry.redirected);
+          check(boostedAssist || Math.sign(s.turnEntryX) === s.turnDirection, "fork-ignores-physical-lane");
         }
       } else if (command.rule === "rail-ended") {
         if (command.wrong) {
@@ -252,7 +260,7 @@ class Session {
     if (this.recording) {
       coverage.edgeStumbles += s.lastStumble === "edge" ? s.stumbles - before.stumble : 0;
       if (s.lastForkAt !== before.lastForkAt) coverage.forks[s.turnDirection < 0 ? "left" : "right"]++;
-      if (before.mode !== "over" && s.mode === "over" && s.reason.includes("center route")) coverage.forks.closed++;
+      if (before.mode !== "over" && s.mode === "over" && (s.reason.includes("center route") || s.reason.includes("dead end"))) coverage.forks.closed++;
       if (s.rail) {
         count(coverage.phases, s.rail.phase);
         if (!this.ridesSeen.has(s.rail)) {
@@ -413,10 +421,12 @@ test("96 seeded fork approaches handle late reversals, closed centers and turn l
     // This matrix deliberately has no active speed boosts; a centered body
     // must still fail. Boosted fallbacks are exercised by the focused suite.
     const shouldFail = seed % 4 === 0;
-    const direction = seed % 2 ? "left" : "right";
+    const preferredDirection = seed % 2 ? -1 : 1;
     let reversed = false;
     for (let i = 0; i < 100; i++) {
       if (!shouldFail && !s.turnRemaining) {
+        const target = s.fork?.blockedDirection ? -s.fork.blockedDirection : preferredDirection;
+        const direction = target < 0 ? "left" : "right";
         session.perform({ op: "act", action: direction });
         if (!reversed && (s.nextForkAt - s.distance) / s.speed < 0.12) {
           session.perform({ op: "act", action: direction === "left" ? "right" : "left" });
