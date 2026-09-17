@@ -255,6 +255,32 @@ async function verifyCloudStatus(frame, page, profile, row, screenshot) {
   assert.deepEqual(await snapshot(), { status: 'synced', retries: 1, cloud: 'disabled' });
   row.cloudStatus.retries = 1;
   row.cloudStatus.busyAndSuccessClearedNotice = true;
+  await frame.evaluate(() => window.__communitySeasonsQACloudStatus.settle('unsupported'));
+  await frame.waitForFunction(() => document.querySelector('.cloud-save-status[data-status="unsupported"]'));
+  const unsupportedLabel = row.locale === 'en' ? 'Cloud saving not supported' : '当前环境不支持云存档';
+  assert.equal(await trigger.isDisabled(), false, 'Unsupported cloud must keep its retry control available');
+  row.cloudStatus.unsupported = { label: unsupportedLabel, retryAvailable: true };
+  if (compact) {
+    await toast.waitFor();
+    await settleLayout(frame, profile.textScale);
+    assert.equal(await frame.locator('.cloud-status-title').innerText(), unsupportedLabel);
+    const description = await frame.locator('.cloud-status-description').innerText();
+    assert.equal(description, row.locale === 'en' ? 'Cloud saving is not supported here.' : '当前环境不支持云存档。', 'Unsupported environments need their own explanation, without temporary-failure advice');
+    const retry = frame.getByRole('button', { name: row.locale === 'en' ? 'Retry' : '重试', exact: true });
+    assert.equal(await retry.isVisible(), true);
+    assert.equal(await retry.isDisabled(), false);
+    await retry.scrollIntoViewIfNeeded();
+    assertReachable(await retry.evaluate(actionSnapshot), 'Unsupported cloud retry');
+    row.cloudStatus.unsupported.description = description;
+  } else {
+    assert.equal(await toast.count(), 0, 'Desktop unsupported status must remain inline');
+    assert.equal(await trigger.innerText(), unsupportedLabel);
+  }
+  await frame.evaluate(() => window.__communitySeasonsQACloudStatus.settle('synced'));
+  await closeComplete();
+  await frame.waitForFunction(() => document.querySelector('.cloud-save-status[data-status="synced"]'));
+  assert.deepEqual(await snapshot(), { status: 'synced', retries: 1, cloud: 'disabled' });
+  row.cloudStatus.unsupported.recoveryClearedNotice = true;
   await noAccidentalStart();
   await settleLayout(frame, profile.textScale);
 }

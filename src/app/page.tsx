@@ -1333,7 +1333,9 @@ export default function Home() {
               ? l("Cloud save waiting · Check", "云存档待检查 · 点击查看")
               : cloudState.status === "local"
                 ? l("This device only · Enable cloud", "仅保存在本机 · 启用云存档")
-                : l("Cloud unavailable · Retry", "云存档暂不可用 · 重试");
+                : cloudState.status === "unsupported"
+                  ? l("Cloud saving not supported", "当前环境不支持云存档")
+                  : l("Cloud unavailable · Retry", "云存档暂不可用 · 重试");
   const cloudError =
     cloudState.error === "invalid-save" || cloudState.error === "too-large"
       ? l(

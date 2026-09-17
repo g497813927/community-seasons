@@ -22,7 +22,9 @@ export function installCloudStatusFixture() {
         ? locale === 'en' ? 'Checking Bilibili login status…' : '正在检查哔哩哔哩登录状态…'
         : status === 'synced'
           ? locale === 'en' ? 'Saved to Bilibili cloud' : '已保存至哔哩哔哩云端'
-          : locale === 'en' ? 'Cloud unavailable · Retry' : '云同步不可用 · 重试'}
+          : status === 'unsupported'
+            ? locale === 'en' ? 'Cloud saving not supported' : '当前环境不支持云存档'
+            : locale === 'en' ? 'Cloud unavailable · Retry' : '云同步不可用 · 重试'}
       error={status === 'error' ? failure() : undefined}
       busy={status === 'checking'}
       compact={matchMedia('(max-width: 750px)').matches}

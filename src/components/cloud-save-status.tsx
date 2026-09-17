@@ -59,9 +59,11 @@ function CloudSaveStatusContent({
   });
   const pending = busy || retryPending;
   const hasError = Boolean(error) || status === "error" || status === "unsupported";
-  const failureDescription = error || (locale === "zh-CN"
-    ? "暂时无法同步云存档，请稍后重试。"
-    : "Cloud saving is temporarily unavailable. Please try again.");
+  const failureDescription = error || (status === "unsupported"
+    ? (locale === "zh-CN" ? "当前环境不支持云存档。" : "Cloud saving is not supported here.")
+    : (locale === "zh-CN"
+      ? "暂时无法同步云存档，请稍后重试。"
+      : "Cloud saving is temporarily unavailable. Please try again."));
   const recommendation = locale === "zh-CN"
     ? "想获得更好的体验，请点击上方右侧的「B站内打开」。"
     : "For a better experience, tap “B站内打开” (Open in Bilibili) at the top right.";
