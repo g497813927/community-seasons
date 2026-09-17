@@ -39,7 +39,9 @@ npm run qa:preview -- --host 0.0.0.0     # 明确向局域网测试手机开放
 npm run qa:serve                         # 开发时使用，支持热更新
 ```
 
-用手机普通浏览器打开指定 QA 预览，保持设备解锁，并先真实触摸游戏，再测量。QA 菜单可导出帧间隔及错误诊断，不包含存档内容。帧数和最大间隔统计重置后的全部可见帧间隔，包括等待第一次回调的时间，内存占用固定。P95 使用 1 毫秒直方图区间的保守上界；超过 60 秒的间隔共用溢出区间，并以实际最大值作为上界。报告会明确说明这一近似方法。性能观察应使用构建后的预览；热更新或桌面模拟结果不能证明真机性能。
+普通手动设备检查时，用手机普通浏览器打开指定 QA 预览，保持设备解锁，并先真实触摸游戏，再测量。QA 菜单可导出帧间隔及错误诊断，不包含存档内容。帧数和最大间隔统计重置后的全部可见帧间隔，包括等待第一次回调的时间，内存占用固定。P95 使用 1 毫秒直方图区间的保守上界；超过 60 秒的间隔共用溢出区间，并以实际最大值作为上界。报告会明确说明这一近似方法。性能观察应使用构建后的预览；热更新或桌面模拟结果不能证明真机性能。
+
+请求用户手动输入前，先识别并说明 Safari 是否由 WebDriver 控制。[Glass Pane（玻璃遮罩）](https://developer.apple.com/documentation/webkit/about-webdriver-for-safari#Glass-Panes)会拦截手动输入及窗口大小调整；打破遮罩会中断会话并永久断开自动化连接。应通过 WebDriver 操作，不得要求用户点击开始、触摸、调整窗口大小或打破遮罩。真实触摸要求与 `qa:device measure` 焦点/激活校验适用于普通手动预览，不得绕过。当前安装的 iOS CDP 桥接通过 JavaScript 事件实现 `Input.dispatchMouseEvent`，须标为脚本功能检查，不能证明手动输入或原生输入性能。
 
 Android 需启用 USB 调试、授权本机并打开 Chrome，然后执行 `adb forward tcp:9222 localabstract:chrome_devtools_remote`。iOS 需启用 Safari 网页检查器，并运行本地 Web Inspector 到 CDP 的桥接，例如 `pymobiledevice3 webinspector cdp --host 127.0.0.1 --port 9223`。这些设备工具是外部前置条件，不是游戏依赖。参见 [iOS 桥接工具上游指南](https://github.com/doronz88/pymobiledevice3/blob/master/docs/guides/webview-debugging.md)。
 
