@@ -77,7 +77,9 @@ function CloudSaveStatusContent({
     if (active instanceof HTMLElement && !toastElementRef.current?.contains(active)) {
       returnFocusRef.current = active;
     }
-    add({ id: toastId, type: "error", priority: "low", onClose: () => {
+    // The recommendation has no reopen trigger, so give the player unlimited
+    // reading time. Ordinary cloud errors keep the provider's timed dismissal.
+    add({ id: toastId, type: "error", priority: "low", timeout: suggestBilibili ? 0 : undefined, onClose: () => {
       if (!toastElementRef.current?.contains(document.activeElement)) return;
       const target = triggerRef.current ?? returnFocusRef.current;
       if (target?.isConnected) target.focus({ preventScroll: true });

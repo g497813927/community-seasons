@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { chromium, webkit, devices } from 'playwright';
 import { assertPreviewBuildIsCurrent, changedFiles, fileHashes, previewSourceHashes } from '../preview/build-info.mjs';
 import { fixtureHandler, initializeBrowserEmulation } from './runtime.mjs';
+import { freezeClockAtCurrentTime } from './clock.mjs';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 const previewDist = path.join(root, 'tests/qa/preview/dist');
@@ -131,6 +132,45 @@ function assertReachable(measured, label) {
   `${label} remains clipped after scrolling: ${measured.text}`);
 }
 
+async function advanceUnattendedToast(frame, page) {
+  // Base UI pauses dismissal on hover, toast focus or window blur. Keep the
+  // page active, focus a real control outside the toast, and verify both
+  // conditions before advancing actual browser timers beyond ten seconds.
+  await page.bringToFront();
+  await page.mouse.move(0, 0);
+  await frame.locator('.language-switch').focus();
+  const snapshot = () => frame.evaluate(() => {
+    const viewport = document.querySelector('.cloud-status-toast-viewport');
+    const toast = document.querySelector('.cloud-status-toast');
+    return {
+      now: Date.now(), documentFocused: document.hasFocus(), visible: document.visibilityState === 'visible',
+      toastHovered: viewport?.matches(':hover') ?? false,
+      toastFocused: viewport?.contains(document.activeElement) ?? false,
+      toastVisible: !!toast && getComputedStyle(toast).display !== 'none' && toast.getBoundingClientRect().height > 0,
+    };
+  });
+  const before = await snapshot();
+  assert.equal(before.documentFocused && before.visible, true, 'Timer regression needs an active, visible page');
+  assert.equal(before.toastHovered || before.toastFocused, false, 'Hover or toast focus must not keep the notice open');
+  assert.equal(before.toastVisible, true);
+  const pausedAt = await freezeClockAtCurrentTime(page);
+  let after;
+  try {
+    // fastForward fires elapsed timeouts once without simulating 750 scenery
+    // frames; runFor lets the resulting React/RAF removal finish normally.
+    await page.clock.fastForward(12000);
+    await page.clock.runFor(64);
+    after = await snapshot();
+  } finally {
+    // Remaining layout checks and Base UI cleanup use the normal moving clock.
+    await page.clock.resume();
+  }
+  assert.ok(after.now - pausedAt >= 12000, 'The browser clock must advance beyond the original ten-second timeout');
+  assert.equal(after.documentFocused && after.visible, true);
+  assert.equal(after.toastHovered || after.toastFocused, false);
+  return { method: 'Playwright browser timers, no toast hover/focus', advancedMs: after.now - pausedAt, before, after };
+}
+
 async function verifyCloudStatus(frame, page, profile, row, screenshot) {
   const trigger = frame.locator('.cloud-status-trigger');
   const toast = frame.locator('.cloud-status-toast');
@@ -149,6 +189,14 @@ async function verifyCloudStatus(frame, page, profile, row, screenshot) {
     assert.equal(await frame.locator('.cloud-status-dismiss').getAttribute('aria-hidden'), 'false', 'Dismiss must not be aria-hidden before hover or focus');
     assert.equal(await frame.getByRole('button', { name: row.locale === 'en' ? 'Dismiss' : '关闭', exact: true }).isVisible(), true, 'Dismiss must be discoverable to assistive technology before hover or focus');
     assert.equal(await frame.getByRole('button', { name: row.locale === 'en' ? 'Retry' : '重试', exact: true }).isVisible(), true, 'Retry must be discoverable to assistive technology');
+    row.cloudStatus.idleTimer = await advanceUnattendedToast(frame, page);
+    assert.equal(row.cloudStatus.idleTimer.after.toastVisible, false, 'Ordinary cloud notices must still expire after ten unattended seconds');
+    await closeComplete();
+    assert.equal(await trigger.isVisible(), true, 'An expired cloud notice must retain its reopen control');
+    await trigger.click();
+    await toast.waitFor();
+    assert.equal((await snapshot()).retries, 0, 'Reopening an expired notice must not start a retry');
+    row.cloudStatus.expiredNoticeReopened = true;
     row.cloudStatus.automaticNotice = true;
     await settleLayout(frame, profile.textScale);
     row.cloudStatus.trigger = await trigger.evaluate(actionSnapshot);
@@ -228,6 +276,12 @@ async function verifyExternalMobileCloudStatus(frame, page, profile, row, screen
   assert.equal(await frame.locator('.cloud-status-dismiss').getAttribute('aria-hidden'), 'false', 'Recommendation dismissal must not be aria-hidden before hover or focus');
   assert.equal(await frame.getByRole('button', { name: row.locale === 'en' ? 'Dismiss' : '关闭', exact: true }).isVisible(), true, 'Recommendation dismissal must be discoverable before hover or focus');
   assert.equal(await frame.getByRole('button', { name: row.locale === 'en' ? 'Don’t show again' : '不再提示', exact: true }).isVisible(), true, 'Recommendation opt-out must be discoverable to assistive technology');
+  row.cloudStatus.idleTimer = await advanceUnattendedToast(frame, page);
+  assert.equal(row.cloudStatus.idleTimer.after.toastVisible, true, 'A triggerless app recommendation must remain open beyond ten unattended seconds');
+  assert.equal(await frame.locator('.cloud-status-app-arrow').isVisible(), true, 'The persistent recommendation must retain its arrow');
+  assert.equal(await frame.getByRole('button', { name: row.locale === 'en' ? 'Dismiss' : '关闭', exact: true }).isVisible(), true, 'The persistent recommendation must retain Dismiss');
+  assert.equal(await frame.getByRole('button', { name: row.locale === 'en' ? 'Don’t show again' : '不再提示', exact: true }).isVisible(), true, 'The persistent recommendation must retain its opt-out action');
+  row.cloudStatus.unattendedRecommendationPersists = true;
   assert.equal(await trigger.count(), 0, 'Failed external-mobile cloud status must not leave a status control in the help row');
   assert.equal(await frame.locator('.cloud-save-status').count(), 0, 'Hidden external-mobile cloud status must not reserve help-row space');
   assert.equal(await frame.locator('.cloud-status-retry').count(), 0, 'Bilibili recommendation must not offer an ineffective cloud retry');
@@ -341,6 +395,7 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
   let timer;
   const screenshot = path.join(reportDirectory, `${engine}-${profile.id}-${locale}.png`);
   try {
+    if (profile.cloudError) await page.clock.install({ time: Date.now() });
     await context.addInitScript(initializeBrowserEmulation, { entries: { 'community-seasons-best': '918273645', ...(profile.bilibili ? { [storagePrefix + 'community-seasons-bilibili-hint-dismissed']: '1' } : {}) }, platform: engine === 'webkit' && profile.touch ? 'ios' : 'web' });
     await context.route('**/*', async route => {
       if (new URL(route.request().url()).origin !== origin) {
