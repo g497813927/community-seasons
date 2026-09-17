@@ -59,7 +59,9 @@ npm run qa:preview
 
 关闭许可弹窗后，还必须先恢复文档滚动与焦点，再进行下一项交互。为适应 CI 负载，WebKit 单次操作上限为 30 秒、单个场景上限为 120 秒；Chromium 为 10 秒和 60 秒。报告包含主机端操作耗时，便于排查浏览器自动化运行缓慢的问题。
 
-真机检查时，在普通 Safari/Chrome 中打开指定的构建预览，通过 `qa:device` 明确指定完整地址与检查器目标。设备指南涵盖 Android USB 转发及 iOS Web Inspector 桥接。测量要求设备解锁、页面可见且聚焦，并已真实触摸页面。通用预览在当前游戏加载前隔离存档，并禁用全部 Toy SDK/云访问；既可本地运行，也可使用已获授权的独立托管预览。
+真机检查时，在普通手动 Safari/Chrome 页面中打开指定的构建预览，通过 `qa:device` 明确指定完整地址与检查器目标。设备指南涵盖 Android USB 转发及 iOS Web Inspector 桥接。测量要求设备解锁、页面可见且聚焦，并在此手动浏览场景中真实触摸页面。通用预览在当前游戏加载前隔离存档，并禁用全部 Toy SDK/云访问；既可本地运行，也可使用已获授权的独立托管预览。
+
+请求用户手动操作前，先识别并说明 Safari 是否处于 WebDriver 自动化会话。[Glass Pane（玻璃遮罩）](https://developer.apple.com/documentation/webkit/about-webdriver-for-safari#Glass-Panes)会拦截手动输入及窗口大小调整；打破遮罩会中断会话并永久断开自动化连接。应通过 WebDriver 操作，不得要求用户点击开始、触摸、调整窗口大小或打破遮罩。保留普通手动预览的 `qa:device measure` 焦点与激活校验。当前安装的 iOS CDP 桥接通过 JavaScript 事件实现 `Input.dispatchMouseEvent`，须标为脚本功能检查，不能证明手动输入或原生输入性能。
 
 ## 历史场景
 
