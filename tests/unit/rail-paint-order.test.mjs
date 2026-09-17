@@ -58,9 +58,9 @@ test("rails remain visibly painted above sleepers and decks while approaching an
   }
 });
 
-test("question gates meet the cart at their deadline and rejected track boundaries stay in place at variable paces", () => {
-  for (const speed of [12, 20, 30]) {
-    const { renderer: r } = recorder(), s = state();
+test("question gates meet the cart at their deadline and rejected track boundaries stay in place at variable paces and reading windows", () => {
+  for (const speed of [12, 20, 30]) for (const duration of [12, 24, 44]) {
+    const { renderer: r } = recorder(), s = state(20, duration);
     Object.assign(s.rail, { speed, remaining: 0.4 });
     const gateAt = s.distance + s.rail.remaining * speed;
     function gatePosition() {
@@ -87,7 +87,8 @@ test("question gates meet the cart at their deadline and rejected track boundari
 });
 
 test("answer gates travel with the same track position through question and feedback", () => {
-  for (const duration of [9, 9.7, 10, 11]) {
+  // Include legacy rides and the 44-second budget for maximum-length bank copy.
+  for (const duration of [9, 9.7, 10, 11, 12, 18, 24, 44]) {
     const { renderer: r } = recorder(), s = state(20, duration);
     const positions = [];
     for (const dt of [0, 0.25, 0.5]) {

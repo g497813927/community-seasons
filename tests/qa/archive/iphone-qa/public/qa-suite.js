@@ -11,6 +11,15 @@
     getComputedStyle(element).visibility !== 'hidden' && !element.disabled;
   const find = selector => Array.from(document.querySelectorAll(selector)).find(visible);
   const round = value => Number.isFinite(value) ? Math.round(value * 100) / 100 : null;
+  function railwaySeconds() {
+    const durations = Object.values(qa.railQuestionDurations ?? {});
+    if (!durations.length || durations.some(value => !Number.isInteger(value) || value < 12)) {
+      throw new Error('Railway question reading budgets are missing or invalid. Rebuild the QA preview.');
+    }
+    // Four longest reading windows, feedback after each, plus a bounded margin
+    // for the station approach, boarding, cart exit, return and host delays.
+    return Math.ceil(durations.sort((a, b) => b - a).slice(0, 4).reduce((sum, value) => sum + value, 0) + 4 * 1.6 + 20);
+  }
   const pauseBlocked = () => [
     '.cloud-save-dialog', '.store-dialog', '.controls-guide-dialog',
     '.run-setup-dialog', '.lesson-dialog', '.rotate-device-dialog',
@@ -124,12 +133,26 @@
     const seenQuestions = [];
     let questionCount = null, completed = false, returned = false;
     let speed = null, entryNormalSpeed = null, completionReward = null, startCoins = null, startDistance = null;
-    const readingWindows = [];
+    const readingWindows = [], observedReadingSeconds = [];
+    let questionTiming = null, previousObservationAt = performance.now();
     while (performance.now() < until) {
       check(token);
       const s = qa.run, ride = s?.rail;
+      const observedAt = performance.now();
       if (s?.mode !== 'running') throw new Error(`Unexpected railway game mode: ${s?.mode}.`);
       protect();
+      if (questionTiming && (!ride || ride.phase !== 'question' || ride.index !== questionTiming.index)) {
+        const elapsed = (observedAt - questionTiming.startedAt) / 1000;
+        observedReadingSeconds.push(round(elapsed));
+        // The question may start between polls. Include that actual entry gap
+        // when bounding its elapsed time; do not trust countdown metadata to
+        // prove the full reading window was available. This runner selects a
+        // lane only and never requests the player's optional early submission.
+        if (elapsed + questionTiming.entryGapSeconds + 1e-8 < questionTiming.duration) {
+          throw new Error(`Railway question ${questionTiming.index + 1} ended before its ${questionTiming.duration}s reading budget elapsed.`);
+        }
+        questionTiming = null;
+      }
       if (ride) {
         if (questionCount === null) {
           questionCount = ride.questions.length;
@@ -147,11 +170,18 @@
         if (ride.speed !== speed || ride.entryNormalSpeed !== entryNormalSpeed) throw new Error('Railway pace or reward multiplier drifted during the ride.');
         if (ride.phase === 'falling') throw new Error('The correct-answer railway phase entered a fall.');
         if (ride.phase === 'question') {
+          if (!seenQuestions.includes(ride.index) && ride.index !== seenQuestions.length) {
+            throw new Error('Railway skipped a question in the observed sequence.');
+          }
+          const expectedDuration = qa.railQuestionDurations[ride.questions[ride.index]];
+          if (!Number.isFinite(expectedDuration) || ride.duration !== expectedDuration) {
+            throw new Error('Railway reading time does not match its text-length budget.');
+          }
           if (!seenQuestions.includes(ride.index)) {
-            if (ride.index !== seenQuestions.length) throw new Error('Railway skipped a question in the observed sequence.');
             seenQuestions.push(ride.index);
-            if (ride.duration < 9 || ride.duration > 11) throw new Error('Railway reading time changed outside its 9–11 second window.');
             readingWindows.push(ride.duration);
+            questionTiming = {index:ride.index,duration:expectedDuration,startedAt:observedAt,
+              entryGapSeconds:(observedAt - previousObservationAt) / 1000};
           }
           qa.answer(true);
         }
@@ -175,8 +205,9 @@
         const coinDelta = s.coins - startCoins;
         if (coinDelta !== completionReward) throw new Error('Railway completion reward was not banked exactly once.');
         return {questions: questionCount, observedQuestions: seenQuestions.length, completed, returned: true,
-          speed,entryNormalSpeed,readingWindows,completionReward,coinDelta,startDistance,endDistance:s.distance};
+          speed,entryNormalSpeed,readingWindows,observedReadingSeconds,completionReward,coinDelta,startDistance,endDistance:s.distance};
       }
+      previousObservationAt = observedAt;
       await wait(Math.min(250, Math.max(1, until - performance.now())));
     }
     throw new Error(`Railway did not finish all questions and return within ${seconds}s (${seenQuestions.length}/${questionCount ?? '?'} questions; exit ${completed}; return ${returned}).`);
@@ -306,8 +337,9 @@
       transport:secondsOption(custom.transport,extended ? 20 : 10,'transport'),
     };
     const soakSeconds = secondsOption(options.soakSeconds,extended ? 300 : 0,'soakSeconds',1800,0);
+    const railSeconds = railwaySeconds();
     const plannedSeconds = 2 * durations.normal + 4 * durations.max + 4 * durations.boost +
-      4 * durations.fork + 2 * 65 + 4 * durations.transport + 10 + soakSeconds;
+      4 * durations.fork + 2 * railSeconds + 4 * durations.transport + 10 + soakSeconds;
     return launch(extended ? 'extended' : 'quick',plannedSeconds,async token => {
       for (const name of ['opening','mid']) await phase(token,name,durations.normal,()=>qa.scenario(name,{scene:'spring'}));
       for (const scene of ['spring','summer','autumn','winter']) await phase(token,'max-'+scene,durations.max,()=>qa.scenario('max',{scene}));
@@ -317,8 +349,8 @@
       for (const stage of ['first','max']) for (const direction of ['left','right']) {
         await phase(token,`fork-${stage}-${direction}`,durations.fork,()=>qa.scenario('fork',{scene:stage==='first'?'autumn':'winter',stage,direction,seconds:2.5}));
       }
-      await phase(token,'railway-correct',65,()=>qa.scenario('rail',{scene:'summer',seconds:2}),{railJourney:true});
-      await phase(token,'railway-max-correct',65,()=>qa.scenario('rail',{scene:'winter',stage:'max',seconds:2}),{railJourney:true});
+      await phase(token,'railway-correct',railSeconds,()=>qa.scenario('rail',{scene:'summer',seconds:2}),{railJourney:true});
+      await phase(token,'railway-max-correct',railSeconds,()=>qa.scenario('rail',{scene:'winter',stage:'max',seconds:2}),{railJourney:true});
       for (const scene of ['spring','summer','autumn','winter']) {
         await phase(token,'transport-'+scene,durations.transport,()=>{qa.scenario('mid',{scene:scene==='spring'?'winter':'spring'});qa.travel(scene);});
       }
@@ -341,12 +373,13 @@
     const forkSeconds = secondsOption(options.forkSeconds,20,'forkSeconds');
     const transportSeconds = secondsOption(options.transportSeconds,20,'transportSeconds');
     const soakSeconds = secondsOption(options.soakSeconds,300,'soakSeconds',1800,0);
-    const plannedSeconds = 2 * forkSeconds + 65 + 4 * transportSeconds + 10 + soakSeconds;
+    const railSeconds = railwaySeconds();
+    const plannedSeconds = 2 * forkSeconds + railSeconds + 4 * transportSeconds + 10 + soakSeconds;
     return launch('continuation',plannedSeconds,async token => {
       for (const direction of ['left','right']) {
         await phase(token,`fork-max-${direction}`,forkSeconds,()=>qa.scenario('fork',{scene:'winter',stage:'max',direction,seconds:2.5}));
       }
-      await phase(token,'railway-correct',65,()=>qa.scenario('rail',{scene:'summer',seconds:2}),{railJourney:true});
+      await phase(token,'railway-correct',railSeconds,()=>qa.scenario('rail',{scene:'summer',seconds:2}),{railJourney:true});
       for (const scene of ['spring','summer','autumn','winter']) {
         await phase(token,'transport-'+scene,transportSeconds,()=>{qa.scenario('mid',{scene:scene==='spring'?'winter':'spring'});qa.travel(scene);});
       }

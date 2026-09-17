@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import "../helpers/compile.mjs";
 const { createRun, update, act, activateBoost, generateAhead, RAIL_UNLOCK_TIME } = await import("../helpers/compiled/engine.mjs");
+const { currentRailQuestion, railQuestionDuration } = await import("../helpers/compiled/railway.mjs");
 
 // Start at the real beginning rather than setting time >= RAIL_UNLOCK_TIME:
 // the original defect accumulated empty road while the locked gate moved.
@@ -39,7 +40,7 @@ function firstStation(seed, headstart) {
       assert.ok(fadeFrames >= 35, "the normal one-second approach fade was measured");
       assert.ok(boarded.normalTime >= 60, "cart encounter must retain its 60-second warmup");
       assert.ok(Math.abs(elapsed - boarded.elapsed - 2) < 0.03, "boarding remains two seconds before the first question");
-      assert.ok(s.rail.duration >= 9 && s.rail.duration <= 11, "question reading time is unchanged");
+      assert.equal(s.rail.duration, railQuestionDuration(currentRailQuestion(s)), "boarding leaves the full reading budget available");
       assert.ok(lastObstacleTime !== null);
       const emptySeconds = boarded.elapsed - lastObstacleTime;
       assert.ok(emptySeconds >= 1, "the final fade retains a clear approach");

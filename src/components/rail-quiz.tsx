@@ -34,6 +34,7 @@ export function RailQuiz({
   lane,
   locale,
   onChoose,
+  onSubmit,
   paused = false,
   onResume,
   onShareLesson,
@@ -42,6 +43,7 @@ export function RailQuiz({
   lane: number;
   locale: Locale;
   onChoose: (lane: -1 | 0 | 1) => void;
+  onSubmit: () => void;
   paused?: boolean;
   onResume: () => void;
   onShareLesson?: ShareLesson;
@@ -123,8 +125,8 @@ export function RailQuiz({
                 </div>
                 <small>
                   {l(
-                    "Your lane is your answer when you reach the gate.",
-                    "到达答题门时，你所在的轨道就是答案。",
+                    "Your lane submits at the gate. Ready? Go or press ↑ / W twice.",
+                    "到站时提交所在轨道的答案。选好后可点“出发”，或连按两次 ↑ / W 提前提交。",
                   )}
                 </small>
               </>
@@ -155,25 +157,40 @@ export function RailQuiz({
           </div>
           <div className="rail-answers" role="group" aria-label={l("Answer lanes", "答案轨道")}>
             {LANES.map((answerLane, index) => (
-              <button
-                type="button"
-                key={answerLane}
-                disabled={paused}
-                aria-pressed={lane === answerLane}
-                onClick={() => onChoose(answerLane)}
-              >
-                <span className="rail-answer-letter">{LETTERS[index]}</span>
-                <span className="rail-answer-label">
-                  {text(question.options[ride.optionOrder[index]].label)}
-                </span>
-                <small>
-                  {index === 0
-                    ? l("LEFT", "左侧")
-                    : index === 1
-                      ? l("CENTER", "中间")
-                      : l("RIGHT", "右侧")}
-                </small>
-              </button>
+              <div className="rail-answer-column" key={answerLane} data-selected={lane === answerLane}>
+                <button
+                  type="button"
+                  className="rail-answer-choice"
+                  disabled={paused}
+                  aria-pressed={lane === answerLane}
+                  onClick={() => onChoose(answerLane)}
+                >
+                  <span className="rail-answer-letter">{LETTERS[index]}</span>
+                  <span className="rail-answer-label">
+                    {text(question.options[ride.optionOrder[index]].label)}
+                  </span>
+                  <small>
+                    {index === 0
+                      ? l("LEFT", "左侧")
+                      : index === 1
+                        ? l("CENTER", "中间")
+                        : l("RIGHT", "右侧")}
+                  </small>
+                </button>
+                {lane === answerLane && (
+                  <div className="rail-submit-slot">
+                    <button
+                      type="button"
+                      className="rail-submit"
+                      disabled={paused}
+                      aria-label={l(`Go: submit answer ${LETTERS[index]}`, `出发：提交答案 ${LETTERS[index]}`)}
+                      onClick={onSubmit}
+                    >
+                      {l("Go", "出发")}
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         </div>

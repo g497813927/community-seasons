@@ -4,8 +4,11 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import '../../../helpers/compile.mjs';
 const engine = await import('../../../helpers/compiled/engine.mjs');
+const railway = await import('../../../helpers/compiled/railway.mjs');
+const mockReadingWindows = [14, 18, 22, 24];
+const mockRailwaySeconds = Math.ceil(mockReadingWindows.reduce((sum, value) => sum + value, 0) + 4 * 1.6 + 20);
 
-function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 66 }], initiallyPaused = false, blockingOverlay = null, realForks = false, realRailways = false } = {}) {
+function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 66 }], initiallyPaused = false, blockingOverlay = null, realForks = false, realRailways = false, railEntryDelay = 0 } = {}) {
   let clock = 0, ui = initialUi, answers = 0, railStartedAt = null, resetAt = 0;
   let currentScenario = null;
   let railwayStage = 'first';
@@ -15,8 +18,8 @@ function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 
     foreground: { gapMs: { mean: 16.67, p95: 20, max: 66 }, callbackCPUMs: { p95: 9 }, renderCPUMs: { p95: 8 }, engineCPUMs: { p95: .5 }, over50ms: 1 },
     events: [], storage: { writeMs: { p95: .1, max: .2 } },
   };
-  // Each real question lasts 9–11s with 1.6s feedback; model 10s questions,
-  // then the 2s cart exit and 1.1s return. Nothing completes at a fixed 40s.
+  // Model varied text-length budgets with 1.6s feedback after each question,
+  // then the 2s cart exit and 1.1s return. Nothing completes at a fixed timeout.
   function advanceRail() {
     if (railStartedAt === null) return;
     let elapsed = (clock - railStartedAt) / 1000;
@@ -26,28 +29,37 @@ function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 
     run.rail = ride;
     elapsed -= 4;
     if (elapsed < 0) return;
-    if (elapsed < questions * 11.6) {
-      ride.index = Math.floor(elapsed / 11.6);
-      ride.phase = elapsed % 11.6 < 10 ? 'question' : 'feedback';
-      ride.duration = ride.phase === 'question' ? 10 : 1.6;
-      if (fault === 'short-reading') ride.duration = 8;
+    for (let index = 0; index < questions; index++) {
+      const duration = mockReadingWindows[index];
+      const countdownDuration = fault === 'fast-countdown' || (fault === 'fast-final-countdown' && index === questions - 1)
+        ? duration / 2 : duration;
+      if (elapsed >= countdownDuration + 1.6) { elapsed -= countdownDuration + 1.6; continue; }
+      ride.index = index;
+      ride.phase = elapsed < countdownDuration ? 'question' : 'feedback';
+      ride.duration = ride.phase === 'question' ? duration : 1.6;
+      ride.remaining = ride.phase === 'question' ? duration * (1 - elapsed / countdownDuration) : countdownDuration + 1.6 - elapsed;
+      if (fault === 'short-reading') ride.duration = duration - 1;
+      if (fault === 'long-reading') ride.duration = duration + 1;
+      if (fault === 'drifting-reading' && elapsed > 1) ride.duration = duration - 1;
       ride.correctCount = ride.index + (ride.phase === 'feedback' ? 1 : 0);
       if (fault === 'skip-question' && ride.index === 1) ride.index = 2;
-    } else {
-      elapsed -= questions * 11.6;
-      ride.phase = 'complete';
-      ride.index = questions - 1;
-      ride.correctCount = questions;
-      ride.reward = Math.ceil((30 + questions * 5) * (1 + (ride.entryNormalSpeed / 12 - 1) * 0.3));
-      if (fault === 'flat-reward') ride.reward = 45;
-      if (elapsed < 2) return;
-      run.coins = ride.reward;
-      run.rail = null;
-      run.railReturnRemaining = fault === 'missing-return' ? 0 : Math.max(0, 1.1 - (elapsed - 2));
+      return;
     }
+    ride.phase = 'complete';
+    ride.index = questions - 1;
+    ride.correctCount = questions;
+    ride.reward = Math.ceil((30 + questions * 5) * (1 + (ride.entryNormalSpeed / 12 - 1) * 0.3));
+    if (fault === 'flat-reward') ride.reward = 45;
+    if (elapsed < 2) return;
+    run.coins = ride.reward;
+    run.rail = null;
+    run.railReturnRemaining = fault === 'missing-return' ? 0 : Math.max(0, 1.1 - (elapsed - 2));
   }
   const qa = {
     prefix: 'qa-iphone-20260910-', run,
+    railQuestionDurations: realRailways
+      ? Object.fromEntries(railway.RAIL_QUESTIONS.map(question => [question.id, railway.railQuestionDuration(question)]))
+      : Object.fromEntries(mockReadingWindows.map((duration, index) => [`q${index}`, duration])),
     export() {
       const count = Math.floor((clock - resetAt) / 1000 * 60);
       return { summary: { ...summary, foreground: { ...summary.foreground, frames: count, gapMs: { ...summary.foreground.gapMs, count: Math.max(0, count - 1) } } }, frames, storage: [], cloud: [] };
@@ -107,15 +119,16 @@ function harness({ initialUi = 0, questions = 4, fault = null, frames = [{ gap: 
     __phoneQA: qa, document, performance: { now: () => clock }, navigator: { userActivation: { hasBeenActive: false } },
     getComputedStyle: () => ({ visibility: 'visible' }), console: { log: value => lines.push(value) },
     setTimeout(callback, ms) { queueMicrotask(() => {
-      clock += ms;
+      const elapsedMs = ms + (railStartedAt !== null && clock < railStartedAt + 4000 && clock + ms >= railStartedAt + 4000 ? railEntryDelay : 0);
+      clock += elapsedMs;
       if (run.mode === 'running') {
         if ((realForks && currentScenario === 'fork') || (realRailways && currentScenario === 'rail')) {
-          for (let remaining=ms/1000;remaining>1e-8;) {
+          for (let remaining=elapsedMs/1000;remaining>1e-8;) {
             const dt=Math.min(1/60,remaining),previous=run.lastForkAt;
             engine.update(run,dt);remaining-=dt;
             if (run.lastForkAt!==previous) forkPasses.push({at:run.lastForkAt,direction:run.turnDirection,blockedDirection:run.lastForkBlockedDirection});
           }
-        } else { run.time += ms / 1000; run.distance += ms / 1000 * 20; }
+        } else { run.time += elapsedMs / 1000; run.distance += elapsedMs / 1000 * 20; }
       }
       if (!(realRailways && currentScenario === 'rail')) advanceRail();callback();
     }); },
@@ -135,7 +148,7 @@ test('suite follows real UI, measures mid/max boosts, and waits for four questio
   h.context.navigator.userActivation.hasBeenActive = true;
   h.qa.startSuite(); await h.finish();
   assert.equal(h.qa.suiteStatus.outcome, 'complete');
-  assert.equal(h.qa.suiteStatus.plannedSeconds, 382);
+  assert.equal(h.qa.suiteStatus.plannedSeconds, 252 + 2 * mockRailwaySeconds);
   assert.equal(h.qa.suiteStatus.completed, 21);
   assert.equal(h.qa.suiteResults.length, 21);
   assert.equal(h.lines.length, 21);
@@ -143,18 +156,21 @@ test('suite follows real UI, measures mid/max boosts, and waits for four questio
   assert.deepEqual(h.clicks, ['Start the journey', 'Next: On the path', 'Got it', 'Begin run']);
   assert.ok(h.answers > 100);
   assert.equal(h.run.mode, 'paused'); assert.equal(h.run.boosts.grace, 0);
-  assert.ok(h.clock > 350000 && h.clock < 383000);
+  const sampledMilliseconds = h.qa.suiteResults.reduce((sum, result) => sum + result.seconds * 1000, 0);
+  assert.ok(h.clock >= sampledMilliseconds && h.clock < sampledMilliseconds + 2000);
   const boostPhases = h.qa.suiteResults.map(r => r.phase).filter(p => /^(magnet|rush)-/.test(p));
   assert.deepEqual(Array.from(boostPhases), ['magnet-mid:protected', 'rush-mid:protected', 'magnet-max:protected', 'rush-max:protected']);
   assert.deepEqual(h.scenarios.filter(s => s.name === 'magnet' || s.name === 'rush').map(s => s.options.stage), ['first', 'first', 'max', 'max']);
   const rail = h.qa.suiteResults.find(r => r.phase === 'railway-correct:protected');
-  assert.ok(rail.seconds > 53 && rail.seconds < 55);
+  assert.ok(rail.seconds > 91 && rail.seconds < 93);
   assert.equal(rail.checks.questions, 4);
   assert.equal(rail.checks.observedQuestions, 4);
   assert.equal(rail.checks.completed, true);
   assert.equal(rail.checks.returned, true);
   assert.equal(rail.checks.speed, 20);
-  assert.deepEqual(Array.from(rail.checks.readingWindows), [10, 10, 10, 10]);
+  assert.deepEqual(Array.from(rail.checks.readingWindows), mockReadingWindows);
+  assert.equal(rail.checks.observedReadingSeconds.length, 4);
+  assert.ok(rail.checks.observedReadingSeconds.every((elapsed, index) => Math.abs(elapsed - mockReadingWindows[index]) <= .25));
   const maxRail = h.qa.suiteResults.find(r => r.phase === 'railway-max-correct:protected');
   assert.equal(maxRail.checks.speed, 30);
   assert.equal(maxRail.checks.completionReward, 118);
@@ -169,7 +185,7 @@ test('suite can begin at Choose expedition and accepts a three-question ride onl
   assert.equal(h.qa.suiteStatus.outcome, 'complete');
   assert.deepEqual(h.clicks, ['Begin run']);
   const rail = h.qa.suiteResults.find(r => r.phase === 'railway-correct:protected');
-  assert.ok(rail.seconds > 40 && rail.seconds < 43);
+  assert.ok(rail.seconds > 65 && rail.seconds < 68);
   assert.equal(rail.checks.observedQuestions, 3); assert.equal(rail.checks.returned, true);
 });
 
@@ -178,7 +194,7 @@ test('suite times out when railway never renders a return, retaining interrupted
   h.context.navigator.userActivation.hasBeenActive = true;
   h.qa.startSuite(); await h.finish();
   assert.equal(h.qa.suiteStatus.outcome, 'interrupted');
-  assert.match(h.qa.suiteStatus.error, /within 65s.*return false/);
+  assert.match(h.qa.suiteStatus.error, new RegExp(`within ${mockRailwaySeconds}s.*return false`));
   assert.equal(h.qa.suiteStatus.phase, 'railway-correct');
   assert.ok(h.qa.suiteInterrupted);
   assert.ok(!h.qa.suiteResults.some(r => r.phase === 'railway-correct:protected'));
@@ -228,7 +244,7 @@ test('extended suite measures minute-long normal/boost phases and five continuou
   h.context.navigator.userActivation.hasBeenActive = true;
   h.qa.startSuite({ extended: true }); await h.finish();
   assert.equal(h.qa.suiteStatus.profile, 'extended');
-  assert.equal(h.qa.suiteStatus.plannedSeconds, 1200);
+  assert.equal(h.qa.suiteStatus.plannedSeconds, 1070 + 2 * mockRailwaySeconds);
   assert.equal(h.qa.suiteStatus.outcome, 'complete');
   assert.equal(h.qa.suiteResults.length, 26);
   assert.ok(h.qa.suiteResults.slice(0, 10).every(phase => phase.seconds === 60));
@@ -266,7 +282,7 @@ test('extended durations can be shortened independently without changing the def
   h.context.navigator.userActivation.hasBeenActive = true;
   h.qa.startSuite({ extended: true, durations: { normal: 30, max: 30, boost: 45, fork: 12, transport: 12 }, soakSeconds: 0 });
   await h.finish();
-  assert.equal(h.qa.suiteStatus.plannedSeconds, 596);
+  assert.equal(h.qa.suiteStatus.plannedSeconds, 466 + 2 * mockRailwaySeconds);
   assert.equal(h.qa.suiteResults.length, 21);
   assert.ok(h.qa.suiteResults.filter(phase => /^(magnet|rush)-/.test(phase.phase)).every(phase => phase.seconds === 45));
   assert.throws(() => h.qa.startSoak({ seconds: 0 }), /seconds must/);
@@ -320,7 +336,7 @@ test('continuation preserves the interrupted pass and completes both generated m
   h.qa.startContinuation({forkSeconds:25});await h.finish();
   assert.equal(h.qa.suiteStatus.profile,'continuation');
   assert.equal(h.qa.suiteStatus.outcome,'complete');
-  assert.equal(h.qa.suiteStatus.plannedSeconds,505);
+  assert.equal(h.qa.suiteStatus.plannedSeconds,440 + mockRailwaySeconds);
   assert.equal(h.qa.suiteResults.length,13);
   assert.equal(h.qa.suiteHistory[0].results,previous);
   assert.equal(h.qa.suiteHistory[0].interrupted,interrupted);
@@ -371,7 +387,9 @@ test('the current engine completes both real railway paces with full reading win
   for (const { checks, seconds } of railways) {
     assert.ok(checks.questions === 3 || checks.questions === 4);
     assert.equal(checks.readingWindows.length, checks.questions);
-    assert.ok(checks.readingWindows.every(value => value >= 9 && value <= 11));
+    assert.equal(checks.observedReadingSeconds.length, checks.questions);
+    assert.ok(checks.observedReadingSeconds.every((elapsed, index) => elapsed >= checks.readingWindows[index] - .25));
+    assert.ok(checks.readingWindows.every(value => value >= 12 && Object.values(h.qa.railQuestionDurations).includes(value)));
     assert.ok(seconds >= checks.readingWindows.reduce((total, value) => total + value, 0));
     assert.equal(checks.coinDelta, checks.completionReward);
     assert.ok(checks.endDistance > checks.startDistance + checks.speed * 30);
@@ -379,8 +397,8 @@ test('the current engine completes both real railway paces with full reading win
   }
 });
 
-test('railway validation rejects shortened reading windows and the retired flat reward', async () => {
-  for (const [fault, message] of [['short-reading', /reading time/], ['flat-reward', /reward/]]) {
+test('railway validation rejects incorrect or drifting reading windows and the retired flat reward', async () => {
+  for (const [fault, message] of [['short-reading', /reading time/], ['long-reading', /reading time/], ['drifting-reading', /reading time/], ['flat-reward', /reward/]]) {
     const h = harness({ fault });
     h.context.navigator.userActivation.hasBeenActive = true;
     h.qa.startSuite();
@@ -388,6 +406,35 @@ test('railway validation rejects shortened reading windows and the retired flat 
     assert.equal(h.qa.suiteStatus.outcome, 'interrupted');
     assert.match(h.qa.suiteStatus.error, message);
     assert.equal(h.qa.suiteStatus.phase, 'railway-correct');
+  }
+});
+
+test('railway validation rejects accelerated countdowns even when duration metadata remains correct', async () => {
+  for (const [fault, questionNumber] of [['fast-countdown', 1], ['fast-final-countdown', 4]]) {
+    const h = harness({ fault });
+    h.context.navigator.userActivation.hasBeenActive = true;
+    h.qa.startSuite();
+    await h.finish();
+    assert.equal(h.qa.suiteStatus.outcome, 'interrupted');
+    assert.match(h.qa.suiteStatus.error, new RegExp(`question ${questionNumber} ended before its ${mockReadingWindows[questionNumber - 1]}s reading budget elapsed`));
+    assert.equal(h.qa.suiteStatus.phase, 'railway-correct');
+    assert.ok(h.qa.suiteInterrupted);
+    assert.ok(!h.qa.suiteResults.some(result => result.phase === 'railway-correct:protected'));
+  }
+});
+
+test('railway elapsed checks tolerate a delayed first observation without assuming early submission', async () => {
+  const h = harness({ railEntryDelay: 2000 });
+  h.context.navigator.userActivation.hasBeenActive = true;
+  h.qa.startSuite();
+  await h.finish();
+  assert.equal(h.qa.suiteStatus.outcome, 'complete', h.qa.suiteStatus.error);
+  const railways = h.qa.suiteResults.filter(result => result.phase.startsWith('railway-'));
+  assert.equal(railways.length, 2);
+  for (const { checks } of railways) {
+    assert.equal(checks.readingWindows[0], 14);
+    assert.equal(checks.observedReadingSeconds[0], 12, 'polling missed the first two seconds of the full window');
+    assert.equal(checks.observedReadingSeconds.length, 4);
   }
 });
 

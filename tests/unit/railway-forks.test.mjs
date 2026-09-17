@@ -24,7 +24,7 @@ const {
   MAX_RAIL_SPEED,
   railSpeed,
 } = await import("../helpers/compiled/engine.mjs");
-const { RAIL_QUESTIONS, createRailRide } = await import("../helpers/compiled/railway.mjs");
+const { RAIL_QUESTIONS, createRailRide, railQuestionDuration } = await import("../helpers/compiled/railway.mjs");
 const { createProgress, bankRunRewards } = await import("../helpers/compiled/store.mjs");
 function run() {
   return Object.assign(createRun(4182), {
@@ -377,7 +377,7 @@ test("each rail ride chooses three or four distinct complete bilingual questions
     assert.deepEqual(again.rail, s.rail);
     advance(s, 2.01);
     assert.equal(s.rail.phase, "question");
-    assert.ok(s.rail.duration >= 9 && s.rail.duration <= 11);
+    assert.equal(s.rail.duration, railQuestionDuration(currentRailQuestion(s)));
     assert.deepEqual([...s.rail.optionOrder].sort(), [0, 1, 2]);
     lanes.add(correctLane(s));
   }
@@ -1062,7 +1062,7 @@ test("cart pace follows normal progression, caps at 30m/s, and stays stable acro
       pace,
       "boosts and new rail mileage cannot move an answer gate's deadline",
     );
-    assert.ok(s.rail.duration >= 9 && s.rail.duration <= 11);
+    assert.equal(s.rail.duration, railQuestionDuration(currentRailQuestion(s)));
     const start = s.distance;
     const gateAt = start + s.rail.remaining * pace;
     selectRailLane(s, correctLane(s));
@@ -1119,18 +1119,18 @@ test("successful cart rewards grow with run progression, reach 100 coins by 10km
     for (const distance of [930, 2500, 5000, 10000]) {
       const s = board(seed, distance);
       const entryNormal = s.rail.entryNormalSpeed;
-      const windows = [];
       advance(s, s.rail.remaining);
       while (s.rail.phase !== "complete") {
         assert.equal(s.rail.phase, "question");
-        windows.push(s.rail.duration);
+        const question = currentRailQuestion(s);
+        assert.equal(s.rail.duration, railQuestionDuration(question));
+        if (!readingWindows.has(question.id)) readingWindows.set(question.id, s.rail.duration);
+        assert.equal(s.rail.duration, readingWindows.get(question.id), "progression never reduces a question's reading time");
         selectRailLane(s, correctLane(s));
         advance(s, s.rail.remaining);
         assert.equal(s.rail.phase, "feedback");
         advance(s, s.rail.remaining);
       }
-      if (!readingWindows.has(seed)) readingWindows.set(seed, windows);
-      assert.deepEqual(windows, readingWindows.get(seed), "progression never reduces reading time");
       const count = s.rail.questions.length;
       const reward = s.rail.reward;
       const expected = Math.ceil((30 + count * 5) * (1 + (entryNormal / 12 - 1) * 0.3));

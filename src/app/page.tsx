@@ -35,6 +35,7 @@ import {
   togglePause,
   finishReview,
   selectRailLane,
+  submitRailAnswer,
   type PostReview,
   MONSTER_INTRO_DURATION,
   SCENE_TRANSITION_DURATION,
@@ -149,6 +150,7 @@ export default function Home() {
   const t = (text: string) => translate(locale, text);
   const l = (en: string, zh: string) => (locale === "zh-CN" ? zh : en);
   function changeLocale() {
+    lastRailUpRef.current = null;
     const next = localeRef.current === "en" ? "zh-CN" : "en";
     localeRef.current = next;
     setLocale(next);
@@ -164,6 +166,9 @@ export default function Home() {
   const [scene, setScene] = useState<SceneKind>("spring");
   const sceneRef = useRef<SceneKind>("spring");
   const lastTapRef = useRef<{ x: number; y: number; at: number } | null>(null);
+  const lastRailUpRef = useRef<{
+    at: number; key: string; ride: RailRide; questionIndex: number;
+  } | null>(null);
   const swipeRef = useRef<{
     pointerId: number;
     x: number;
@@ -433,6 +438,7 @@ export default function Home() {
     if (open && game.current.review) return;
     swipeRef.current = null;
     lastTapRef.current = null;
+    lastRailUpRef.current = null;
     if (open) {
       bankRewards();
       if (game.current.mode === "running") game.current.mode = "paused";
@@ -451,6 +457,7 @@ export default function Home() {
       guideOpenRef.current || startAfterCloudRef.current || game.current.review || rotateRequiredRef.current)) return;
     swipeRef.current = null;
     lastTapRef.current = null;
+    lastRailUpRef.current = null;
     licensesOpenRef.current = open;
     setLicensesOpen(open);
     if (open && game.current.mode === "running") {
@@ -463,6 +470,7 @@ export default function Home() {
   function changeSetup(open: boolean) {
     swipeRef.current = null;
     lastTapRef.current = null;
+    lastRailUpRef.current = null;
     setupOpenRef.current = open;
     if (open) setSetupDismissedForRun(false);
     setSetupOpen(open);
@@ -582,6 +590,7 @@ export default function Home() {
     recordBest();
     swipeRef.current = null;
     lastTapRef.current = null;
+    lastRailUpRef.current = null;
     shareOpenRef.current = true;
     setShareSnapshot({
       score: run.score,
@@ -605,6 +614,7 @@ export default function Home() {
     if (shareOpenRef.current || licensesOpenRef.current || storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || rotateRequiredRef.current) return;
     swipeRef.current = null;
     lastTapRef.current = null;
+    lastRailUpRef.current = null;
     // Freeze feedback/falling timers while the card is open. Closing leaves
     // a live railway paused so the player explicitly resumes when ready.
     if (game.current.mode === "running") togglePause(game.current);
@@ -742,6 +752,7 @@ export default function Home() {
   function control(action: Action) {
     if (rotateRequiredRef.current || licensesOpenRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current) return;
+    lastRailUpRef.current = null;
     const oldStumbles = game.current.stumbles;
     const oldShieldAbsorbed = game.current.shieldAbsorbed;
     const oldMode = game.current.mode;
@@ -760,10 +771,22 @@ export default function Home() {
   function chooseRailAnswer(lane: -1 | 0 | 1) {
     if (rotateRequiredRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current || startAfterCloudRef.current) return;
+    lastRailUpRef.current = null;
     if (selectRailLane(game.current, lane)) {
       canvasRef.current?.focus({ preventScroll: true });
       sync();
     }
+  }
+  function submitRailChoice() {
+    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
+    if (storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || startAfterCloudRef.current) return;
+    if (!submitRailAnswer(game.current)) return;
+    swipeRef.current = null;
+    lastTapRef.current = null;
+    lastRailUpRef.current = null;
+    sound(game.current.rail?.correct ? "boost" : "crash");
+    canvasRef.current?.focus({ preventScroll: true });
+    sync();
   }
   function beginSwipe(e: PointerEvent<HTMLElement>) {
     if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
@@ -780,6 +803,7 @@ export default function Home() {
       )
     ) {
       lastTapRef.current = null;
+      lastRailUpRef.current = null;
       return;
     }
     swipeRef.current = {
@@ -805,6 +829,7 @@ export default function Home() {
     ) {
       swipeRef.current = null;
       lastTapRef.current = null;
+      lastRailUpRef.current = null;
       return;
     }
     const stroke = swipeRef.current;
@@ -828,6 +853,7 @@ export default function Home() {
     if (swipeRef.current?.pointerId === e.pointerId) {
       swipeRef.current = null;
       lastTapRef.current = null;
+      lastRailUpRef.current = null;
     }
   }
   function endSwipe(e: PointerEvent<HTMLElement>) {
@@ -845,6 +871,7 @@ export default function Home() {
           Math.hypot(e.clientX - last.x, e.clientY - last.y) <= 40
         ) {
           lastTapRef.current = null;
+          lastRailUpRef.current = null;
           if (game.current.permanentSkill) triggerSkill(game.current.permanentSkill);
           else notifyBoost("Choose one permanent skill before your next run.");
         } else lastTapRef.current = { x: e.clientX, y: e.clientY, at: e.timeStamp };
@@ -860,6 +887,7 @@ export default function Home() {
     if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
     swipeRef.current = null;
     lastTapRef.current = null;
+    lastRailUpRef.current = null;
     if (storeOpenRef.current || setupOpenRef.current || startAfterCloudRef.current) return;
     togglePause(game.current);
     if (game.current.mode === "running" && !mutedRef.current) ensureAudio(true);
@@ -875,6 +903,7 @@ export default function Home() {
     if (!finishReview(game.current)) return;
     swipeRef.current = null;
     lastTapRef.current = null;
+    lastRailUpRef.current = null;
     if (game.current.mode === "running" && !mutedRef.current) ensureAudio(true);
     sync();
   }
@@ -892,6 +921,7 @@ export default function Home() {
       if (blocked) {
         swipeRef.current = null;
         lastTapRef.current = null;
+        lastRailUpRef.current = null;
         if (game.current.mode === "running") {
           game.current.mode = "paused";
           bankRewards();
@@ -1064,6 +1094,9 @@ export default function Home() {
       if (oldMode === "running") recordClockRef.current += dt;
       update(s, dt, progressRef.current.levels);
       if (s.rail?.phase !== oldRailPhase) {
+        swipeRef.current = null;
+        lastTapRef.current = null;
+        lastRailUpRef.current = null;
         if (s.rail?.phase === "feedback" || s.rail?.phase === "complete") sound("boost");
         else if (s.rail?.phase === "falling") sound("crash");
       }
@@ -1164,7 +1197,7 @@ export default function Home() {
         return;
       const target = e.target as HTMLElement | null;
       if (target?.closest(".licenses-launcher")) return;
-      // Answer cards retain native keyboard activation during a railway quiz.
+      // Answer cards and Go retain native keyboard activation during a quiz.
       if (game.current.rail && target?.closest(".rail-answers button")) return;
       if (
         target?.closest(
@@ -1181,6 +1214,10 @@ export default function Home() {
       control("jump");
     }
     function onKey(e: KeyboardEvent) {
+      // A double press must be consecutive accepted keydowns. Repeats,
+      // modifiers, other keys and events in dialogs discard the first press.
+      const lastRailUp = lastRailUpRef.current;
+      lastRailUpRef.current = null;
       if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const key = e.key;
@@ -1264,11 +1301,22 @@ export default function Home() {
         if (key === "Enter" || key === " ") pause();
         return;
       }
+      const ride = game.current.rail;
+      const upKey = key === "ArrowUp" ? "ArrowUp" : movement === "jump" && e.code === "KeyW" ? "KeyW" : null;
+      if (mode === "running" && ride?.phase === "question" && upKey) {
+        const last = lastRailUp;
+        const interval = last ? e.timeStamp - last.at : Infinity;
+        if (last && last.ride === ride && last.questionIndex === ride.index && last.key === upKey && interval >= 0 && interval <= 300) {
+          submitRailChoice();
+        } else lastRailUpRef.current = { at: e.timeStamp, key: upKey, ride, questionIndex: ride.index };
+        return;
+      }
       if (movement) control(movement);
     }
     function blur() {
       swipeRef.current = null;
       lastTapRef.current = null;
+      lastRailUpRef.current = null;
       bankRewards();
       recordBest();
       if (game.current.mode === "running") {
@@ -1303,6 +1351,7 @@ export default function Home() {
       cloudRef.current = null;
       swipeRef.current = null;
       lastTapRef.current = null;
+      lastRailUpRef.current = null;
       if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
       unregisterTools();
       musicRef.current?.dispose();
@@ -1723,6 +1772,7 @@ export default function Home() {
             lane={hud.lane}
             locale={locale}
             onChoose={chooseRailAnswer}
+            onSubmit={submitRailChoice}
             paused={!active}
             onResume={pause}
             onShareLesson={shareQuizLesson}

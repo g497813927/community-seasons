@@ -1975,6 +1975,17 @@ export function railQuestion(id: string): RailQuestion | null {
 export function currentRailQuestion(s: { rail: RailRide | null }): RailQuestion | null {
   return s.rail ? railQuestion(s.rail.questions[s.rail.index]) : null;
 }
+export function railQuestionDuration(question: RailQuestion): number {
+  // Budget for every visible choice, not the explanation shown after answering.
+  // These are gameplay allowances: 15 English or 5 Chinese characters/second,
+  // plus four seconds to decide and move, with at least twelve seconds overall.
+  const copy = [question.prompt, ...question.options.map((option) => option.label)];
+  const characters = (locale: keyof RailCopy) =>
+    copy.reduce((count, text) => count + Array.from(text[locale].replace(/\s/gu, "")).length, 0);
+  // Use the larger reading budget so either language has enough time and
+  // switching languages cannot shorten or restart an active countdown.
+  return Math.ceil(Math.max(12, 4 + Math.max(characters("en") / 15, characters("zh") / 5)));
+}
 export function createRailQuestionDeck(): RailQuestionDeck {
   return { remaining: [], recent: [] };
 }
@@ -2020,6 +2031,11 @@ export function createRailRide(
 export function beginRailQuestion(ride: RailRide, random: () => number) {
   const deck = ride.questionDeck;
   const id = ride.questions[ride.index];
+  const question = railQuestion(id);
+  if (!question) {
+    // A stale development ride must fail before consuming its deck or RNG.
+    throw new Error(`Cannot begin rail question at index ${ride.index}: unknown question ID ${JSON.stringify(id)}.`);
+  }
   if (deck?.remaining[0] === id) {
     deck.remaining.shift();
     deck.recent.push(id);
@@ -2031,7 +2047,7 @@ export function beginRailQuestion(ride: RailRide, random: () => number) {
     [order[i], order[j]] = [order[j], order[i]];
   }
   ride.phase = "question";
-  ride.duration = 9 + random() * 2;
+  ride.duration = railQuestionDuration(question);
   ride.remaining = ride.duration;
   ride.optionOrder = order;
   ride.answerLane = null;

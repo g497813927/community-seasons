@@ -7,6 +7,7 @@ import "../helpers/compile.mjs";
 
 const engine = await import("../helpers/compiled/engine.mjs");
 const { createBoostLevels } = await import("../helpers/compiled/boosts.mjs");
+const { RAIL_QUESTIONS, railQuestionDuration } = await import("../helpers/compiled/railway.mjs");
 const {
   createRun, update, act, activateBoost, togglePause, finishReview,
   selectRailLane, currentRailQuestion, startSceneTravel, railSpeed,
@@ -113,7 +114,7 @@ function validate(s) {
     check(Number.isFinite(r.elapsed) && r.elapsed >= 0, "rail-elapsed");
     check(railSpeed(s) >= 12 && railSpeed(s) <= 30, "rail-pace");
     check(r.correctCount >= 0 && r.correctCount <= r.questions.length, "rail-correct-count");
-    check(r.phase !== "question" || (r.duration >= 9 && r.duration <= 11), "rail-reading-window");
+    check(r.phase !== "question" || r.duration === railQuestionDuration(currentRailQuestion(s)), "rail-reading-window");
     check(r.phase !== "falling" || (r.correct === false && r.failure && r.reward === 0), "rail-failure-state");
     check(r.phase !== "complete" || (r.correctCount === r.questions.length && r.reward > 0), "rail-complete-state");
     check(!s.jump && !s.slide, "rail-airborne");
@@ -382,13 +383,16 @@ test("96 seeded boost runs expire naturally across pauses and season transitions
 });
 
 test("192 seeded railway rides retain reading time, carry lanes, fail correctly and pay once", { skip: !!replayFile }, () => {
+  // Four longest questions plus boarding, feedback and the return leg, even
+  // if every generated tick uses the shortest 0.12-second large-step delta.
+  const maximumTicks = Math.ceil((4 * Math.max(...RAIL_QUESTIONS.map(railQuestionDuration)) + 12) / 0.12);
   for (let seed = 501 + seedOffset; seed <= 692 + seedOffset; seed++) exercise({ kind: "rail", seed, distance: [950, 3500, 10000][seed % 3] }, (session, random) => {
     const s = session.state;
     session.perform({ op: "boost", kind: seed % 2 ? "rush" : "shield", level: 3 });
     const wrong = seed % 3 === 0;
     const observed = new Set();
     let boarded = false;
-    for (let i = 0; i < 650; i++) {
+    for (let i = 0; i < maximumTicks; i++) {
       const ride = s.rail;
       if (ride) {
         boarded = true;
