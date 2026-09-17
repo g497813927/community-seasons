@@ -1,0 +1,190 @@
+.home-help-actions .cloud-save-status {
+  flex: 1 1 100%;
+  min-width: 0;
+  color: #c2d1c1;
+}
+.cloud-save-status .cloud-status-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  min-height: 44px;
+  min-width: 44px;
+  max-width: 100%;
+  padding: 7px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #c2d1c1;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cloud-status-trigger > svg,
+.cloud-status-spinner {
+  flex-shrink: 0;
+}
+.cloud-status-trigger > span:not(.cloud-status-spinner) {
+  min-width: 0;
+}
+.cloud-save-status > small {
+  display: block;
+  padding-inline: 7px;
+  color: #c4bda1;
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.home-help-actions .cloud-save-status.compact {
+  flex: 0 0 auto;
+}
+.cloud-save-status.compact .cloud-status-trigger {
+  width: 44px;
+  height: 44px;
+  justify-content: center;
+  padding: 9px;
+  border-color: #a9c3b338;
+  background: #12363380;
+}
+.cloud-save-status[data-status="error"] .cloud-status-trigger {
+  color: #f0d295;
+}
+.cloud-save-status .cloud-status-trigger:hover,
+.cloud-status-dismiss:hover,
+.cloud-status-opt-out:hover {
+  background: #2c4b41;
+}
+.cloud-status-trigger:disabled,
+.cloud-status-retry:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.cloud-status-spinner {
+  display: inline-flex;
+  animation: cloud-status-spin 1s linear infinite;
+}
+@keyframes cloud-status-spin {
+  to { transform: rotate(360deg); }
+}
+.cloud-status-toast-viewport {
+  position: fixed;
+  z-index: 40;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  max-width: 440px;
+  margin-left: auto;
+  pointer-events: none;
+  outline: none;
+}
+.cloud-status-coachmark {
+  top: env(safe-area-inset-top, 0px);
+  bottom: auto;
+  padding-top: 52px;
+}
+.cloud-status-app-arrow {
+  position: absolute;
+  top: 0;
+  right: 24px;
+  width: 44px;
+  height: 50px;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: #f0d295;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cloud-status-toast {
+  width: 100%;
+  max-height: calc(100svh - 24px);
+  max-height: calc(100svh - max(12px, env(safe-area-inset-top)) - max(12px, env(safe-area-inset-bottom)));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  pointer-events: auto;
+  padding: 17px;
+  border: 1px solid #a9c3b36b;
+  border-radius: 13px;
+  background: #153832;
+  box-shadow: 0 12px 40px #071e1c66;
+  color: #e2e7d7;
+  overflow-wrap: anywhere;
+}
+.cloud-status-coachmark .cloud-status-toast {
+  max-height: calc(100svh - 64px);
+  max-height: calc(100svh - 52px - env(safe-area-inset-top, 0px) - max(12px, env(safe-area-inset-bottom)));
+}
+.cloud-status-toast[data-ending-style],
+.cloud-status-toast[data-limited] {
+  display: none;
+}
+.cloud-status-title {
+  margin: 0;
+  color: #f0d295;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+.cloud-status-description {
+  margin: 9px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.cloud-status-toast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+.cloud-status-retry,
+.cloud-status-dismiss,
+.cloud-status-opt-out {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 44px;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 9px 13px;
+  border: 1px solid #a9c3b355;
+  border-radius: 8px;
+  background: transparent;
+  color: #e2e7d7;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.cloud-status-retry {
+  background: #f0d295;
+  border-color: #f0d295;
+  color: #163c3c;
+}
+.cloud-status-retry:hover:not(:disabled) {
+  background: #ffe2a8;
+}
+.cloud-status-retry svg,
+.cloud-status-dismiss svg {
+  flex-shrink: 0;
+}
+.cloud-status-trigger:focus-visible,
+.cloud-status-retry:focus-visible,
+.cloud-status-dismiss:focus-visible,
+.cloud-status-opt-out:focus-visible {
+  outline: 2px solid #f0d295;
+  outline-offset: 3px;
+}
+.cloud-status-toast:focus-visible {
+  outline: 2px solid #f0d295;
+  outline-offset: -4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cloud-status-spinner { animation: none; }
+}

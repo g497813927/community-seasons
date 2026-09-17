@@ -20,6 +20,7 @@
     "qa:web": "node tests/qa/web/run.mjs --platform web",
     "qa:ios": "node tests/qa/web/run.mjs --platform ios",
     "qa:all": "node tests/qa/web/run.mjs --platform all",
+    "qa:responsive": "node tests/qa/web/responsive.mjs",
     "qa:device": "node tests/qa/devices/cli.mjs",
     "qa:test": "node --test tests/qa/tests/*.test.mjs tests/qa/devices/*.test.mjs scripts/vercel-qa.test.mjs",
     "qa:archive:licenses:serve": "vite tests/qa/archive/licenses-ui-qa --config tests/qa/archive/licenses-ui-qa/vite.config.ts",

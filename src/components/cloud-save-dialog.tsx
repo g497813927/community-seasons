@@ -50,7 +50,7 @@ export function CloudSaveDialog({
   const saves = [
     { id: "local", title: l("This device", "本机存档"), save: localSnapshot },
     ...(cloudSnapshot
-      ? [{ id: "cloud", title: l("Toy cloud", "Toy 云存档"), save: cloudSnapshot }]
+      ? [{ id: "cloud", title: l("Bilibili cloud", "哔哩哔哩云存档"), save: cloudSnapshot }]
       : []),
   ];
   const rows = [
@@ -91,7 +91,7 @@ export function CloudSaveDialog({
       >
         <DialogHeader>
           <span className="cloud-save-eyebrow">
-            <Cloud size={17} aria-hidden="true" /> {l("YOUR TOY SAVE", "你的 Toy 存档")}
+            <Cloud size={17} aria-hidden="true" /> {l("YOUR BILIBILI SAVE", "你的哔哩哔哩存档")}
           </span>
           <DialogTitle ref={titleRef} tabIndex={-1} className="cloud-save-title">
             {cloudSnapshot
@@ -101,12 +101,12 @@ export function CloudSaveDialog({
           <DialogDescription className="cloud-save-description">
             {cloudSnapshot
               ? l(
-                  "Your device and Toy cloud have different saves. Choose one to sync across devices signed in to this Toy account.",
-                  "本机与 Toy 云端的存档不同。选择一份，在登录同一 Toy 账号的设备间同步。",
+                  "Your device and Bilibili cloud have different saves. Choose one to sync across devices signed in to this Bilibili account.",
+                  "本机与哔哩哔哩云端的存档不同。选择一份，在登录同一哔哩哔哩账号的设备间同步。",
                 )
               : l(
-                  "This Toy account has no cloud save yet. Upload this device’s progress to continue on your other devices.",
-                  "这个 Toy 账号还没有云存档。上传本机进度，即可在其他设备继续游戏。",
+                  "This Bilibili account has no cloud save yet. Upload this device’s progress to continue on your other devices.",
+                  "这个哔哩哔哩账号还没有云存档。上传本机进度，即可在其他设备继续游戏。",
                 )}
           </DialogDescription>
         </DialogHeader>
@@ -202,8 +202,8 @@ export function CloudSaveDialog({
                 "存档不会合并。选中的存档将覆盖另一份，包括金币、购买内容和上次场景。",
               )
             : l(
-                "Your coins, purchases, best score and last season will be saved to this Toy account.",
-                "金币、购买内容、最高分和上次场景将保存到这个 Toy 账号。",
+                "Your coins, purchases, best score and last season will be saved to this Bilibili account.",
+                "金币、购买内容、最高分和上次场景将保存到这个哔哩哔哩账号。",
               )}
         </p>
         {error && (
@@ -231,7 +231,7 @@ export function CloudSaveDialog({
               </strong>
               <small>
                 {cloudSnapshot
-                  ? l("Replace your Toy cloud progress", "覆盖 Toy 云端进度")
+                  ? l("Replace your Bilibili cloud progress", "覆盖哔哩哔哩云端进度")
                   : l("Enable sync across your devices", "开启跨设备同步")}
               </small>
             </span>

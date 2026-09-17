@@ -47,6 +47,7 @@ Use the [cross-platform QA framework](../tests/qa/README.md) for current browser
 npm run qa:build
 npm run qa:test
 npm run qa:all
+npm run qa:responsive
 npm run qa:preview
 ```
 
