@@ -47,6 +47,7 @@ node tests/fuzz/run.mjs quick --rounds 2 --seed 3231321585 --no-tui
 npm run qa:build
 npm run qa:test
 npm run qa:all
+npm run qa:responsive
 npm run qa:preview
 ```
 

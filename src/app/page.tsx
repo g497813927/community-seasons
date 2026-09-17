@@ -22,7 +22,6 @@ import {
   MessageSquareHeart,
   PartyPopper,
   CircleHelp,
-  Cloud,
   Share2,
   ScrollText,
 } from "lucide-react";
@@ -61,6 +60,7 @@ import { RailTravel } from "@/components/rail-travel";
 import { railTravelFrame } from "@/lib/game/rail-transition";
 import { createRailQuestionDeck, type RailRide, type RailQuestion } from "@/lib/game/railway";
 import { CloudSaveDialog } from "@/components/cloud-save-dialog";
+import { CloudSaveStatus } from "@/components/cloud-save-status";
 import { ShareDialog } from "@/components/share-dialog";
 import { LicensesDialog } from "@/components/licenses-dialog";
 import type { SharePosterSnapshot } from "@/lib/game/share-poster";
@@ -72,6 +72,7 @@ import {
   type SaveSnapshot,
 } from "@/lib/game/cloud-save";
 import { isToyPage, loadToyCloudStorage } from "@/lib/game/toy-sdk";
+import { shouldSuggestBilibili } from "@/lib/game/cloud-browser";
 import { CASES_URL, type CommunityLesson } from "@/lib/game/community";
 import { isSceneKind, nextScene, sceneDefinition, type SceneKind } from "@/lib/game/scenes";
 import { registerGameTools } from "@/lib/game/tools";
@@ -1321,18 +1322,20 @@ export default function Home() {
   const cloudBusy = cloudActionPending || ["checking", "saving"].includes(cloudState.status);
   const cloudLabel =
     cloudState.status === "synced"
-      ? l("Saved to Toy cloud", "已保存至 Toy 云端")
+      ? l("Saved to Bilibili cloud", "已保存至哔哩哔哩云端")
       : cloudState.status === "checking"
-        ? l("Checking Toy cloud…", "正在检查 Toy 云存档…")
+        ? l("Checking Bilibili login status…", "正在检查哔哩哔哩登录状态…")
         : cloudState.status === "saving" || cloudState.status === "queued"
-          ? l("Saving to Toy cloud…", "正在保存至 Toy 云端…")
+          ? l("Saving to Bilibili cloud…", "正在保存至哔哩哔哩云端…")
           : cloudState.status === "conflict"
             ? l("Choose a save to continue", "请选择要使用的存档")
             : cloudState.status === "pending"
               ? l("Cloud save waiting · Check", "云存档待检查 · 点击查看")
               : cloudState.status === "local"
                 ? l("This device only · Enable cloud", "仅保存在本机 · 启用云存档")
-                : l("Cloud unavailable · Retry", "云存档暂不可用 · 重试");
+                : cloudState.status === "unsupported"
+                  ? l("Cloud saving not supported", "当前环境不支持云存档")
+                  : l("Cloud unavailable · Retry", "云存档暂不可用 · 重试");
   const cloudError =
     cloudState.error === "invalid-save" || cloudState.error === "too-large"
       ? l(
@@ -1342,8 +1345,8 @@ export default function Home() {
       : cloudState.error
         ? savingAvailable
           ? l(
-              "Cloud sync failed. Your device save is kept. Check your connection and Toy sign-in, then retry.",
-              "云同步失败，本机存档已保留。请检查网络与 Toy 登录状态后重试。",
+              "Cloud sync failed. Your device save is kept. Check your connection and Bilibili login status, then retry.",
+              "云同步失败，本机存档已保留。请检查网络与哔哩哔哩登录状态后重试。",
             )
           : l(
               "Cloud sync and browser saving are unavailable. Keep this page open and retry to save your progress.",
@@ -1526,15 +1529,19 @@ export default function Home() {
               >
                 <CircleHelp size={15} /> {l("How to play", "操作指南")}
               </Button>
+              {onToy && (
+                <CloudSaveStatus
+                  locale={locale}
+                  status={cloudState.status}
+                  label={cloudLabel}
+                  error={cloudError}
+                  busy={cloudBusy}
+                  compact={viewport.width <= 750}
+                  suggestBilibili={shouldSuggestBilibili(navigator.userAgent, cloudState)}
+                  onRetry={retryCloudSave}
+                />
+              )}
             </div>
-            {onToy && (
-              <div className="cloud-save-status" aria-live="polite">
-                <button type="button" onClick={retryCloudSave} disabled={cloudBusy}>
-                  <Cloud size={15} aria-hidden="true" /> {cloudLabel}
-                </button>
-                {cloudError && <small>{cloudError}</small>}
-              </div>
-            )}
             <div className="start-rule">
               <Coins size={16} />
               <span>{t("Coins to collect. Boundaries to discover.")}</span>
@@ -1633,7 +1640,7 @@ export default function Home() {
               </Button>
               <span className="panel-hint">
                 {cloudActionPending
-                  ? l("Checking Toy cloud…", "正在检查 Toy 云存档…")
+                  ? l("Checking Bilibili login status…", "正在检查哔哩哔哩登录状态…")
                   : t(
                       hud.mode === "paused"
                         ? "Press P or Enter to resume"
