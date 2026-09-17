@@ -1,6 +1,8 @@
 import * as engine from '../../../../src/lib/game/engine';
+import { RAIL_QUESTIONS, railQuestionDuration } from '../../../../src/lib/game/railway';
 import { isSceneKind, nextScene, type SceneKind } from '../../../../src/lib/game/scenes';
 const qa=(window as any).__phoneQA;
+qa.railQuestionDurations=Object.fromEntries(RAIL_QUESTIONS.map(question=>[question.id,railQuestionDuration(question)]));
 function running(){const s=qa.run as engine.RunState|null;if(!s||s.mode!=='running')throw new Error('Use the real game Start / guide / Begin run controls first (and resume if paused).');return s;}
 function base(distance:number,time:number,scene:SceneKind){const s=running();Object.assign(s,engine.createRun(4182,scene),{mode:'running',distance,time,score:Math.floor(distance*10),speed:Math.min(engine.MAX_SPEED,engine.INITIAL_SPEED+distance*.006),nextRow:distance+50,nextRelicAt:distance+160,nextForkAt:1e9,nextRailAt:1e9,nextPortalAt:1e9});engine.generateAhead(s);return s;}
 qa.scenario=(name:string,options:{scene?:SceneKind;direction?:'left'|'right';stage?:'first'|'max';seconds?:number}={})=>{

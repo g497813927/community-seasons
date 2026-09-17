@@ -69,6 +69,23 @@ test("every bank question gets the same content-based deadline across answer shu
   assert.ok(durations.size > 1, "questions of different lengths must have different deadlines");
 });
 
+test("missing question IDs report their ride index before consuming deck entries or randomness", () => {
+  for (const index of [0, 1]) {
+    const ride = createRailRide(() => 0.5);
+    ride.questions = ["removed-question"];
+    ride.index = index;
+    ride.questionDeck.remaining.unshift("removed-question");
+    const before = structuredClone(ride);
+    let randomCalls = 0;
+    assert.throws(() => beginRailQuestion(ride, () => { randomCalls++; return 0.5; }), {
+      name: "Error",
+      message: `Cannot begin rail question at index ${index}: unknown question ID ${index === 0 ? '"removed-question"' : 'undefined'}.`,
+    });
+    assert.deepEqual(ride, before, "a missing card must not consume history or partially enter question phase");
+    assert.equal(randomCalls, 0);
+  }
+});
+
 function advance(state, seconds) {
   while (seconds > 1e-8) {
     const step = Math.min(0.05, seconds);

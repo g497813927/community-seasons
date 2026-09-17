@@ -2031,6 +2031,11 @@ export function createRailRide(
 export function beginRailQuestion(ride: RailRide, random: () => number) {
   const deck = ride.questionDeck;
   const id = ride.questions[ride.index];
+  const question = railQuestion(id);
+  if (!question) {
+    // A stale development ride must fail before consuming its deck or RNG.
+    throw new Error(`Cannot begin rail question at index ${ride.index}: unknown question ID ${JSON.stringify(id)}.`);
+  }
   if (deck?.remaining[0] === id) {
     deck.remaining.shift();
     deck.recent.push(id);
@@ -2042,7 +2047,7 @@ export function beginRailQuestion(ride: RailRide, random: () => number) {
     [order[i], order[j]] = [order[j], order[i]];
   }
   ride.phase = "question";
-  ride.duration = railQuestionDuration(railQuestion(id)!);
+  ride.duration = railQuestionDuration(question);
   ride.remaining = ride.duration;
   ride.optionOrder = order;
   ride.answerLane = null;
