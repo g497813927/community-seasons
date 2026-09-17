@@ -1529,15 +1529,17 @@ export default function Home() {
               >
                 {muted ? <VolumeX /> : <Volume2 />}
               </Button>
-              <Button
-                className="icon-button"
-                variant="ghost"
-                disabled={hud.mode === "ready" || hud.mode === "over" || cloudActionPending}
-                aria-label={t(hud.mode === "paused" ? "Resume game" : "Pause game")}
-                onClick={pause}
-              >
-                {hud.mode === "paused" ? <Play /> : <Pause />}
-              </Button>
+              {hud.mode !== "ready" && (
+                <Button
+                  className="icon-button"
+                  variant="ghost"
+                  disabled={hud.mode === "over" || cloudActionPending}
+                  aria-label={t(hud.mode === "paused" ? "Resume game" : "Pause game")}
+                  onClick={pause}
+                >
+                  {hud.mode === "paused" ? <Play /> : <Pause />}
+                </Button>
+              )}
             </div>
           </div>
         </div>

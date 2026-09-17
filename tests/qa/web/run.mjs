@@ -123,6 +123,7 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
     assert.ok(overflow <= 1, `${label} has horizontal overflow: ${overflow}px`);
   };
   await page.locator('.start-screen .run-button').waitFor();
+  assert.equal(await page.locator('.hud .icon-button[aria-label="Pause game"], .hud .icon-button[aria-label="暂停游戏"]').count(), 0, 'The home screen must not show a pause control');
   await page.evaluate(() => document.fonts.ready);
   row.localeInitialization = await page.evaluate(() => ({
     navigatorLanguage: navigator.language,
