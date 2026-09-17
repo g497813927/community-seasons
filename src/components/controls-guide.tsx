@@ -157,8 +157,8 @@ export function ControlsGuide({
               <h3>{l("Road forks", "岔路转弯")}</h3>
               <p>
                 {l(
-                  "When the center closes, choose the left or right lane before the fork. The road turns with you.",
-                  "中路封闭时，在到达岔口前选择左侧或右侧跑道，道路会随你的选择转弯。",
+                  "The center ends at each fork. Some forks also block one side: follow the open arrow with swipes or A/D / ←/→. A dead end ends the run.",
+                  "岔口中路不通，有些岔口还会封闭一侧。滑动或按 A/D、←/→，沿可通行的箭头转弯；进入断头路会结束本局。",
                 )}
               </p>
             </article>
@@ -197,8 +197,8 @@ export function ControlsGuide({
               <h3>{l("Boosters", "道具")}</h3>
               <p>
                 {l(
-                  "Floating colored badges. Jump to collect; their power activates immediately.",
-                  "悬浮的彩色徽章：跳跃拾取，效果立即生效。",
+                  "Jump to collect floating badges; they activate immediately. Speed boosts steer into an open fork branch. Shields do not steer.",
+                  "跳跃拾取悬浮徽章，效果立即生效。加速时会自动转入可通行的岔路；护盾不会自动转向。",
                 )}
               </p>
             </article>

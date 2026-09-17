@@ -8,6 +8,7 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
     p = world.palette;
   const junction =
     renderer.forkDepth ?? (renderer.curveStrength > 0 || renderer.curveTail ? -renderer.curveAlong : null);
+  const blocked = renderer.forkBlockedDirection;
   const paint = (points: V[], color: string) => {
     if (points.every((point) => point[2] < -9)) return;
     renderer.faces.push({
@@ -90,7 +91,8 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
       // roads along the approach. The closed center lane simply ends here.
       if (near < junction) strip(0, row, near, Math.min(far, junction));
       if (far > junction)
-        for (const branch of [-1, 1]) strip(branch, row, Math.max(near, junction), far);
+        for (const branch of [-1, 1])
+          strip(branch, row, Math.max(near, junction), branch === blocked ? Math.min(far, junction + 4) : far);
     }
   }
   renderer.layer = 1;
@@ -103,16 +105,35 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
     renderer.box(0, 0.42, z - 0.06, 1.35, 0.84, 0.32, ["#9c6850", "#684739", "#d8b778"]);
     for (const x of [-0.43, 0, 0.43])
       renderer.box(x, 0.43, z - 0.23, 0.13, 0.61, 0.025, ["#fff0bb", "#d8b778", "#fff0bb"], 0, -0.35);
+    if (blocked) {
+      const x = blocked * LANE_WIDTH;
+      // Match the tall lane-change obstacles: this full-height wall cannot
+      // be mistaken for a low hurdle or a sliding gap.
+      // It remains at the same junction after committing to the open turn.
+      renderer.box(x, 1.35, z - 0.06, 1.55, 2.7, 1, ["#a94f45", "#773c36", "#d78065"]);
+      renderer.box(x, 2.7, z - 0.06, 1.6, 0.12, 1.04, ["#d8b778", "#684739", "#fff0bb"]);
+      for (const y of [1.15, 1.55, 2.45])
+        renderer.box(x, y, z - 0.575, 1.55, 0.035, 0.025, ["#773c36", "#773c36", "#773c36"]);
+      for (const dx of [-0.53, 0, 0.53])
+        renderer.box(x + dx, 0.42, z - 0.59, 0.15, 0.66, 0.025, ["#fff0bb", "#d8b778", "#fff0bb"], 0, -0.35);
+      renderer.label(x, 2, z - 0.61, 0.78, 0.78, "×", "#fff0bb", "#773c36", true);
+      renderer.label(x, 0.93, z - 0.615, 1.43, 0.34,
+        renderer.renderLocale === "zh-CN" ? "此路不通" : "DEAD END", "#fff0bb", "#773c36");
+    }
     renderer.box(0, 1, z, 0.18, 2, 0.18, p.dark);
     renderer.box(0, 1.95, z, 2.55, 0.9, 0.3, ["#63554d", "#423d3e", "#b39c76"]);
-    renderer.label(0, 2.08, z - 0.16, 2.35, 0.47, "←       →", "#fff0bb", "#63554d", true);
+    renderer.label(0, 2.08, z - 0.16, 2.35, 0.47,
+      blocked === -1 ? "×       →" : blocked === 1 ? "←       ×" : "←       →",
+      "#fff0bb", "#63554d", true);
     renderer.label(
       0,
       1.7,
       z - 0.17,
       2.35,
       0.25,
-      renderer.renderLocale === "zh-CN" ? "前方分岔 · 请选择转向" : "FORK · TURN LEFT OR RIGHT",
+      renderer.renderLocale === "zh-CN"
+        ? blocked === -1 ? "左路封闭 · 向右转" : blocked === 1 ? "右路封闭 · 向左转" : "前方分岔 · 请选择转向"
+        : blocked === -1 ? "LEFT CLOSED · TURN RIGHT" : blocked === 1 ? "RIGHT CLOSED · TURN LEFT" : "FORK · TURN LEFT OR RIGHT",
       "#fff0bb",
       "#63554d",
     );

@@ -237,34 +237,6 @@
   flex-shrink: 0;
   margin-top: 2px;
 }
-.fork-alert {
-  position: absolute;
-  z-index: 5;
-  top: 119px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: grid;
-  justify-items: center;
-  gap: 5px;
-  max-width: calc(100% - 36px);
-  padding: 13px 20px;
-  border: 1px solid #eccc8099;
-  border-radius: 10px;
-  background: #133b30ef;
-  color: #f3dcac;
-  text-align: center;
-  pointer-events: none;
-}
-.fork-alert strong {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 17px;
-}
-.fork-alert small {
-  color: #cbd7b8;
-  font-size: 12px;
-}
 .rail-active .record-celebration,
 .rail-active .scene-caption {
   display: none;
@@ -322,14 +294,6 @@
   .rail-eyebrow {
     font-size: 10px;
     letter-spacing: 1px;
-  }
-  .fork-alert {
-    top: 95px;
-    width: max-content;
-    padding: 11px 16px;
-  }
-  .fork-alert strong {
-    font-size: 15px;
   }
 }
 @media (max-height: 600px) and (min-width: 601px) {

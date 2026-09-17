@@ -866,6 +866,10 @@ function forkBufferSample(seed, gate) {
   let unlockedAt = null;
   let firstAfter = Infinity;
   for (let frame = 0; frame < 1600; frame++) {
+    if (s.fork && !s.turnRemaining) {
+      const target = s.fork.blockedDirection === -1 ? 1 : -1;
+      if (s.lane !== target) act(s, target < s.lane ? "left" : "right");
+    }
     const previousDistance = s.distance;
     update(s, 1 / 60);
     for (const obstacle of s.obstacles) {

@@ -112,6 +112,9 @@ try {
     });
     for(const direction of [-1,1])scenario(seed,`fork-${direction}`,scene,(random,renderer)=>{
       const s=base(seed,scene,[470,3500,9000][seed%3]);s.nextForkAt=s.distance+8+random()*45;s.fork=null;E.update(s,.001);
+      // Keep explicit left/right turn coverage while retaining generated
+      // dead ends on the opposite side of each selected fixture branch.
+      if(s.fork.blockedDirection)s.fork.blockedDirection=-direction;
       s.lane=direction;s.x=direction*E.LANE_WIDTH;
       checkFrame(renderer,s,0,'en','fork-approach');
       let turned=false,finished=false;

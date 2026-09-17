@@ -57,6 +57,7 @@ export class Renderer {
   previousTurnDistance = 0;
   laneLean = 0;
   forkDepth: number | null = null;
+  forkBlockedDirection: -1 | 0 | 1 = 0;
   renderLocale: "en" | "zh-CN" = "en";
   previewRun = createRun(4182);
   previewAt: number | null = null;

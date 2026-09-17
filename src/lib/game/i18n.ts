@@ -15,6 +15,10 @@ export function resolveLocale(saved: string | null, preferred: readonly string[]
 const ZH: Readonly<Record<string, string>> = {
   "The center route is closed. Choose the left or right branch at a fork.":
     "中间路线已封闭。请在岔口前选择左侧或右侧分支。",
+  "The left branch is a dead end. Take the right branch at this fork.":
+    "左侧是断头路。请在这个岔口选择右侧分支。",
+  "The right branch is a dead end. Take the left branch at this fork.":
+    "右侧是断头路。请在这个岔口选择左侧分支。",
   "Blossom groves, garden arbors and quiet park ponds.": "花树成林，花架与安静的池塘点缀公园。",
   "A wooden riverside boardwalk, little docks and passing sailboats.":
     "沿木质栈道漫步河畔，经过小码头与帆船。",

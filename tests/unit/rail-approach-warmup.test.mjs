@@ -19,8 +19,10 @@ function firstStation(seed, headstart) {
   let fadeFrames = 0;
   const insertedRows = [];
   for (let frame = 0; frame < 6000; frame++) {
-    if (s.fork && (s.fork.at - s.distance) / s.speed < 2.2 && !s.turnRemaining && s.lane !== -1)
-      act(s, "left");
+    if (s.fork && (s.fork.at - s.distance) / s.speed < 2.2 && !s.turnRemaining) {
+      const target = s.fork.blockedDirection === -1 ? 1 : -1;
+      if (s.lane !== target) act(s, target < s.lane ? "left" : "right");
+    }
     if (!s.rail && s.time >= RAIL_UNLOCK_TIME && s.railPreparedAt === s.nextRailAt) {
       const seconds = (s.nextRailAt - s.distance) / s.speed;
       if (seconds > 0 && seconds < 1) {
@@ -77,13 +79,15 @@ function firstStation(seed, headstart) {
   assert.fail(`first station never reached, seed=${seed}, headstart=${headstart}`);
 }
 
-test("reported seed fits the final safe row after warmup without changing station or boarding timing", (t) => {
-  const result = firstStation(1017116225, false);
+test("seeded opening fits the final safe row after warmup without changing station or boarding timing", (t) => {
+  // Fork availability adds a seeded draw; seed 11 retains the same pending
+  // pre-unlock repair as the historical 1017116225 opening on the old course.
+  const result = firstStation(11, false);
   assert.ok(result.insertedRows.length > 0, "the pending pre-unlock gap must actually be repaired");
   assert.ok(result.emptySeconds < 2.2, "the reported 4.375-second gap must be shortened, not merely accepted");
   assert.ok(Math.abs(result.stationAt - 1031.6330301672783) < 0.01, "station frequency/location is unchanged");
   assert.ok(Math.abs(result.boardTime - 69.35) < 0.03, "the gate is not moved closer to mask the gap");
-  t.diagnostic(`reported seed: last obstacle→boarding ${result.emptySeconds.toFixed(3)}s; →first question ${result.emptyToQuestionSeconds.toFixed(3)}s; last obstacle ${result.lastObstacle.toFixed(3)}m`);
+  t.diagnostic(`repair seed ${result.seed}: last obstacle→boarding ${result.emptySeconds.toFixed(3)}s; →first question ${result.emptyToQuestionSeconds.toFixed(3)}s; last obstacle ${result.lastObstacle.toFixed(3)}m`);
 });
 
 test("a station repair never duplicates retained obstacles, overlaps existing coins, or appears too late", () => {

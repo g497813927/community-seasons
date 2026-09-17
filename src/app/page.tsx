@@ -951,6 +951,7 @@ export default function Home() {
     game.current.fork ??= null;
     game.current.nextForkAt ??= journeyDefaults.nextForkAt;
     game.current.lastForkAt ??= null;
+    game.current.lastForkBlockedDirection ??= 0;
     game.current.turnDirection ??= 0;
     game.current.turnRemaining ??= 0;
     game.current.turnEntryX ??= 0;
@@ -1319,6 +1320,7 @@ export default function Home() {
   }, []);
   const active = hud.mode === "running";
   const speedBoosted = hud.boosts.rush > 0 || hud.boosts.headstart > 0 || hud.boosts.portal > 0;
+  const forkBlockedDirection = game.current.fork?.blockedDirection;
   const cloudBusy = cloudActionPending || ["checking", "saving"].includes(cloudState.status);
   const cloudLabel =
     cloudState.status === "synced"
@@ -1735,19 +1737,18 @@ export default function Home() {
             />
           )}
         {active && !hud.rail && game.current.fork && game.current.fork.at - hud.distance < 135 && (
-          <output className="fork-alert" aria-live="polite">
-            <strong>
-              <ArrowLeft size={19} />
-              {speedBoosted
-                ? l("BOOST AUTO-TURN", "冲刺自动转弯")
-                : l("CHOOSE A TURN", "选择转弯方向")}
-              <ArrowRight size={19} />
-            </strong>
-            <small>
-              {speedBoosted
-                ? l("Defaults left · You can still choose right", "默认向左 · 仍可选择右侧")
-                : l("Center closed · Take the left or right lane", "中路封闭 · 选择左侧或右侧跑道")}
-            </small>
+          <output id="fork-announcement" className="fork-announcement sr-only" aria-live="polite" aria-atomic="true">
+            {forkBlockedDirection === -1
+              ? speedBoosted
+                ? l("Left dead end. Boost automatically turns right.", "左路不通。加速将自动向右转。")
+                : l("Left dead end. Take the right lane.", "左路不通。请选择右侧跑道。")
+              : forkBlockedDirection === 1
+                ? speedBoosted
+                  ? l("Right dead end. Boost automatically turns left.", "右路不通。加速将自动向左转。")
+                  : l("Right dead end. Take the left lane.", "右路不通。请选择左侧跑道。")
+                : speedBoosted
+                  ? l("Boost defaults left. You can still choose right.", "加速默认向左。仍可选择右侧。")
+                  : l("Center closed. Take the left or right lane.", "中路封闭。请选择左侧或右侧跑道。")}
           </output>
         )}
         <div className="status-stack" hidden={!!hud.rail || hud.railReturnRemaining > 0}>

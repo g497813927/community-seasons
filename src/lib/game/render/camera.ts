@@ -54,6 +54,9 @@ export function configureCamera(renderer: Renderer, s: RunState) {
         Math.max(0, s.distance - (renderer.turnEndDistance ?? s.lastForkAt! + renderer.turnArcLength));
   renderer.sceneryForkAt =
     s.fork?.at ?? (renderer.curveStrength > 0 || renderer.curveTail ? s.lastForkAt : null);
+  renderer.forkBlockedDirection = s.fork
+    ? s.fork.blockedDirection ?? 0
+    : renderer.sceneryForkAt !== null ? s.lastForkBlockedDirection ?? 0 : 0;
   renderer.laneLean = Math.max(-1, Math.min(1, (s.lane * LANE_WIDTH - s.x) / LANE_WIDTH));
   const approaching = s.fork
     ? Math.max(0, Math.min(1, 1 - (s.fork.at - s.distance) / (s.speed * 2.2)))
@@ -180,6 +183,7 @@ export function endCourseObject(renderer: Renderer, start: number) {
   renderer.captureScenery = false;
   const template = renderer.faces.splice(start);
   for (const branch of [-1, 1]) {
+    if (branch === renderer.forkBlockedDirection) continue;
     for (const face of template) {
       const points = face.points.map(([x, y, z]) => renderer.sceneryViewPoint(branch, x, y, z));
       if ((face.cull && !renderer.frontFacing(points)) || points.every((p) => p[2] < -9)) continue;
