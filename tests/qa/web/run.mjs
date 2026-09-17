@@ -160,6 +160,41 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await action('close-licenses', () => page.locator('.licenses-close').click());
   await action('restore-home-scroll-and-focus', () => page.waitForFunction(licensesCloseIsComplete, homeScrollStyles, { polling: 50 }));
 
+  // Choose focus at close time: resizing can hide the original launcher.
+  // Keep the clock running for the dialog's deferred focus/scroll cleanup.
+  const originalViewport = page.viewportSize();
+  row.help.resizeFocus = [];
+  try {
+    for (const sourceCompact of [false, true]) {
+      // Test the CSS breakpoint without triggering phone-landscape emulation.
+      const desktop = { width: 751, height: 1100 };
+      const mobile = { width: 750, height: 1100 };
+      const direction = sourceCompact ? 'mobile-to-desktop' : 'desktop-to-mobile';
+      await action(`resize-focus-source-${direction}`, () => page.setViewportSize(sourceCompact ? mobile : desktop));
+      const baseline = await page.evaluate(snapshotDocumentScrollStyles);
+      if (sourceCompact) {
+        await helpLauncher.click();
+        await page.locator('.help-dialog .licenses-launcher').click();
+        await page.locator('.help-dialog').waitFor({ state: 'detached' });
+      } else await page.locator('.credits-footer .licenses-launcher').click();
+      await page.locator('.licenses-dialog').waitFor();
+      await page.waitForFunction(() => !!document.activeElement?.closest('.licenses-dialog'));
+      await action(`resize-open-licenses-${direction}`, () => page.setViewportSize(sourceCompact ? desktop : mobile));
+      const selector = sourceCompact ? '.credits-footer .licenses-launcher' : '.help-launcher';
+      await page.locator(selector).waitFor({ state: 'visible' });
+      await action(`close-resized-licenses-${direction}`, () => page.keyboard.press('Escape'));
+      await action(`restore-resized-licenses-focus-${direction}`, () => page.waitForFunction(
+        licensesCloseIsComplete, { ...baseline, returnFocusSelector: selector }, { polling: 50 },
+      ));
+      assert.equal(await page.locator(selector).evaluate(element =>
+        document.activeElement === element && element.getClientRects().length > 0), true,
+      'Closing resized licenses must focus a visible launcher');
+      row.help.resizeFocus.push({ direction, selector, focusAndScrollRestored: true });
+    }
+  } finally {
+    await page.setViewportSize(originalViewport);
+  }
+
   await action('start-journey', () => page.locator('.start-screen .run-button').click());
   await action('complete-first-guide', () => page.locator('.controls-guide-done').click());
   await action('complete-second-guide', () => page.locator('.controls-guide-done').click());

@@ -1980,7 +1980,7 @@ export default function Home() {
       <ControlsGuide open={guideOpen} onOpenChange={changeGuide} locale={locale}
         returnFocus={helpDetailRef.current === "guide" ? helpReturnFocus : undefined} />
       <LicensesDialog open={licensesOpen} onOpenChange={changeLicenses} locale={locale}
-        returnFocus={() => helpDetailRef.current === "licenses" ? helpReturnFocus() : licensesButtonRef.current ?? false} />
+        returnFocus={helpReturnFocus} />
       <PostReviewDialog
         review={hud.review}
         ended={hud.mode === "over"}
