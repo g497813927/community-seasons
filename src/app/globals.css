@@ -572,6 +572,22 @@ kbd {
 .touch-start-hint {
   display: none;
 }
+/* Direction cues replace the control heading below the canvas, so enlarged
+   text can wrap in document flow without covering the road. */
+.control-bar .fork-direction-cue,
+.swipe-guide b.fork-direction-cue {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  color: #f3dcac;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: normal;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
 .over .scene-caption,
 .paused .scene-caption {
   opacity: 0.3;

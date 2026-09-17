@@ -1321,6 +1321,12 @@ export default function Home() {
   const active = hud.mode === "running";
   const speedBoosted = hud.boosts.rush > 0 || hud.boosts.headstart > 0 || hud.boosts.portal > 0;
   const forkBlockedDirection = game.current.fork?.blockedDirection;
+  const forkAhead = active && !hud.rail && game.current.fork !== null && game.current.fork.at - hud.distance < 135;
+  const forkCue = forkBlockedDirection === -1
+    ? speedBoosted ? l("Auto-turn right →", "自动右转 →") : l("Turn right →", "向右转 →")
+    : forkBlockedDirection === 1
+      ? speedBoosted ? l("← Auto-turn left", "← 自动左转") : l("← Turn left", "← 向左转")
+      : l("← Left or right →", "← 向左或向右 →");
   const cloudBusy = cloudActionPending || ["checking", "saving"].includes(cloudState.status);
   const cloudLabel =
     cloudState.status === "synced"
@@ -1736,7 +1742,7 @@ export default function Home() {
               onResume={pause}
             />
           )}
-        {active && !hud.rail && game.current.fork && game.current.fork.at - hud.distance < 135 && (
+        {forkAhead && (
           <output id="fork-announcement" className="fork-announcement sr-only" aria-live="polite" aria-atomic="true">
             {forkBlockedDirection === -1
               ? speedBoosted
@@ -1926,8 +1932,8 @@ export default function Home() {
         paused={hud.mode === "paused"}
       />
       <footer className="control-bar keyboard-controls">
-        <span className="controls-label">
-          <Footprints size={17} /> {t("MAKE YOUR MOVE")}
+        <span className={forkAhead ? "controls-label fork-direction-cue" : "controls-label"} aria-hidden={forkAhead || undefined}>
+          {forkAhead ? forkCue : <><Footprints size={17} /> {t("MAKE YOUR MOVE")}</>}
         </span>
         <div className="control">
           <div>
@@ -1964,7 +1970,9 @@ export default function Home() {
         <span className="wasd">{t("1–4 boosters · E skill · B store")}</span>
       </footer>
       <footer className="swipe-guide" aria-label={t("Swipe controls")}>
-        <b>{t("SWIPE TO MOVE")}</b>
+        <b className={forkAhead ? "fork-direction-cue" : undefined} aria-hidden={forkAhead || undefined}>
+          {forkAhead ? forkCue : t("SWIPE TO MOVE")}
+        </b>
         <div>
           <span>
             <ArrowLeft />
