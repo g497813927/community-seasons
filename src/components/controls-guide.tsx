@@ -17,10 +17,12 @@ export function ControlsGuide({
   open,
   onOpenChange,
   locale,
+  returnFocus,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locale: Locale;
+  returnFocus?: () => HTMLElement | boolean;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -68,6 +70,7 @@ export function ControlsGuide({
       <DialogContent
         ref={dialogRef}
         initialFocus={titleRef}
+        finalFocus={returnFocus}
         className="controls-guide-dialog"
         showCloseButton={false}
         lang={locale}

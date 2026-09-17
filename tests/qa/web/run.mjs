@@ -143,9 +143,36 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await checkOverflow('home');
   await capture('home');
 
+  const compactHelp = await page.evaluate(() => innerWidth <= 750);
+  const returnFocusSelector = compactHelp ? '.help-launcher' : '.credits-footer .licenses-launcher';
+  const helpLauncher = page.locator('.help-launcher');
+  assert.equal(await helpLauncher.isVisible(), compactHelp, 'Top help is shown only on small screens');
+  const footerVisibility = await page.locator('.keyboard-controls, .swipe-guide, .credits-footer').evaluateAll(elements =>
+    elements.map(element => ({ className: element.className, visible: element.getClientRects().length > 0 })));
+  row.help = { compact: compactHelp, footerVisibility };
+  if (compactHelp) {
+    assert.ok(footerVisibility.every(footer => !footer.visible), 'Small screens must not reserve space for bottom guides or credits');
+    assert.equal(await helpLauncher.getAttribute('aria-label'), locale === 'en' ? 'Help & information' : '帮助与信息', 'The help icon needs a localized accessible name');
+    assert.equal(await helpLauncher.getAttribute('aria-haspopup'), 'dialog');
+    const bounds = await helpLauncher.boundingBox();
+    assert.ok(bounds?.width >= 44 && bounds.height >= 44, 'Top help has a 44px touch target');
+  } else {
+    assert.equal(await page.locator('.credits-footer').isVisible(), true, 'Desktop keeps the licenses footer');
+    assert.ok(footerVisibility.some(footer => footer.visible && !footer.className.includes('credits-footer')), 'Desktop keeps its input guide');
+  }
+  const openLicenses = async () => {
+    if (compactHelp) {
+      await helpLauncher.click();
+      await page.locator('.help-dialog').waitFor();
+      await page.locator('.help-dialog .licenses-launcher').click();
+      if (row.clock.pausedAt) await advance(150);
+    } else await page.locator('.credits-footer .licenses-launcher').click();
+    await page.locator('.help-dialog').waitFor({ state: 'detached' });
+  };
+
   assert.equal(row.requests.filter(url => url.endsWith('/open-source-licenses.json')).length, 0, 'Notices should load only when opened');
-  const homeScrollStyles = await page.evaluate(snapshotDocumentScrollStyles);
-  await action('open-licenses', () => page.locator('.licenses-launcher').click());
+  const homeScrollStyles = { ...await page.evaluate(snapshotDocumentScrollStyles), returnFocusSelector };
+  await action('open-licenses', openLicenses);
   await page.locator('.license-entry').first().waitFor();
   const inventory = JSON.parse(await fs.readFile(path.join(previewDist, 'open-source-licenses.json'), 'utf8'));
   row.licensePackages = await page.locator('.license-entry').count();
@@ -160,9 +187,47 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await action('close-licenses', () => page.locator('.licenses-close').click());
   await action('restore-home-scroll-and-focus', () => page.waitForFunction(licensesCloseIsComplete, homeScrollStyles, { polling: 50 }));
 
+  // Choose focus at close time: resizing can hide the original launcher.
+  // Keep the clock running for the dialog's deferred focus/scroll cleanup.
+  const originalViewport = page.viewportSize();
+  row.help.resizeFocus = [];
+  try {
+    for (const sourceCompact of [false, true]) {
+      // Test the CSS breakpoint without triggering phone-landscape emulation.
+      const desktop = { width: 751, height: 1100 };
+      const mobile = { width: 750, height: 1100 };
+      const direction = sourceCompact ? 'mobile-to-desktop' : 'desktop-to-mobile';
+      await action(`resize-focus-source-${direction}`, () => page.setViewportSize(sourceCompact ? mobile : desktop));
+      const baseline = await page.evaluate(snapshotDocumentScrollStyles);
+      if (sourceCompact) {
+        await helpLauncher.click();
+        await page.locator('.help-dialog .licenses-launcher').click();
+        await page.locator('.help-dialog').waitFor({ state: 'detached' });
+      } else await page.locator('.credits-footer .licenses-launcher').click();
+      await page.locator('.licenses-dialog').waitFor();
+      await page.waitForFunction(() => !!document.activeElement?.closest('.licenses-dialog'));
+      await action(`resize-open-licenses-${direction}`, () => page.setViewportSize(sourceCompact ? desktop : mobile));
+      const selector = sourceCompact ? '.credits-footer .licenses-launcher' : '.help-launcher';
+      await page.locator(selector).waitFor({ state: 'visible' });
+      await action(`close-resized-licenses-${direction}`, () => page.keyboard.press('Escape'));
+      await action(`restore-resized-licenses-focus-${direction}`, () => page.waitForFunction(
+        licensesCloseIsComplete, { ...baseline, returnFocusSelector: selector }, { polling: 50 },
+      ));
+      assert.equal(await page.locator(selector).evaluate(element =>
+        document.activeElement === element && element.getClientRects().length > 0), true,
+      'Closing resized licenses must focus a visible launcher');
+      row.help.resizeFocus.push({ direction, selector, focusAndScrollRestored: true });
+    }
+  } finally {
+    await page.setViewportSize(originalViewport);
+  }
+
   await action('start-journey', () => page.locator('.start-screen .run-button').click());
   await action('complete-first-guide', () => page.locator('.controls-guide-done').click());
   await action('complete-second-guide', () => page.locator('.controls-guide-done').click());
+  await page.locator('.controls-guide-dialog').waitFor({ state: 'detached' });
+  await page.waitForFunction(() => !!document.activeElement?.closest('.run-setup-dialog'));
+  row.onboardingFocusInSetup = true;
   // Freeze before gameplay starts: slow input round trips must not carry the
   // player into random obstacles while this test is checking UI controls.
   row.clock.pausedAt = await freezeClockAtCurrentTime(page);
@@ -238,8 +303,37 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   await page.locator('.arena.running').waitFor();
   await advance(250);
   assert.notEqual(await page.locator('.score-block .distance').innerText(), distance, 'Resuming must advance gameplay when browser time advances');
-  const gameScrollStyles = await page.evaluate(snapshotDocumentScrollStyles);
-  await action('open-licenses-during-game', () => page.locator('.licenses-launcher').click());
+  const gameScrollStyles = { ...await page.evaluate(snapshotDocumentScrollStyles), returnFocusSelector };
+  if (compactHelp) {
+    const before = await page.evaluate(() => window.__communitySeasonsQA.inputs.prepare());
+    await action('open-help-with-space-during-game', async () => {
+      await helpLauncher.focus();
+      await page.keyboard.press('Space');
+    });
+    await page.locator('.help-dialog').waitFor();
+    await page.locator('.arena.paused').waitFor();
+    const opened = await snapshot();
+    for (const field of ['lane', 'x', 'jump', 'slide', 'height', 'skillCharge', 'shield', 'shieldTime'])
+      assert.equal(opened[field], before[field], `Space on help must not change gameplay ${field}`);
+    for (const key of ['ArrowLeft', 'ArrowUp', 'e', 'p']) await page.keyboard.press(key);
+    await advance(300);
+    assert.deepEqual(await snapshot(), opened, 'Help pauses the run and blocks game keyboard input while browser time advances');
+    await capture('help');
+    await action('open-guide-from-help', () => page.locator('.help-guide').click());
+    await page.locator('.controls-guide-dialog').waitFor();
+    await advance(150);
+    await page.locator('.help-dialog').waitFor({ state: 'detached' });
+    await page.clock.resume();
+    await action('close-help-guide-with-escape', () => page.keyboard.press('Escape'));
+    await action('restore-help-guide-scroll-and-focus', () => page.waitForFunction(licensesCloseIsComplete, gameScrollStyles, { polling: 50 }));
+    await page.locator('.arena.paused').waitFor();
+    row.help.liveRun = { before, opened, pausedAndInputsBlocked: true, guideFocusAndScrollRestored: true };
+    await freezeClockAtCurrentTime(page);
+    await action('resume-after-help-guide', () => page.locator('.result-panel .run-button').click());
+    await advance(32);
+    await page.locator('.arena.running').waitFor();
+  }
+  await action('open-licenses-during-game', openLicenses);
   await page.locator('.license-entry').first().waitFor();
   await page.locator('.arena.paused').waitFor();
   // The game is safely paused now. Let Base UI's real animation completion
