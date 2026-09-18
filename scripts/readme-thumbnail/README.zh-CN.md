@@ -18,4 +18,4 @@ node scripts/readme-thumbnail/generate.mjs --locale zh-CN
 
 修改布局或翻译时，编辑 `poster.mjs`。内容坐标以安全区域顶部 y = 112.5 为起点。提交前按原尺寸及缩略图宽度检查完整封面与 16:9 裁切图。字体可能因操作系统而异；这些图片在 macOS 上绘制。默认语言为英语。发布需要授权；只更新已获授权的封面或图标元数据，不传可见性或密码参数，以保留已有密码访问设置。
 
-两个命令还会输出 `docs/images/community-seasons-icon.png`（500 × 500，小于 Toy 的 512 KB 限制）。图标和封面均采用游戏顶部与分享海报中使用的 Lucide Flower2 精确轮廓，以深青色衬托金色线条。封面右上角和左下角的装饰涟漪不承载主要内容。请在小尺寸及圆形遮罩下检查图标，并且只在获得授权后随封面一起发布。
+两个命令还会输出 `docs/images/community-seasons-icon.png`（500 × 500，小于 Toy 的 512 KB 限制）。图标、封面与 [`src/public/favicon.svg`](../../src/public/favicon.svg) 均采用游戏顶部与分享海报中使用的 Lucide Flower2 精确轮廓，以深青色衬托金色线条。修改时请保持 favicon 与 Toy 图标的轮廓、颜色及占画布 80% 的居中视口一致。封面右上角和左下角的装饰涟漪不承载主要内容。请在小尺寸及圆形遮罩下检查图标，并且只在获得授权后随封面一起发布。
