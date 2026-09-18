@@ -200,7 +200,10 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
       await action(`resize-focus-source-${direction}`, () => page.setViewportSize(sourceCompact ? mobile : desktop));
       const baseline = await page.evaluate(snapshotDocumentScrollStyles);
       if (sourceCompact) {
-        await helpLauncher.click();
+        // Focus restoration already brought this launcher into view. Linux
+        // WebKit can stall in native auto-scroll after this resize; skip only
+        // scrolling, retaining viewport, stability and hit-target checks.
+        await action(`open-resized-help-${direction}`, () => helpLauncher.click({ scroll: 'none' }));
         await page.locator('.help-dialog .licenses-launcher').click();
         await page.locator('.help-dialog').waitFor({ state: 'detached' });
       } else await page.locator('.credits-footer .licenses-launcher').click();
