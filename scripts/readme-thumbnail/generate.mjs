@@ -13,6 +13,7 @@ if (args.length && !(args.length === 2 && args[0] === '--locale' && ['en', 'zh-C
 }
 const locale = args[1] ?? 'en';
 const output = path.join(root, 'docs/images', `community-seasons-${locale}.webp`);
+const reviewDirectory = path.join(root, 'results/readme-thumbnail');
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'community-seasons-thumbnail-'));
 let browser, server;
 try {
@@ -48,12 +49,30 @@ try {
     throw error;
   }
   if (errors.length) throw Error(errors.join('\n'));
-  const dataUrl = await page.locator('#poster').evaluate(canvas => canvas.toDataURL('image/webp', 0.9));
-  if (!dataUrl.startsWith('data:image/webp;base64,')) throw Error('This browser does not support WebP canvas export.');
-  const data = dataUrl.split(',')[1];
+  // README uses the 16:9 feed crop; Toy still receives the full 4:3 PNG.
+  const review = await page.locator('#poster').evaluate(canvas => {
+    const { safeArea } = window.thumbnailReady;
+    const crop = document.createElement('canvas');
+    crop.width = safeArea.width;
+    crop.height = safeArea.height;
+    crop.getContext('2d').drawImage(canvas, safeArea.x, safeArea.y, safeArea.width, safeArea.height, 0, 0, crop.width, crop.height);
+    return { ...window.thumbnailReady, readme: crop.toDataURL('image/webp', 0.9), png: canvas.toDataURL('image/png'), crop: crop.toDataURL('image/png') };
+  });
+  if (!review.readme.startsWith('data:image/webp;base64,')) throw Error('This browser does not support WebP canvas export.');
   await fs.mkdir(path.dirname(output), { recursive: true });
-  await fs.writeFile(output, Buffer.from(data, 'base64'));
-  console.log(`Rendered ${path.relative(root, output)} (1200 × 900, ${locale}) from the current game renderer.`);
+  await fs.writeFile(output, Buffer.from(review.readme.split(',')[1], 'base64'));
+  await fs.mkdir(reviewDirectory, { recursive: true });
+  const stem = path.join(reviewDirectory, `community-seasons-${locale}`);
+  await fs.writeFile(`${stem}.png`, Buffer.from(review.png.split(',')[1], 'base64'));
+  await fs.writeFile(`${stem}-16x9.png`, Buffer.from(review.crop.split(',')[1], 'base64'));
+  await fs.writeFile(`${stem}-bounds.json`, JSON.stringify({ locale, safeArea: review.safeArea, textBounds: review.textBounds }, null, 2) + '\n');
+  const iconUrl = await page.locator('#toy-icon').evaluate(canvas => canvas.toDataURL('image/png'));
+  const iconData = Buffer.from(iconUrl.split(',')[1], 'base64');
+  if (iconData.length > 512 * 1024) throw Error('Toy icon exceeds the 512 KB upload limit.');
+  await fs.writeFile(path.join(root, 'docs/images/community-seasons-icon.png'), iconData);
+  console.log(`Rendered ${path.relative(root, output)} (1200 × 675, ${locale}) from the current game renderer.`);
+  console.log(`Toy PNG and centered 16:9 crop: ${path.relative(root, reviewDirectory)}/community-seasons-${locale}{,-16x9}.png`);
+  console.log('Toy icon: docs/images/community-seasons-icon.png (500 × 500).');
 } finally {
   if (browser) await browser.close();
   if (server) {
