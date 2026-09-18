@@ -83,6 +83,6 @@ node tests/fuzz/run.mjs full
 - **题库**：通过[铁路题目 Issue 表单](https://github.com/g497813927/community-seasons/issues/new?template=rail-question.yml)提交新题或修订，无需克隆仓库或编辑 JSON。每个 Issue 提交一道完整双语题目。自动反馈检查结构；维护者审阅内容，将采纳的题目整合进 JSON 题库并同步。字段、长度限制与维护者检查步骤见[题库指南](src/QUESTION_BANK.zh-CN.md)。
 - **依赖**：锁定依赖版本，更新后运行 `npm --prefix src run licenses:generate`。游戏内的许可声明须直接展示原文，不包含超链接；详见[许可生成器指南](src/scripts/LICENSE_GENERATOR.zh-CN.md)。
 - **测试失败**：重新运行前，将失败日志、随机种子、收缩路径和源码哈希值一并保存。模糊测试使用当前源码，压力测试期间不要修改源码。
-- **发布**：遵循[发布指南](docs/RELEASE.zh-CN.md)。部署和 GitHub 推送均需要授权。现有 Toy 作品使用密码访问，仅更新内容时必须保留原密码，且不得提交凭据。
+- **发布**：遵循[发布指南](docs/RELEASE.zh-CN.md)。部署和 GitHub 推送均需要授权。仅更新内容时必须保留现有发布设置，且不得提交凭据。
 
 游戏自身源码采用 [MIT 许可证](LICENSE)。第三方依赖仍遵循各自的许可证，其许可声明单独提供。
