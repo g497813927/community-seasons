@@ -205,9 +205,11 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
         await action(`open-resized-help-${direction}`, async () => {
           assert.equal(await helpLauncher.evaluate(button => {
             const bounds = button.getBoundingClientRect();
+            const viewport = document.documentElement;
+            const epsilon = 1; // Match the overflow checks' sub-pixel tolerance.
             return document.activeElement === button && !button.disabled &&
-              bounds.width > 0 && bounds.height > 0 && bounds.left >= 0 && bounds.top >= 0 &&
-              bounds.right <= innerWidth && bounds.bottom <= innerHeight;
+              bounds.width > 0 && bounds.height > 0 && bounds.left >= -epsilon && bounds.top >= -epsilon &&
+              bounds.right <= viewport.clientWidth + epsilon && bounds.bottom <= viewport.clientHeight + epsilon;
           }), true, 'Resizing must retain focus on the enabled, in-viewport help launcher');
           await page.keyboard.press('Enter');
           await page.locator('.help-dialog').waitFor();
