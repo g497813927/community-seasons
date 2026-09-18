@@ -200,10 +200,18 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
       await action(`resize-focus-source-${direction}`, () => page.setViewportSize(sourceCompact ? mobile : desktop));
       const baseline = await page.evaluate(snapshotDocumentScrollStyles);
       if (sourceCompact) {
-        // Focus restoration already brought this launcher into view. Linux
-        // WebKit can stall in native auto-scroll after this resize; skip only
-        // scrolling, retaining viewport, stability and hit-target checks.
-        await action(`open-resized-help-${direction}`, () => helpLauncher.click({ scroll: 'none' }));
+        // Exercise the focus restored by the previous close without focusing
+        // the button ourselves or invoking WebKit's native click auto-scroll.
+        await action(`open-resized-help-${direction}`, async () => {
+          assert.equal(await helpLauncher.evaluate(button => {
+            const bounds = button.getBoundingClientRect();
+            return document.activeElement === button && !button.disabled &&
+              bounds.width > 0 && bounds.height > 0 && bounds.left >= 0 && bounds.top >= 0 &&
+              bounds.right <= innerWidth && bounds.bottom <= innerHeight;
+          }), true, 'Resizing must retain focus on the enabled, in-viewport help launcher');
+          await page.keyboard.press('Enter');
+          await page.locator('.help-dialog').waitFor();
+        });
         await page.locator('.help-dialog .licenses-launcher').click();
         await page.locator('.help-dialog').waitFor({ state: 'detached' });
       } else await page.locator('.credits-footer .licenses-launcher').click();
