@@ -112,7 +112,9 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
       // Match the tall lane-change obstacles: this full-height wall cannot
       // be mistaken for a low hurdle or a sliding gap.
       // It remains at the same junction after committing to the open turn.
-      renderer.box(x, 1.35, z - 0.06, 1.55, 2.7, 1, ["#a94f45", "#773c36", "#d78065"]);
+      // The border encloses the wall's top; an internal cap can otherwise
+      // win the depth tie as the fork camera turns and flash through it.
+      renderer.box(x, 1.35, z - 0.06, 1.55, 2.7, 1, ["#a94f45", "#773c36", "#d78065"], 0, 0, false);
       renderer.box(x, 2.7, z - 0.06, 1.6, 0.12, 1.04, ["#d8b778", "#684739", "#fff0bb"]);
       for (const y of [1.15, 1.55, 2.45])
         renderer.box(x, y, z - 0.575, 1.55, 0.035, 0.025, ["#773c36", "#773c36", "#773c36"]);
@@ -122,7 +124,9 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
       renderer.label(x, 0.93, z - 0.615, 1.43, 0.34,
         renderer.renderLocale === "zh-CN" ? "此路不通" : "DEAD END", "#fff0bb", "#773c36");
     }
-    renderer.box(0, 1, z, 0.18, 2, 0.18, p.dark);
+    // Only the segment between the barrier and sign is exposed. Keeping a
+    // full post inside either box gives their visible tops competing faces.
+    renderer.box(0, 1.17, z, 0.18, 0.66, 0.18, p.dark, 0, 0, false);
     renderer.box(0, 1.95, z, 2.55, 0.9, 0.3, ["#63554d", "#423d3e", "#b39c76"]);
     renderer.label(0, 2.08, z - 0.16, 2.35, 0.47,
       blocked === -1 ? "×       →" : blocked === 1 ? "←       ×" : "←       →",

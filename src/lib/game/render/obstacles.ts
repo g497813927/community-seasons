@@ -16,7 +16,9 @@ export function drawObstacles(renderer: Renderer, s: RunState, locale: "en" | "z
     const border = ["#a65761", "#733e50", "#d59186"];
     if (o.kind === "block") {
       // A low comment card has the same jump clearance as the old barrier.
-      renderer.box(x, 0.47, z, 1.37, 0.94, 0.8, paper);
+      // The wider border encloses the paper top. Keeping that internal face
+      // gives it the same sort depth as the cap, so rounding can expose it.
+      renderer.box(x, 0.47, z, 1.37, 0.94, 0.8, paper, 0, 0, false);
       renderer.box(x, 0.94, z, 1.42, 0.1, 0.83, border);
       renderer.label(x, 0.68, z - 0.414, 1.32, 0.52, title, ink, paper[0], true);
       renderer.label(
@@ -32,8 +34,10 @@ export function drawObstacles(renderer: Renderer, s: RunState, locale: "en" | "z
       );
     } else if (o.kind === "arch") {
       // A suspended post leaves the familiar sliding gap beneath it.
-      renderer.box(x - 0.67, 1.2, z, 0.17, 2.4, 0.3, border);
-      renderer.box(x + 0.67, 1.2, z, 0.17, 2.4, 0.3, border);
+      // Stop supports at the lower border: their former upper halves were
+      // inside the sign and could paint through its roof during lane turns.
+      renderer.box(x - 0.67, 0.69, z, 0.17, 1.38, 0.3, border, 0, 0, false);
+      renderer.box(x + 0.67, 0.69, z, 0.17, 1.38, 0.3, border, 0, 0, false);
       renderer.box(x, 1.98, z, 1.55, 1.04, 0.63, paper);
       renderer.box(x, 1.44, z - 0.01, 1.55, 0.12, 0.66, border);
       renderer.label(x, 2.24, z - 0.325, 1.46, 0.46, title, ink, paper[0], true);
@@ -50,12 +54,14 @@ export function drawObstacles(renderer: Renderer, s: RunState, locale: "en" | "z
       );
     } else if (o.kind === "roots") {
       // Repeated comment strips form a small trip hazard across the lane.
-      renderer.box(x, 0.13, z, 1.48, 0.24, 0.45, paper);
-      renderer.box(x + 0.06, 0.29, z + 0.07, 1.34, 0.1, 0.4, border);
-      renderer.label(x, 0.2, z - 0.236, 1.42, 0.28, title, ink, paper[0], true);
+      renderer.box(x, 0.13, z, 1.48, 0.24, 0.45, paper, 0, 0, false);
+      // A complete cap removes the narrow lower ledges that otherwise sort
+      // over its higher top at some viewpoints. Height/collision stay the same.
+      renderer.box(x, 0.29, z, 1.53, 0.1, 0.5, border);
+      renderer.label(x, 0.2, z - 0.261, 1.42, 0.28, title, ink, paper[0], true);
     } else {
       // Tall post cards must be bypassed by changing lanes.
-      renderer.box(x, 1.35, z, 1.28, 2.7, 1, paper);
+      renderer.box(x, 1.35, z, 1.28, 2.7, 1, paper, 0, 0, false);
       renderer.box(x, 2.69, z, 1.33, 0.12, 1.04, border);
       renderer.label(x, 2.25, z - 0.514, 1.23, 0.86, title, ink, paper[0], true);
       for (const [line, width] of [0.89, 0.67, 0.82].entries())
