@@ -66,11 +66,33 @@ Equip one before every run. Each starts empty, charges from 100 collected coins,
 | Active Listening / 积极倾听    | 450          | Kindness Magnet: attracts nearby coins |
 | Community Momentum / 共建动力  | 600          | Protected 65% faster running           |
 
+## TV outfits
+
+Open the store with **B** or the store button, then choose **Skins**. The **Body**, **Hats**, **Shoes** and **Effects** categories let you combine a body color with one hat, one pair of shoes and one visual effect. Your complete outfit appears in the preview. Classic TV, no hat, default shoes and no effect are free. Blossom TV, Ocean TV, Amber TV and Frost TV each cost 1,000 collected coins to unlock permanently.
+
+Accessory prices use collected game coins, and each item is unlocked permanently:
+
+| Category | Accessory | Price |
+| --- | --- | ---: |
+| Hats | Trail Cap | 500 |
+| Hats | Little Sprout | 750 |
+| Hats | Golden Crown | 2,000 |
+| Shoes | Canvas Sneakers | 600 |
+| Shoes | Explorer Boots | 1,000 |
+| Shoes | Roller Skates | 1,500 |
+| Effects | Sparkle Trail | 900 |
+| Effects | Petal Drift | 1,200 |
+| Effects | Star Orbit | 2,500 |
+
+**Unlock & equip** purchases and immediately equips the item in its own slot. **Equip skin** and **Equip item** switch owned items for free. **Use default** removes the accessory from that slot; ownership is kept, so you can equip it again freely. Changing a body color or accessory keeps all other slots unchanged.
+
+Shopping pauses an active run, and your new look applies immediately to the home runner, current run or cart passenger and remains selected after retries. All outfits are cosmetic: they do not change speed, hitboxes, rewards, skills or boost effects, including roller skates and visual effects. Owned skins and accessories and your equipped outfit are saved locally and included in Toy cloud sync.
+
 ## Saving and Toy cloud sync
 
-Coin wallet, purchased boosters, permanent unlocks, upgrade levels, equipped skill, best score, and last season save in this browser. On Toy, cloud storage also syncs these fields across devices signed in to the same account. No real-money purchases.
+Coin wallet, purchased boosters, permanent unlocks, upgrade levels, equipped skill, owned skins and accessories, equipped outfit, best score, and last season save in this browser. On Toy, cloud storage also syncs these fields across devices signed in to the same account. No real-money purchases.
 
-When enabling cloud sync with existing browser progress, the game compares both saves before changing anything. For different saves, choose the cloud save, replace the cloud save with this device’s save, or keep playing locally. The dialog shows coins, best score, skills, levels, inventory, and season so the choice can be reviewed. An empty cloud save offers upload or local-only choices. Equal saves sync without an overwrite dialog. Saves are selected as a whole, not merged.
+When enabling cloud sync with existing browser progress, the game compares both saves before changing anything. For different saves, choose the cloud save, replace the cloud save with this device’s save, or keep playing locally. The dialog shows coins, best score, skills, levels, inventory, owned skin names, accessory ownership, each equipped outfit slot, and season so the choice can be reviewed. An empty cloud save offers upload or local-only choices. Equal saves sync without an overwrite dialog. Saves are selected as a whole, not merged, including all outfit ownership and selections.
 
 Cloud changes are checked before a new run and applied only at a safe boundary. A conflict stops synchronization until a save is chosen; it never replaces progress in an active run. If the network or Toy sign-in is unavailable, the browser save stays usable. Use the cloud status button on the home screen to retry. Choosing local-only is remembered and can be changed with Enable cloud.
 

@@ -2,18 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import ts from '../../../../src/node_modules/typescript/lib/typescript.js';
+import { compileGameModules } from '../../../helpers/compile-game-modules.mjs';
 
 const compiled = new URL('./cart-compiled/', import.meta.url);
-fs.mkdirSync(compiled, { recursive: true });
-for (const name of ['boosts', 'scenes', 'railway', 'engine', 'cart-helper']) {
-  const source = fs.readFileSync(new URL(name === 'cart-helper' ? './cart-helper.ts' :
-    `../../../../src/lib/game/${name}.ts`, import.meta.url), 'utf8');
-  const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext,
-    target: ts.ScriptTarget.ES2022 } }).outputText
-    .replace(/from ['"]\.\.\/\.\.\/\.\.\/\.\.\/src\/lib\/game\/engine['"]/g, "from './engine.mjs'")
-    .replace(/from ['"](\.\/[a-z-]+)['"]/g, "from '$1.mjs'");
-  fs.writeFileSync(new URL(`${name}.mjs`, compiled), output);
-}
+// Follow the current engine's imports, including skins and future game modules.
+compileGameModules(compiled, { entries: ['engine'] });
+const source = fs.readFileSync(new URL('./cart-helper.ts', import.meta.url), 'utf8');
+const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext,
+  target: ts.ScriptTarget.ES2022 } }).outputText
+  .replace(/from ['"]\.\.\/\.\.\/\.\.\/\.\.\/src\/lib\/game\/engine['"]/g, "from './engine.mjs'");
+fs.writeFileSync(new URL('cart-helper.mjs', compiled), output);
 const engine = await import('./cart-compiled/engine.mjs');
 const helper = await import('./cart-compiled/cart-helper.mjs');
 

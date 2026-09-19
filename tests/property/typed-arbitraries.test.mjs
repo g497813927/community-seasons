@@ -34,7 +34,7 @@ fs.writeFileSync(
   new URL("helper.mjs", folder),
   compile(fs.readFileSync(new URL("./typed-arbitraries.ts", import.meta.url), "utf8")),
 );
-for (const name of ["scenes", "boosts", "railway", "community", "engine", "store", "cloud-save"])
+for (const name of ["scenes", "boosts", "skins", "cosmetics", "railway", "community", "engine", "store", "cloud-save"])
   fs.writeFileSync(
     new URL(`${name}.mjs`, folder),
     compile(

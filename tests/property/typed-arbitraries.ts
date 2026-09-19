@@ -9,6 +9,8 @@ import type {
   SkillProgress,
 } from "../../src/lib/game/boosts";
 import type { SceneKind } from "../../src/lib/game/scenes";
+import type { SkinId } from "../../src/lib/game/skins";
+import type { AccessoryId, HatId, ShoesId, EffectId } from "../../src/lib/game/cosmetics";
 import type { Action } from "../../src/lib/game/engine";
 
 type Fields<T> = { [K in keyof T]-?: fc.Arbitrary<T[K]> };
@@ -16,6 +18,9 @@ const safeCount = fc.integer({ min: 0, max: Number.MAX_SAFE_INTEGER });
 const level = fc.constantFrom<BoostLevel>(1, 2, 3);
 const scene = fc.constantFrom<SceneKind>("spring", "summer", "autumn", "winter");
 const skill = fc.constantFrom<SkillKind>("shield", "magnet", "rush");
+const skinIds: SkinId[] = ["classic", "blossom", "ocean", "amber", "frost"];
+const skin = fc.constantFrom(...skinIds);
+const accessoryIds: AccessoryId[] = ["cap", "crown", "sprout", "sneakers", "boots", "skates", "sparkles", "petals", "orbit"];
 const boost = fc.constantFrom<BoostKind>(
   "headstart",
   "shield",
@@ -48,6 +53,14 @@ const progressFields = {
     rush: level,
   } satisfies Fields<Progress["levels"]>),
   equippedSkill: fc.option(skill, { nil: null }),
+  ownedSkins: fc.subarray(skinIds).map((ids) => skinIds.filter((id) => id === "classic" || ids.includes(id))),
+  equippedSkin: skin,
+  ownedAccessories: fc.subarray(accessoryIds),
+  outfit: fc.record({
+    hat: fc.constantFrom<HatId | null>(null, "cap", "crown", "sprout"),
+    shoes: fc.constantFrom<ShoesId | null>(null, "sneakers", "boots", "skates"),
+    effect: fc.constantFrom<EffectId | null>(null, "sparkles", "petals", "orbit"),
+  } satisfies Fields<Progress["outfit"]>),
   portalDestination: fc.option(scene, { nil: null }),
 } satisfies Fields<Progress>;
 
@@ -69,6 +82,14 @@ export const validProgressArbitrary = fc.record(progressFields).map((progress) =
     progress.equippedSkill && progress.skills[progress.equippedSkill].unlocked
       ? progress.equippedSkill
       : null,
+  equippedSkin: progress.ownedSkins.includes(progress.equippedSkin)
+    ? progress.equippedSkin
+    : "classic" as const,
+  outfit: {
+    hat: progress.outfit.hat && progress.ownedAccessories.includes(progress.outfit.hat) ? progress.outfit.hat : null,
+    shoes: progress.outfit.shoes && progress.ownedAccessories.includes(progress.outfit.shoes) ? progress.outfit.shoes : null,
+    effect: progress.outfit.effect && progress.ownedAccessories.includes(progress.outfit.effect) ? progress.outfit.effect : null,
+  },
 })) satisfies fc.Arbitrary<Progress>;
 
 export const validSaveArbitrary = fc

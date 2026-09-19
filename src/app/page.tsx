@@ -44,6 +44,7 @@ import {
   type RunState,
 } from "@/lib/game/engine";
 import { Renderer } from "@/lib/game/render";
+import { listenToMediaQuery } from "@/lib/game/media-query";
 import { BackgroundMusic } from "@/lib/game/music";
 import { createRecordProgress, updateRecordProgress } from "@/lib/game/records";
 import { PostReviewDialog } from "@/components/post-review";
@@ -91,6 +92,10 @@ import {
   PROGRESS_KEY,
   bankRunRewards,
   buyBooster,
+  buySkin,
+  equipSkin,
+  buyAccessory,
+  equipAccessory,
   createProgress,
   readProgress,
   activateOwnedBooster,
@@ -100,6 +105,8 @@ import {
   equipPermanentSkill,
   type Progress,
 } from "@/lib/game/store";
+import type { SkinId } from "@/lib/game/skins";
+import type { AccessoryId, CosmeticSlot } from "@/lib/game/cosmetics";
 import { BoostStore, BoostTray, PermanentSkillHud, RunSetup } from "@/components/boost-store";
 
 const keyMap: Record<string, Action> = {
@@ -268,6 +275,8 @@ export default function Home() {
     bestRef.current = snapshot.best;
     sceneRef.current = snapshot.scene;
     game.current = createRun(4182, snapshot.scene, railQuestionDeckRef.current);
+    game.current.skin = snapshot.progress.equippedSkin;
+    game.current.outfit = { ...snapshot.progress.outfit };
     recordRef.current = createRecordProgress(snapshot.best);
     latestCoins.current = 0;
     setProgress(snapshot.progress);
@@ -423,6 +432,8 @@ export default function Home() {
   }
   function saveProgress(next: Progress) {
     progressRef.current = next;
+    game.current.skin = next.equippedSkin;
+    game.current.outfit = { ...next.outfit };
     setProgress(next);
     try {
       localStorage.setItem(PROGRESS_KEY, JSON.stringify(next));
@@ -555,6 +566,32 @@ export default function Home() {
     }
     setStoreMessage(result.message);
     return result;
+  }
+  function purchaseSkin(skin: SkinId) {
+    const result = buySkin(progressRef.current, skin);
+    if (result.ok) {
+      saveProgress(result.progress);
+      sound("coin");
+    }
+    setStoreMessage(result.message);
+  }
+  function changeSkin(skin: SkinId) {
+    const result = equipSkin(progressRef.current, skin);
+    if (result.ok) saveProgress(result.progress);
+    setStoreMessage(result.message);
+  }
+  function purchaseAccessory(id: AccessoryId) {
+    const result = buyAccessory(progressRef.current, id);
+    if (result.ok) {
+      saveProgress(result.progress);
+      sound("coin");
+    }
+    setStoreMessage(result.message);
+  }
+  function changeAccessory(slot: CosmeticSlot, id: AccessoryId | null) {
+    const result = equipAccessory(progressRef.current, slot, id);
+    if (result.ok) saveProgress(result.progress);
+    setStoreMessage(result.message);
   }
   function triggerSkill(kind: BoostKind) {
     if (rotateRequiredRef.current) return;
@@ -690,6 +727,8 @@ export default function Home() {
     changeSetup(false);
     changeStore(false);
     game.current = createRun(4182, sceneRef.current, railQuestionDeckRef.current);
+    game.current.skin = progressRef.current.equippedSkin;
+    game.current.outfit = { ...progressRef.current.outfit };
     recordRef.current = createRecordProgress(bestRef.current);
     latestCoins.current = 0;
     if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
@@ -762,6 +801,8 @@ export default function Home() {
     setSetupDismissedForRun(true);
     changeSetup(false);
     game.current = createRun(Math.floor(Math.random() * 1e7), sceneRef.current, railQuestionDeckRef.current);
+    game.current.skin = progressRef.current.equippedSkin;
+    game.current.outfit = { ...progressRef.current.outfit };
     recordRef.current = createRecordProgress(bestRef.current);
     musicRef.current?.dispose();
     musicRef.current = null;
@@ -973,15 +1014,15 @@ export default function Home() {
     window.addEventListener("orientationchange", updateViewport);
     window.visualViewport?.addEventListener("resize", updateViewport);
     window.screen.orientation?.addEventListener("change", updateViewport);
-    coarse.addEventListener("change", updateViewport);
-    hover.addEventListener("change", updateViewport);
+    const stopCoarseChanges = listenToMediaQuery(coarse, updateViewport);
+    const stopHoverChanges = listenToMediaQuery(hover, updateViewport);
     return () => {
       window.removeEventListener("resize", updateViewport);
       window.removeEventListener("orientationchange", updateViewport);
       window.visualViewport?.removeEventListener("resize", updateViewport);
       window.screen.orientation?.removeEventListener("change", updateViewport);
-      coarse.removeEventListener("change", updateViewport);
-      hover.removeEventListener("change", updateViewport);
+      stopCoarseChanges();
+      stopHoverChanges();
     };
   }, []);
   useEffect(() => {
@@ -1052,6 +1093,8 @@ export default function Home() {
       }
       progressHydrated.current = true;
     } else progressRef.current = readProgress(JSON.stringify(progressRef.current));
+    game.current.skin = progressRef.current.equippedSkin;
+    game.current.outfit = { ...progressRef.current.outfit };
     try {
       const stored = Number(localStorage.getItem("community-seasons-best"));
       if (Number.isSafeInteger(stored) && stored > 0) {
@@ -1101,7 +1144,16 @@ export default function Home() {
     let drawnRun: RunState | null = null;
     let drawnMode: RunState["mode"] | null = null;
     let drawnLocale = localeRef.current;
+    let drawnSkin = game.current.skin;
+    let drawnOutfit = game.current.outfit;
     let drawnFlash = 0;
+    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updateMotionPreference = () => {
+      renderer.reducedMotion = motionPreference.matches;
+      needsRedraw = true;
+    };
+    updateMotionPreference();
+    const stopMotionChanges = listenToMediaQuery(motionPreference, updateMotionPreference);
     const ro = new ResizeObserver(() => {
       if (!renderer.resize()) return;
       // Resizing clears the canvas after this frame's animation callback.
@@ -1111,6 +1163,8 @@ export default function Home() {
       drawnRun = game.current;
       drawnMode = game.current.mode;
       drawnLocale = localeRef.current;
+      drawnSkin = game.current.skin;
+      drawnOutfit = game.current.outfit;
       drawnFlash = game.current.flash;
     });
     ro.observe(canvasRef.current!);
@@ -1197,6 +1251,8 @@ export default function Home() {
         drawnRun !== s ||
         drawnMode !== s.mode ||
         drawnLocale !== localeRef.current ||
+        drawnSkin !== s.skin ||
+        drawnOutfit !== s.outfit ||
         s.flash > 0 ||
         drawnFlash > 0
       ) {
@@ -1206,6 +1262,8 @@ export default function Home() {
         drawnRun = s;
         drawnMode = s.mode;
         drawnLocale = localeRef.current;
+        drawnSkin = s.skin;
+        drawnOutfit = s.outfit;
       }
       if ((s.mode === "running" && now - lastHud > 75) || s.mode !== oldMode) {
         sync();
@@ -1405,6 +1463,7 @@ export default function Home() {
       cancelAnimationFrame(raf);
       if (rendererRef.current === renderer) rendererRef.current = null;
       ro.disconnect();
+      stopMotionChanges();
       window.removeEventListener("keydown", onGameSpace, true);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blur", blur);
@@ -1529,6 +1588,8 @@ export default function Home() {
         <div className="scene-shade" />
         {hud.travelDestination && (
           <SeasonTravel
+            skin={progress.equippedSkin}
+            outfit={progress.outfit}
             source={game.current.sceneTransitionFrom ?? game.current.scene}
             destination={hud.travelDestination}
             progress={1 - game.current.sceneTransition / SCENE_TRANSITION_DURATION}
@@ -1837,6 +1898,8 @@ export default function Home() {
           !helpOpen &&
           !hud.review && (
             <RailTravel
+              skin={progress.equippedSkin}
+              outfit={progress.outfit}
               frame={railTravelFrame(game.current)}
               locale={locale}
               scene={scene}
@@ -2013,6 +2076,10 @@ export default function Home() {
         onUnlock={buySkill}
         onEquip={equipSkill}
         onUpgrade={upgrade}
+        onBuySkin={purchaseSkin}
+        onEquipSkin={changeSkin}
+        onBuyAccessory={purchaseAccessory}
+        onEquipAccessory={changeAccessory}
         runInProgress={hud.mode === "running" || hud.mode === "paused"}
         message={storeMessage}
         savingAvailable={savingAvailable}

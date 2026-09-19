@@ -2,9 +2,13 @@ import { memo, type CSSProperties } from "react";
 import { SCENE_TRANSITION_DURATION } from "@/lib/game/engine";
 import { translate, type Locale } from "@/lib/game/i18n";
 import { sceneDefinition, type SceneKind } from "@/lib/game/scenes";
+import { DEFAULT_SKIN, type SkinId } from "@/lib/game/skins";
+import type { Outfit } from "@/lib/game/cosmetics";
+import { getSkinPreview } from "@/lib/game/render/skin-preview";
 import { travelPalette } from "@/lib/game/travel-colors";
 
-const SeasonTravelArt = memo(function SeasonTravelArt({ destination }: { destination: SceneKind }) {
+const SeasonTravelArt = memo(function SeasonTravelArt({ destination, skin, outfit }: { destination: SceneKind; skin: SkinId; outfit?: Outfit }) {
+  const faces = getSkinPreview(skin, outfit);
   return (
     <svg className="season-travel-art" viewBox="0 0 280 154" aria-hidden="true" focusable="false">
       <path d="M30 146 174 89h42l45 57" fill="currentColor" opacity=".07" />
@@ -60,30 +64,9 @@ const SeasonTravelArt = memo(function SeasonTravelArt({ destination }: { destina
         <path d="M30 88h24m-35 14h29m-12 15h17" />
       </g>
       <g className="season-travel-tv">
-        <path d="m85 76-10-12m24 12 9-12" stroke="#77d6e9" strokeWidth="4" strokeLinecap="round" />
-        <rect x="67" y="77" width="51" height="40" rx="9" fill="#72d0e7" />
-        <rect
-          x="73"
-          y="82"
-          width="39"
-          height="29"
-          rx="5"
-          fill="#60bfd8"
-          stroke="#b7edf6"
-          strokeWidth="2"
-        />
-        <path
-          d="M83 90h19m-19 6h19m-19 6h19"
-          stroke="#284c60"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-        />
-        <path
-          d="m69 97-8 6m56-6 8 5m-46 16-4 7m28-7 5 5"
-          stroke="#72d0e7"
-          strokeWidth="5"
-          strokeLinecap="round"
-        />
+        <g transform="translate(30 24) scale(.8)">
+          {faces.map((face, index) => <polygon key={index} points={face.points} fill={face.fill} />)}
+        </g>
       </g>
     </svg>
   );
@@ -96,6 +79,8 @@ export const SeasonTravel = memo(function SeasonTravel({
   locale,
   paused,
   journey = "season",
+  skin = DEFAULT_SKIN,
+  outfit,
   onResume,
 }: {
   destination: SceneKind;
@@ -104,6 +89,8 @@ export const SeasonTravel = memo(function SeasonTravel({
   locale: Locale;
   paused: boolean;
   journey?: "season" | "rail-return";
+  skin?: SkinId;
+  outfit?: Outfit;
   onResume?: () => void;
 }) {
   const zh = locale === "zh-CN";
@@ -128,7 +115,7 @@ export const SeasonTravel = memo(function SeasonTravel({
         className="season-travel-card"
         style={{ "--travel-duration": `${SCENE_TRANSITION_DURATION}s` } as CSSProperties}
       >
-        <SeasonTravelArt destination={destination} />
+        <SeasonTravelArt destination={destination} skin={skin} outfit={outfit} />
         <output className="season-travel-copy" role="status" aria-live="polite" aria-atomic="true">
           <span>
             {returning ? (zh ? "正在返回" : "RETURNING TO") : zh ? "正在前往" : "TRAVELLING TO"}

@@ -21,6 +21,7 @@ export function paintFaces(renderer: Renderer, scene: SceneKind) {
   renderer.faces.sort((a, b) => a.layer - b.layer || b.z - a.z);
   for (const face of renderer.faces) {
     const view = renderer.faceView(face);
+    if (face.cull && !renderer.frontFacing(view)) continue;
     const clipped = renderer.clipNear(view);
     if (clipped.length < 3) continue;
     const pts = clipped.map((p) => renderer.projectView(p));

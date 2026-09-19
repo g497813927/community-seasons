@@ -10,7 +10,7 @@ export function createInputProbe() {
     const { read, jumpHeight, chargeCoins } = current();
     const run = read();
     return {
-      mode: run.mode, lane: run.lane, x: run.x,
+      mode: run.mode, skin: run.skin, outfit: { ...run.outfit }, lane: run.lane, x: run.x,
       jump: run.jump, slide: run.slide, height: jumpHeight(run),
       distance: run.distance, permanentSkill: run.permanentSkill,
       skillCharge: run.skillCharge, skillChargeRequired: chargeCoins,
