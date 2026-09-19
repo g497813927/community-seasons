@@ -225,7 +225,9 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     const state = summary();
     const summaryText = JSON.stringify(state, null, 2) + '\n';
     const html = progressHtml(state);
-    persisted = persisted.then(async () => {
+    // A failed write still rejects its caller; allow finalization to retry the
+    // checkpoint with the recorded stop cause after a transient setup failure.
+    persisted = persisted.catch(() => {}).then(async () => {
       await fs.writeFile(path.join(output, 'checkpoint.json.tmp'), checkpointText);
       await fs.rename(path.join(output, 'checkpoint.json.tmp'), path.join(output, 'checkpoint.json'));
       await fs.writeFile(path.join(output, 'summary.json.tmp'), summaryText);
@@ -255,16 +257,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
   const onInterrupt = () => signal('SIGINT');
   const onTerminate = () => signal('SIGTERM');
   const onHangup = () => signal('SIGHUP');
-  process.on('SIGINT', onInterrupt);
-  process.on('SIGTERM', onTerminate);
-  process.on('SIGHUP', onHangup);
-  await persist();
-
-  const server = http.createServer(fixtureHandler(DIST, PREFIX));
-  await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
-  const origin = `http://127.0.0.1:${server.address().port}`;
-  const url = origin + PREFIX;
-  console.log(JSON.stringify({ output, caseCount: manifest.caseCount, scheduled: jobs.length, explicitlyPartial: invocation.explicitlyPartial, workers: options.workers, minimumRealRendererSeconds: options.duration }));
+  let server, origin, url;
 
   async function rendererSnapshot(page, method, args = []) {
     return bounded(page.evaluate(({ method, args, expected, fixtureId }) => {
@@ -601,6 +594,15 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
   }
 
   try {
+    process.on('SIGINT', onInterrupt);
+    process.on('SIGTERM', onTerminate);
+    process.on('SIGHUP', onHangup);
+    await persist();
+    server = http.createServer(fixtureHandler(DIST, PREFIX));
+    await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
+    origin = `http://127.0.0.1:${server.address().port}`;
+    url = origin + PREFIX;
+    console.log(JSON.stringify({ output, caseCount: manifest.caseCount, scheduled: jobs.length, explicitlyPartial: invocation.explicitlyPartial, workers: options.workers, minimumRealRendererSeconds: options.duration }));
     for (const engine of manifest.engines) {
       if (stopReason) break;
       const browser = await ENGINES[engine].launch(MATRIX_BROWSER_LAUNCH_OPTIONS);
@@ -616,9 +618,13 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
         catch (error) { if (!stopReason) signal(error.message); console.error(error.stack); }
       }
     })()));
+  } catch (error) {
+    if (!stopReason) signal(error.message);
+    throw error;
   } finally {
     shuttingDown = true;
     invocation.cleanupErrors = await closeMatrixResources(browsers, server);
+    if (!stopReason && invocation.cleanupErrors.length) signal(invocation.cleanupErrors[0]);
     invocation.completedAt = new Date().toISOString();
     invocation.stopReason = stopReason;
     process.removeListener('SIGINT', onInterrupt);

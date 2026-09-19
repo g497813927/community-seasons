@@ -41,9 +41,11 @@ export async function closeMatrixResources(browsers, server, milliseconds = 1000
     try { await bounded(browser.close(), milliseconds, `${engine} browser close`); }
     catch (error) { errors.push(error.message); }
   }));
-  // All workers have finalized. Keep-alive fixture sockets must not delay exit.
-  server.closeAllConnections();
+  if (!server) return errors;
   try {
+    // All workers have finalized. Keep-alive fixture sockets must not delay exit.
+    server.closeAllConnections();
+    if (server.listening === false) return errors;
     await bounded(new Promise((resolve, reject) => server.close(error => error ? reject(error) : resolve())), milliseconds, 'Fixture server close');
   } catch (error) { errors.push(error.message); }
   return errors;
