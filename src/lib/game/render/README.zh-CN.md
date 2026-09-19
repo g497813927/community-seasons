@@ -6,7 +6,7 @@
 
 | 修改内容 | 模块 |
 | --- | --- |
-| 电视机身体，以及奔跑、滑行、回弹和乘坐姿态 | `characters/runner.ts` |
+| 小电视身体，以及奔跑、滑行、回弹和乘坐姿态 | `characters/runner.ts` |
 | 追赶的捣乱评论者 | `characters/commenters.ts` |
 | 小车车身，以及乘客登车和跌落 | `characters/cart.ts` |
 | 四季路边景物与远景全景 | `scenes/spring.ts`, `summer.ts`, `autumn.ts`, `winter.ts` |
