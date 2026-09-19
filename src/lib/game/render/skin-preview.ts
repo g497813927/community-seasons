@@ -43,7 +43,9 @@ export function getSkinPreview(skin: SkinId, outfit: Outfit = EMPTY_OUTFIT): Ski
   state.skin = skin;
   state.outfit = outfit;
   runner(view, state, 0, { stride: 0 });
-  const projected = view.faces.map((face) => {
+  const projected = view.faces.filter((face) =>
+    !face.cull || view.frontFacing(face.points.map((point) => view.cameraPoint(point))),
+  ).map((face) => {
     const points = face.points.map((point) => view.cameraPoint(point));
     const bias = face.z - face.points.reduce((sum, point) => sum + point[2], 0) / face.points.length;
     return {
