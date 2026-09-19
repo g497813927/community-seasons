@@ -37,7 +37,7 @@ Cloud access is always attempted on Toy, including in ordinary signed-in browser
 
 Current runs, run coin counters, distance, temporary boost timers, and skill charge are not resumed on another device. Language, sound, and onboarding preferences stay on each device.
 
-Toy implementation notes: the SDK stores one versioned JSON value under `community-seasons-save-v1`, within the 1,024-byte value limit. Local changes are coalesced for about three seconds, and writes are serialized. Unique revisions and a read before each write detect changed cloud saves and request another choice when needed. Toy does not provide an atomic compare-and-swap operation, so truly simultaneous writes on separate devices can still race.
+Toy implementation notes: the SDK stores one versioned JSON value under `community-seasons-save-v1`, within the 1,024-byte value limit. New writes use a version 3 envelope to preserve outfit data when older game clients are still open; reload those pages to read the updated save. Legacy version 1 and 2 cloud saves remain supported, retaining owned skins and starting with no accessories equipped. Local changes are coalesced for about three seconds, and writes are serialized. Unique revisions and a read before each write detect changed cloud saves and request another choice when needed. Toy does not provide an atomic compare-and-swap operation, so truly simultaneous writes on separate devices can still race.
 
 ## Controls
 

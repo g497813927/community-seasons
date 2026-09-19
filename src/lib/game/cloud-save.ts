@@ -1,5 +1,7 @@
 import { isSceneKind, type SceneKind } from "./scenes";
 import { readProgress, type Progress } from "./store";
+import { DEFAULT_SKIN, isSkinId } from "./skins";
+import { COSMETIC_SLOTS, isAccessoryId, isAccessoryForSlot } from "./cosmetics";
 
 export const CLOUD_SAVE_KEY = "community-seasons-save-v1";
 export const CLOUD_SYNC_KEY = "community-seasons-cloud-sync-v1";
@@ -39,7 +41,7 @@ export interface CloudSaveState {
 }
 
 interface CloudEnvelope {
-  version: 1;
+  version: 1 | 2 | 3;
   revision: string;
   payload: SaveSnapshot;
 }
@@ -88,6 +90,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /** Reject damaged/newer cloud saves instead of silently turning them into defaults. */
 export function normalizeSaveSnapshot(value: unknown): SaveSnapshot {
+  // Local progress and stored sync baselines predate envelope versioning.
+  return normalizeSnapshot(value, 1);
+}
+
+function normalizeSnapshot(value: unknown, envelopeVersion: CloudEnvelope["version"]): SaveSnapshot {
   if (!isRecord(value) || value.version !== 1 || !isCount(value.best) || !isSceneKind(value.scene))
     throw new SaveError("invalid-save");
   const p = value.progress;
@@ -126,6 +133,37 @@ export function normalizeSaveSnapshot(value: unknown): SaveSnapshot {
       !(p.skills[String(p.equippedSkill)] as Record<string, unknown>).unlocked)
   )
     throw new SaveError("invalid-save");
+  // Skins are required from envelope v2. Only older envelopes may omit the
+  // entire pair; a partial pair is damaged data in every version.
+  if (envelopeVersion >= 2 || "ownedSkins" in p || "equippedSkin" in p) {
+    if (
+      !Array.isArray(p.ownedSkins) ||
+      !p.ownedSkins.every(isSkinId) ||
+      !p.ownedSkins.includes(DEFAULT_SKIN) ||
+      new Set(p.ownedSkins).size !== p.ownedSkins.length ||
+      !isSkinId(p.equippedSkin) ||
+      !p.ownedSkins.includes(p.equippedSkin)
+    )
+      throw new SaveError("invalid-save");
+  }
+  // Accessories are required from envelope v3. Older envelopes may omit
+  // both fields, but present data must always form a complete owned outfit.
+  if (envelopeVersion >= 3 || "ownedAccessories" in p || "outfit" in p) {
+    if (
+      !Array.isArray(p.ownedAccessories) ||
+      !p.ownedAccessories.every(isAccessoryId) ||
+      new Set(p.ownedAccessories).size !== p.ownedAccessories.length ||
+      !isRecord(p.outfit) ||
+      Object.keys(p.outfit).length !== COSMETIC_SLOTS.length
+    )
+      throw new SaveError("invalid-save");
+    const { outfit, ownedAccessories } = p;
+    for (const slot of COSMETIC_SLOTS) {
+      const selected = outfit[slot];
+      if (selected !== null && (!isAccessoryForSlot(slot, selected) || !ownedAccessories.includes(selected)))
+        throw new SaveError("invalid-save");
+    }
+  }
   return {
     version: 1,
     progress: readProgress(JSON.stringify(p)),
@@ -140,7 +178,9 @@ function snapshotText(value: SaveSnapshot): string {
 
 export function encodeCloudSave(payload: SaveSnapshot, revision: string): string {
   if (!/^[A-Za-z0-9_-]{1,80}$/.test(revision)) throw new SaveError("invalid-save");
-  const text = JSON.stringify({ version: 1, revision, payload: normalizeSaveSnapshot(payload) });
+  // Older clients reject this envelope before they can discard purchased accessories.
+  // Keep the storage key stable so those clients cannot overwrite a newer save.
+  const text = JSON.stringify({ version: 3, revision, payload: normalizeSnapshot(payload, 3) });
   if (new TextEncoder().encode(text).byteLength > 1024) throw new SaveError("too-large");
   return text;
 }
@@ -151,12 +191,12 @@ export function decodeCloudSave(text: string): CloudEnvelope {
     const value: unknown = JSON.parse(text);
     if (
       !isRecord(value) ||
-      value.version !== 1 ||
+      (value.version !== 1 && value.version !== 2 && value.version !== 3) ||
       typeof value.revision !== "string" ||
       !/^[A-Za-z0-9_-]{1,80}$/.test(value.revision)
     )
       throw new SaveError("invalid-save");
-    return { version: 1, revision: value.revision, payload: normalizeSaveSnapshot(value.payload) };
+    return { version: value.version, revision: value.revision, payload: normalizeSnapshot(value.payload, value.version) };
   } catch (error) {
     throw error instanceof SaveError ? error : new SaveError("invalid-save");
   }

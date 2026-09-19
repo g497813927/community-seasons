@@ -1,5 +1,17 @@
 import { activateBoost, startSceneTravel, type RunState } from "./engine";
 import { isSceneKind, type SceneKind } from "./scenes";
+import { DEFAULT_SKIN, SKINS, isSkinId, skinDefinition, type SkinId } from "./skins";
+import {
+  ACCESSORIES,
+  COSMETIC_SLOTS,
+  createOutfit,
+  accessoryDefinition,
+  isAccessoryForSlot,
+  normalizeOutfit,
+  type AccessoryId,
+  type CosmeticSlot,
+  type Outfit,
+} from "./cosmetics";
 import {
   boostDefinition,
   isBoostKind,
@@ -28,6 +40,10 @@ export interface Progress {
   skills: Record<SkillKind, SkillProgress>;
   levels: Record<BoostKind, BoostLevel>;
   equippedSkill: SkillKind | null;
+  ownedSkins: SkinId[];
+  equippedSkin: SkinId;
+  ownedAccessories: AccessoryId[];
+  outfit: Outfit;
   portalDestination: SceneKind | null;
 }
 export type StoreResult =
@@ -41,6 +57,10 @@ export function createProgress(): Progress {
     skills: createSkillProgress(),
     levels: createBoostLevels(),
     equippedSkill: null,
+    ownedSkins: [DEFAULT_SKIN],
+    equippedSkin: DEFAULT_SKIN,
+    ownedAccessories: [],
+    outfit: createOutfit(),
     portalDestination: null,
   };
 }
@@ -56,6 +76,14 @@ export function readProgress(raw: string | null): Progress {
     if (!value || typeof value !== "object" || !("version" in value) || value.version !== 1)
       return createProgress();
     const record = value as Record<string, unknown>;
+    const savedSkins = Array.isArray(record.ownedSkins) ? record.ownedSkins : [];
+    const ownedSkins = SKINS.filter(
+      ({ id }) => id === DEFAULT_SKIN || savedSkins.includes(id),
+    ).map(({ id }) => id);
+    const savedAccessories = Array.isArray(record.ownedAccessories) ? record.ownedAccessories : [];
+    const ownedAccessories = ACCESSORIES.filter(({ id }) => savedAccessories.includes(id)).map(
+      ({ id }) => id,
+    );
     const inventory =
       record.inventory && typeof record.inventory === "object"
         ? (record.inventory as Record<string, unknown>)
@@ -119,6 +147,13 @@ export function readProgress(raw: string | null): Progress {
         isSkillKind(record.equippedSkill) && skills[record.equippedSkill].unlocked
           ? record.equippedSkill
           : null,
+      ownedSkins,
+      ownedAccessories,
+      outfit: normalizeOutfit(record.outfit, ownedAccessories),
+      equippedSkin:
+        isSkinId(record.equippedSkin) && ownedSkins.includes(record.equippedSkin)
+          ? record.equippedSkin
+          : DEFAULT_SKIN,
     };
   } catch {
     return createProgress();
@@ -225,6 +260,80 @@ export function equipPermanentSkill(progress: Progress, kind: BoostKind): StoreR
     ok: true,
     message: `${skillDefinition(kind).name} selected for your next run.`,
     progress: { ...progress, equippedSkill: kind },
+  };
+}
+export function buySkin(progress: Progress, kind: SkinId): StoreResult {
+  if (!isSkinId(kind)) return { ok: false, message: "Choose a TV skin from the store." };
+  const definition = skinDefinition(kind);
+  if (progress.ownedSkins.includes(kind))
+    return { ok: false, message: "This skin is already permanently unlocked." };
+  if (progress.wallet < definition.price)
+    return {
+      ok: false,
+      message: `Collect ${definition.price - progress.wallet} more coins to unlock ${definition.name}.`,
+    };
+  return {
+    ok: true,
+    message: `${definition.name} unlocked forever and equipped.`,
+    progress: {
+      ...progress,
+      wallet: progress.wallet - definition.price,
+      ownedSkins: SKINS.filter(
+        ({ id }) => progress.ownedSkins.includes(id) || id === kind,
+      ).map(({ id }) => id),
+      equippedSkin: kind,
+    },
+  };
+}
+export function equipSkin(progress: Progress, kind: SkinId): StoreResult {
+  if (!isSkinId(kind)) return { ok: false, message: "Choose a TV skin from the store." };
+  if (!progress.ownedSkins.includes(kind))
+    return { ok: false, message: "Unlock this skin before equipping it." };
+  return {
+    ok: true,
+    message: `${skinDefinition(kind).name} equipped.`,
+    progress: { ...progress, equippedSkin: kind },
+  };
+}
+export function buyAccessory(progress: Progress, kind: AccessoryId): StoreResult {
+  const definition = accessoryDefinition(kind);
+  if (!definition) return { ok: false, message: "Choose an accessory from the store." };
+  if (progress.ownedAccessories.includes(kind))
+    return { ok: false, message: "This accessory is already permanently unlocked." };
+  if (progress.wallet < definition.price)
+    return {
+      ok: false,
+      message: `Collect ${definition.price - progress.wallet} more coins to unlock ${definition.name}.`,
+    };
+  return {
+    ok: true,
+    message: `${definition.name} unlocked forever and equipped.`,
+    progress: {
+      ...progress,
+      wallet: progress.wallet - definition.price,
+      ownedAccessories: ACCESSORIES.filter(
+        ({ id }) => progress.ownedAccessories.includes(id) || id === kind,
+      ).map(({ id }) => id),
+      outfit: { ...progress.outfit, [definition.slot]: kind },
+    },
+  };
+}
+export function equipAccessory(
+  progress: Progress,
+  slot: CosmeticSlot,
+  kind: AccessoryId | null,
+): StoreResult {
+  if (!COSMETIC_SLOTS.includes(slot)) return { ok: false, message: "Choose an accessory category." };
+  if (kind !== null) {
+    if (!accessoryDefinition(kind)) return { ok: false, message: "Choose an accessory from the store." };
+    if (!isAccessoryForSlot(slot, kind)) return { ok: false, message: "Choose an accessory for this category." };
+    if (!progress.ownedAccessories.includes(kind))
+      return { ok: false, message: "Unlock this accessory before equipping it." };
+  }
+  return {
+    ok: true,
+    message: kind === null ? "Accessory removed." : `${accessoryDefinition(kind)!.name} equipped.`,
+    progress: { ...progress, outfit: { ...progress.outfit, [slot]: kind } },
   };
 }
 export function buyBooster(

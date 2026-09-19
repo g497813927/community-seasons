@@ -4,7 +4,7 @@ import fs from "node:fs";
 import ts from "typescript";
 const cache = new URL("./store-economy-fuzz-compiled/", import.meta.url);
 fs.mkdirSync(cache, { recursive: true });
-for (const name of ["scenes", "boosts", "railway", "community", "engine", "store", "cloud-save"]) {
+for (const name of ["scenes", "boosts", "skins", "cosmetics", "railway", "community", "engine", "store", "cloud-save"]) {
   const text = fs.readFileSync(
     new URL(`../../src/lib/game/${name}.ts`, import.meta.url),
     "utf8",
@@ -23,11 +23,15 @@ const { createRun, update } = await import("./store-economy-fuzz-compiled/engine
 const { createRailRide } = await import("./store-economy-fuzz-compiled/railway.mjs");
 const { boostDefinition, skillDefinition, upgradePrice } =
   await import("./store-economy-fuzz-compiled/boosts.mjs");
+const { SKINS, skinDefinition } = await import("./store-economy-fuzz-compiled/skins.mjs");
+const { ACCESSORIES, COSMETIC_SLOTS, accessoryDefinition, isAccessoryForSlot } = await import("./store-economy-fuzz-compiled/cosmetics.mjs");
 const { normalizeSaveSnapshot, encodeCloudSave, decodeCloudSave } =
   await import("./store-economy-fuzz-compiled/cloud-save.mjs");
 const all = ["headstart", "shield", "doubleCoins", "portal", "magnet", "rush"];
 const owned = ["headstart", "shield", "doubleCoins", "portal"];
 const skills = ["shield", "magnet", "rush"];
+const skinIds = SKINS.map(({ id }) => id);
+const accessoryIds = ACCESSORIES.map(({ id }) => id);
 const scenes = ["spring", "summer", "autumn", "winter"];
 const max = Number.MAX_SAFE_INTEGER;
 function rng(seed) {
@@ -69,6 +73,12 @@ function invariant(p, s) {
   for (const value of Object.values(p.levels))
     assert.ok([1, 2, 3].includes(value), "level outside supported bounds");
   if (p.equippedSkill !== null) assert.equal(p.skills[p.equippedSkill].unlocked, true);
+  assert.deepEqual(p.ownedSkins, skinIds.filter((id) => id === "classic" || p.ownedSkins.includes(id)));
+  assert.ok(p.ownedSkins.includes(p.equippedSkin));
+  assert.deepEqual(p.ownedAccessories, accessoryIds.filter((id) => p.ownedAccessories.includes(id)));
+  assert.deepEqual(Object.keys(p.outfit).sort(), [...COSMETIC_SLOTS].sort());
+  for (const slot of COSMETIC_SLOTS)
+    assert.ok(p.outfit[slot] === null || (isAccessoryForSlot(slot, p.outfit[slot]) && p.ownedAccessories.includes(p.outfit[slot])));
   if (s) {
     assert.ok(Number.isFinite(s.skillCharge) && s.skillCharge >= 0 && s.skillCharge <= 100);
     assert.ok(Number.isSafeInteger(s.coins) && s.coins >= 0);
@@ -105,6 +115,8 @@ function bank(s, p) {
   assert.equal(next.wallet, Math.min(max, before.wallet + delta));
   assert.deepEqual(next.inventory, before.inventory);
   assert.deepEqual(next.levels, before.levels);
+  assert.deepEqual(next.ownedAccessories, before.ownedAccessories);
+  assert.deepEqual(next.outfit, before.outfit);
   const expected =
     s.permanentSkill && p.skills[s.permanentSkill].unlocked
       ? Math.min(100, charge + (locked ? 0 : Math.max(0, delta - blocked)))
@@ -133,6 +145,11 @@ test("deterministic economy/save action sequences preserve money, inventory, eli
           "upgrade",
           "unlock",
           "equip",
+          "buy-skin",
+          "equip-skin",
+          "buy-accessory",
+          "equip-accessory",
+          "remove-accessory",
           "new-run",
           "context",
           "owned",
@@ -146,12 +163,18 @@ test("deterministic economy/save action sequences preserve money, inventory, eli
           "load-damaged",
         ]);
         const kind = pick(r, all),
-          destination = pick(r, [undefined, ...scenes]);
+          destination = pick(r, [undefined, ...scenes]),
+          skin = pick(r, skinIds),
+          accessory = pick(r, accessoryIds),
+          slot = pick(r, COSMETIC_SLOTS);
         trace.push({
           i,
           op,
           kind,
           destination,
+          skin,
+          accessory,
+          slot,
           mode: s.mode,
           time: s.time,
           rail: !!s.rail,
@@ -229,6 +252,10 @@ test("deterministic economy/save action sequences preserve money, inventory, eli
               "skills",
               "equippedSkill",
               "portalDestination",
+              "ownedSkins",
+              "equippedSkin",
+              "ownedAccessories",
+              "outfit",
             ])
           ] = pick(r, [null, -1, 1.5, "oops", {}, [], true, 1e50]);
           p = store.readProgress(JSON.stringify(damaged));
@@ -268,6 +295,28 @@ test("deterministic economy/save action sequences preserve money, inventory, eli
             expected = skills.includes(kind) && p.skills[kind].unlocked;
             result = store.equipPermanentSkill(p, kind);
           }
+          if (op === "buy-skin") {
+            cost = skinDefinition(skin).price;
+            expected = !p.ownedSkins.includes(skin) && p.wallet >= cost;
+            result = store.buySkin(p, skin);
+          }
+          if (op === "equip-skin") {
+            expected = p.ownedSkins.includes(skin);
+            result = store.equipSkin(p, skin);
+          }
+          if (op === "buy-accessory") {
+            cost = accessoryDefinition(accessory).price;
+            expected = !p.ownedAccessories.includes(accessory) && p.wallet >= cost;
+            result = store.buyAccessory(p, accessory);
+          }
+          if (op === "equip-accessory") {
+            expected = p.ownedAccessories.includes(accessory) && isAccessoryForSlot(slot, accessory);
+            result = store.equipAccessory(p, slot, accessory);
+          }
+          if (op === "remove-accessory") {
+            expected = true;
+            result = store.equipAccessory(p, slot, null);
+          }
           if (op === "owned") {
             const open =
               s.mode === "running" &&
@@ -306,9 +355,30 @@ test("deterministic economy/save action sequences preserve money, inventory, eli
           if (result.ok) {
             stats.successByKind[`${op}:${kind}`] = (stats.successByKind[`${op}:${kind}`] ?? 0) + 1;
             p = result.progress;
-            if (["buy", "upgrade", "unlock"].includes(op))
+            if (["buy", "upgrade", "unlock", "buy-skin", "buy-accessory"].includes(op))
               assert.equal(p.wallet, before.wallet - cost, "purchase cost charged exactly once");
             else assert.equal(p.wallet, before.wallet, "activation/selection spends no wallet");
+            if (["buy-skin", "equip-skin"].includes(op)) {
+              assert.equal(p.equippedSkin, skin);
+              assert.deepEqual(p.inventory, before.inventory);
+              assert.deepEqual(p.skills, before.skills);
+              assert.deepEqual(p.levels, before.levels);
+              assert.deepEqual(p.ownedSkins, skinIds.filter((id) => before.ownedSkins.includes(id) || (op === "buy-skin" && id === skin)));
+            } else {
+              assert.deepEqual(p.ownedSkins, before.ownedSkins);
+              assert.equal(p.equippedSkin, before.equippedSkin);
+            }
+            if (["buy-accessory", "equip-accessory", "remove-accessory"].includes(op)) {
+              const changedSlot = op === "buy-accessory" ? accessoryDefinition(accessory).slot : slot;
+              assert.deepEqual(p.outfit, { ...before.outfit, [changedSlot]: op === "remove-accessory" ? null : accessory });
+              assert.deepEqual(p.ownedAccessories, accessoryIds.filter((id) => before.ownedAccessories.includes(id) || (op === "buy-accessory" && id === accessory)));
+              assert.deepEqual(p.inventory, before.inventory);
+              assert.deepEqual(p.skills, before.skills);
+              assert.deepEqual(p.levels, before.levels);
+            } else {
+              assert.deepEqual(p.ownedAccessories, before.ownedAccessories);
+              assert.deepEqual(p.outfit, before.outfit);
+            }
             if (op === "buy")
               for (const k of owned)
                 assert.equal(p.inventory[k], before.inventory[k] + (k === kind ? 1 : 0));
@@ -348,8 +418,10 @@ test("deterministic economy/save action sequences preserve money, inventory, eli
       failTrace(seed, trace, error);
     }
   }
-  for (const op of only === null ? ["buy", "upgrade", "unlock", "equip", "owned"] : [])
+  for (const op of only === null ? ["buy", "upgrade", "unlock", "equip", "owned", "buy-skin", "equip-skin", "buy-accessory", "equip-accessory"] : [])
     assert.ok(stats.success[op] > 0 && stats.failure[op] > 0, `insufficient ${op} coverage`);
+  if (only === null)
+    assert.ok(stats.success["remove-accessory"] > 0, "insufficient remove-accessory coverage");
 });
 test("seeded charging cycles block all active-effect coins and resume only after expiry", () => {
   for (let seed = 1; seed <= 48; seed++)

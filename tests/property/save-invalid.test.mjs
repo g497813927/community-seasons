@@ -8,7 +8,7 @@ const started = performance.now(),
   folder = new URL("./save-compiled/", import.meta.url),
   sourceHashes = {};
 fs.mkdirSync(folder, { recursive: true });
-for (const name of ["scenes", "boosts", "railway", "community", "engine", "store", "cloud-save"]) {
+for (const name of ["scenes", "boosts", "skins", "cosmetics", "railway", "community", "engine", "store", "cloud-save"]) {
   const source = fs.readFileSync(
     new URL(`../../src/lib/game/${name}.ts`, import.meta.url),
     "utf8",
@@ -26,6 +26,10 @@ for (const name of ["scenes", "boosts", "railway", "community", "engine", "store
 const { readProgress, createProgress } = await import("./save-compiled/store.mjs");
 const { normalizeSaveSnapshot, encodeCloudSave, decodeCloudSave } =
   await import("./save-compiled/cloud-save.mjs");
+const { SKINS } = await import("./save-compiled/skins.mjs");
+const skinIds = SKINS.map(({ id }) => id);
+const { ACCESSORIES, COSMETIC_SLOTS, isAccessoryForSlot, normalizeOutfit } = await import("./save-compiled/cosmetics.mjs");
+const accessoryIds = ACCESSORIES.map(({ id }) => id);
 const max = Number.MAX_SAFE_INTEGER,
   scenes = ["spring", "summer", "autumn", "winter"],
   skills = ["shield", "magnet", "rush"],
@@ -137,6 +141,12 @@ function validProgress(p) {
     assert.ok(skills.includes(p.equippedSkill));
     assert.equal(p.skills[p.equippedSkill].unlocked, true);
   }
+  assert.deepEqual(p.ownedSkins, skinIds.filter((id) => id === "classic" || p.ownedSkins.includes(id)));
+  assert.ok(p.ownedSkins.includes(p.equippedSkin));
+  assert.deepEqual(p.ownedAccessories, accessoryIds.filter((id) => p.ownedAccessories.includes(id)));
+  assert.deepEqual(Object.keys(p.outfit).sort(), [...COSMETIC_SLOTS].sort());
+  for (const slot of COSMETIC_SLOTS)
+    assert.ok(p.outfit[slot] === null || (isAccessoryForSlot(slot, p.outfit[slot]) && p.ownedAccessories.includes(p.outfit[slot])));
   assert.deepEqual(readProgress(JSON.stringify(p)), p);
 }
 function validSnapshot(s) {
@@ -165,6 +175,14 @@ const valid = fc
     unlocks: fc.tuple(fc.boolean(), fc.boolean(), fc.boolean()),
     levels: fc.tuple(level, level, level, level, level),
     equip: fc.constantFrom(null, ...skills),
+    ownedSkins: fc.subarray(skinIds),
+    equippedSkin: fc.constantFrom(...skinIds),
+    ownedAccessories: fc.subarray(accessoryIds),
+    outfit: fc.record({
+      hat: fc.constantFrom(null, "cap", "crown", "sprout"),
+      shoes: fc.constantFrom(null, "sneakers", "boots", "skates"),
+      effect: fc.constantFrom(null, "sparkles", "petals", "orbit"),
+    }),
   })
   .map((v) => {
     const p = createProgress();
@@ -181,6 +199,10 @@ const valid = fc
       (k, i) => (p.levels[k] = v.levels[i]),
     );
     p.equippedSkill = v.equip && p.skills[v.equip].unlocked ? v.equip : null;
+    p.ownedSkins = skinIds.filter((id) => id === "classic" || v.ownedSkins.includes(id));
+    p.equippedSkin = p.ownedSkins.includes(v.equippedSkin) ? v.equippedSkin : "classic";
+    p.ownedAccessories = v.ownedAccessories;
+    p.outfit = normalizeOutfit(v.outfit, p.ownedAccessories);
     return { version: 1, progress: p, best: v.best, scene: v.scene };
   });
 property(
@@ -225,9 +247,36 @@ property(
     assert.deepEqual(readProgress(JSON.stringify(p)), createProgress());
     classifiedReject(() => normalizeSaveSnapshot({ ...snapshot, version }));
     classifiedReject(() => normalizeSaveSnapshot({ ...snapshot, progress: p }));
-    classifiedReject(() =>
-      decodeCloudSave(JSON.stringify({ version, revision: "v1", payload: snapshot })),
-    );
+    if (version !== 2 && version !== 3)
+      classifiedReject(() =>
+        decodeCloudSave(JSON.stringify({ version, revision: "v1", payload: snapshot })),
+      );
+    else
+      assert.deepEqual(
+        decodeCloudSave(JSON.stringify({ version, revision: "v2", payload: snapshot })).payload,
+        snapshot,
+      );
+  },
+);
+property(
+  "cloud-envelope-cosmetic-fields-match-the-declared-version",
+  [valid, fc.constantFrom(1, 2, 3), fc.subarray(["ownedSkins", "equippedSkin", "ownedAccessories", "outfit"])],
+  (snapshot, version, omitted) => {
+    const input = structuredClone(snapshot);
+    for (const field of omitted) delete input.progress[field];
+    const text = JSON.stringify({ version, revision: "version_boundary", payload: input });
+    const required = version === 3 ? ["ownedSkins", "equippedSkin", "ownedAccessories", "outfit"]
+      : version === 2 ? ["ownedSkins", "equippedSkin"] : [];
+    const partialPair = [["ownedSkins", "equippedSkin"], ["ownedAccessories", "outfit"]]
+      .some(([owned, equipped]) => omitted.includes(owned) !== omitted.includes(equipped));
+    if (partialPair || required.some((field) => omitted.includes(field))) {
+      classifiedReject(() => decodeCloudSave(text));
+      return;
+    }
+    const expected = structuredClone(snapshot);
+    const defaults = createProgress();
+    for (const field of omitted) expected.progress[field] = defaults[field];
+    assert.deepEqual(decodeCloudSave(text).payload, expected);
   },
 );
 property("cloud-unknown-shapes-reject-or-normalize", [unknown], (value) => {

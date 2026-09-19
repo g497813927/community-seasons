@@ -126,6 +126,11 @@
   color: #c5d4b8;
   text-align: right;
 }
+.cloud-save-detail-grid .cloud-save-accessories li > span:last-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .cloud-save-detail-grid p {
   margin: 12px 0 0;
   font-size: 12px;
