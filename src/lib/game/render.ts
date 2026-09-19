@@ -2,6 +2,8 @@ import { type RunState, LANE_WIDTH, RELIC_HEIGHT, createRun, advancePreview } fr
 import type { BoostKind } from "./boosts";
 import { nextScene, type SceneKind } from "./scenes";
 import { createRailRide } from "./railway";
+import { DEFAULT_SKIN, type SkinId } from "./skins";
+import { createOutfit, type Outfit } from "./cosmetics";
 import type { travelPalette } from "./travel-colors";
 import type { V, Face } from "./render/types";
 import { PALETTES } from "./render/styles";
@@ -20,6 +22,7 @@ import { drawSky, drawGround } from "./render/environment";
 import { drawObstacles } from "./render/obstacles";
 import { paintFaces } from "./render/paint";
 import { drawEffects, transportTunnel } from "./render/effects";
+export { getSkinPreview } from "./render/skin-preview";
 
 // Public renderer API, per-canvas state and frame composition. Drawing lives in render/.
 export class Renderer {
@@ -34,6 +37,16 @@ export class Renderer {
   layer = 1;
   portalPreviews = new Map<SceneKind, HTMLCanvasElement>();
   railPreviews = new Map<SceneKind, HTMLCanvasElement>();
+  renderSkin: SkinId = DEFAULT_SKIN;
+  renderOutfit: Outfit = createOutfit();
+  private reducedMotionValue = false;
+  get reducedMotion() { return this.reducedMotionValue; }
+  set reducedMotion(value: boolean) {
+    if (this.reducedMotionValue === value) return;
+    this.reducedMotionValue = value;
+    // Passenger effects use the motion preference when baking gate previews.
+    this.railPreviews.clear();
+  }
   landscapeOnly = false;
   sceneryTemplates = new Map<string, Face[]>();
   curveDirection = 0;
@@ -218,8 +231,14 @@ export class Renderer {
   railExitGateway(s: RunState) {
     return railway.railExitGateway(this, s);
   }
-  journeyPreview(scene: SceneKind, mode: "rail" | "run"): HTMLCanvasElement | null {
+  journeyPreview(scene: SceneKind, mode: "rail" | "run", skin = this.renderSkin, outfit = this.renderOutfit): HTMLCanvasElement | null {
     if (mode === "run") return this.portalPreview(scene);
+    if (this.renderSkin !== skin || this.renderOutfit.hat !== outfit.hat ||
+        this.renderOutfit.shoes !== outfit.shoes || this.renderOutfit.effect !== outfit.effect) {
+      this.renderSkin = skin;
+      this.renderOutfit = { ...outfit };
+      this.railPreviews.clear();
+    }
     const cached = this.railPreviews.get(scene);
     if (cached) return cached;
     const canvas = this.canvas.ownerDocument?.createElement("canvas");
@@ -231,6 +250,9 @@ export class Renderer {
     view.w = 256;
     view.h = 512;
     const state = createRun(4182, scene);
+    state.skin = this.renderSkin;
+    state.outfit = { ...this.renderOutfit };
+    view.reducedMotion = this.reducedMotion;
     state.mode = "paused";
     state.time = 12;
     state.distance = 56;
@@ -290,6 +312,12 @@ export class Renderer {
     return transportTunnel(this, progress, alpha, palette);
   }
   render(s: RunState, wallTime: number, preview = false, locale: "en" | "zh-CN" = "en") {
+    if (this.renderSkin !== s.skin || this.renderOutfit.hat !== s.outfit.hat ||
+        this.renderOutfit.shoes !== s.outfit.shoes || this.renderOutfit.effect !== s.outfit.effect) {
+      this.renderSkin = s.skin;
+      this.renderOutfit = { ...s.outfit };
+      this.railPreviews.clear();
+    }
     if (s.mode === "ready" && !preview) {
       const elapsed =
         this.previewAt === null ? 0 : Math.max(0, Math.min(wallTime - this.previewAt, 0.1));
@@ -298,6 +326,8 @@ export class Renderer {
         this.previewRun = createRun(4182, s.scene);
         this.previewScene = s.scene;
       }
+      this.previewRun.skin = s.skin;
+      this.previewRun.outfit = { ...s.outfit };
       advancePreview(this.previewRun, elapsed);
       this.render(this.previewRun, wallTime, true, locale);
       return;

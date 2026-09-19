@@ -6,7 +6,10 @@ export function project(renderer: Renderer, point: V): [number, number] {
   return renderer.projectView(renderer.cameraPoint(point));
 }
 
-export function projectView(renderer: Renderer, [viewX, y, viewZ]: V): [number, number] {
+export function projectView(
+  renderer: Pick<Renderer, "focal" | "cameraRoll" | "center" | "horizon">,
+  [viewX, y, viewZ]: V,
+): [number, number] {
   const scale = renderer.focal / Math.max(0.3, viewZ + 10);
   const px = viewX * scale,
     py = (5.4 - y) * scale;
@@ -15,7 +18,10 @@ export function projectView(renderer: Renderer, [viewX, y, viewZ]: V): [number, 
   return [renderer.center + px * cos - py * sin, renderer.horizon + px * sin + py * cos];
 }
 
-export function face(renderer: Renderer, points: V[], color: string, text?: Face["text"]) {
+export function face(
+  renderer: Pick<Renderer, "captureScenery" | "cameraPoint" | "faces" | "layer">,
+  points: V[], color: string, text?: Face["text"],
+) {
   if (!renderer.captureScenery && points.every((point) => renderer.cameraPoint(point)[2] < -9)) return;
   renderer.faces.push({
     points,
@@ -51,7 +57,7 @@ export function label(
 }
 
 export function box(
-  renderer: Renderer,
+  renderer: Pick<Renderer, "captureScenery" | "frontFacing" | "cameraPoint" | "face" | "faces">,
   x: number,
   y: number,
   z: number,
@@ -106,7 +112,7 @@ export function box(
   });
 }
 
-export function frontFacing(renderer: Renderer, points: V[]) {
+export function frontFacing(_renderer: object, points: V[]) {
   const [a, b, c] = points;
   const ux = b[0] - a[0],
     uy = b[1] - a[1],

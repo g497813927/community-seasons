@@ -25,6 +25,8 @@ type-only, so they do not create runtime import cycles.
 | Faces, boxes, projection and clipping | `geometry.ts`, `types.ts` |
 | Face sorting, textures, fog and text painting | `paint.ts` |
 | Boost overlays, lighting and travel tunnels | `effects.ts` |
+| Hats, footwear and simulation-time cosmetic motes | `characters/cosmetics.ts` |
+| Bounded static outfit previews for the store and travel artwork | `skin-preview.ts` |
 
 Scenery components emit reusable geometry at depth zero. `scenes/index.ts` keeps
 those templates on the renderer and places them along the current route each
