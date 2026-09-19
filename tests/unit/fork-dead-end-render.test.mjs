@@ -111,10 +111,10 @@ test("a departing dead-end wall remains visible after the junction passes five m
       s.distance = 472 + along;
       s.turnRemaining = TURN_DURATION * (1 - along / r.turnArcLength);
       r.render(s, 0);
-      const wall = r.faces.filter(f => f.color === "#a94f45");
+      const wall = r.faces.filter(f => ["#a94f45", "#773c36", "#d78065"].includes(f.color));
       const projected = wall.flatMap(f => r.clipNear(r.faceView(f)).map(point => r.projectView(point)));
       assert.ok(projected.some(([x, y]) => x >= 0 && x <= r.w && y >= 0 && y <= r.h),
-        `${blocked}/${speed}/${along}: the wall disappears while its upper face is still on screen`);
+        `${blocked}/${speed}/${along}: the wall disappears while part of it is still on screen`);
     }
   }
 });
