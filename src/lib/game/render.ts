@@ -39,7 +39,14 @@ export class Renderer {
   railPreviews = new Map<SceneKind, HTMLCanvasElement>();
   renderSkin: SkinId = DEFAULT_SKIN;
   renderOutfit: Outfit = createOutfit();
-  reducedMotion = false;
+  private reducedMotionValue = false;
+  get reducedMotion() { return this.reducedMotionValue; }
+  set reducedMotion(value: boolean) {
+    if (this.reducedMotionValue === value) return;
+    this.reducedMotionValue = value;
+    // Passenger effects use the motion preference when baking gate previews.
+    this.railPreviews.clear();
+  }
   landscapeOnly = false;
   sceneryTemplates = new Map<string, Face[]>();
   curveDirection = 0;

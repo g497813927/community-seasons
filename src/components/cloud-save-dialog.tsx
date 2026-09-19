@@ -93,7 +93,9 @@ export function CloudSaveDialog({
     {
       label: l("Owned accessories", "已拥有饰品"),
       value: (save: SaveSnapshot) =>
-        `${save.progress.ownedAccessories.length} / ${ACCESSORIES.length}`,
+        ACCESSORIES.filter((item) => save.progress.ownedAccessories.includes(item.id))
+          .map((item) => t(item.name))
+          .join(l(", ", "、")) || l("None", "暂无"),
     },
     ...accessorySlots.map(({ id, label, empty }) => ({
       label: l(`Equipped ${id}`, `已装备${label}`),

@@ -7,8 +7,6 @@
 | 修改内容 | 模块 |
 | --- | --- |
 | 电视机身体，以及奔跑、滑行、回弹和乘坐姿态 | `characters/runner.ts` |
-| 帽子、鞋子与随游戏时间变化的装饰粒子 | `characters/cosmetics.ts` |
-| 商店与旅行插画使用的有缓存上限的静态装扮预览 | `skin-preview.ts` |
 | 追赶的捣乱评论者 | `characters/commenters.ts` |
 | 小车车身，以及乘客登车和跌落 | `characters/cart.ts` |
 | 四季路边景物与远景全景 | `scenes/spring.ts`, `summer.ts`, `autumn.ts`, `winter.ts` |
@@ -24,6 +22,8 @@
 | 面、盒体、投影和裁剪 | `geometry.ts`, `types.ts` |
 | 面排序、纹理、雾和文字绘制 | `paint.ts` |
 | 加速覆盖效果、光照和穿越隧道 | `effects.ts` |
+| 帽子、鞋子与随游戏时间变化的装饰粒子 | `characters/cosmetics.ts` |
+| 商店与旅行插画使用的有缓存上限的静态装扮预览 | `skin-preview.ts` |
 
 景物组件在深度为零的位置生成可复用几何体。`scenes/index.ts` 将这些模板保存在渲染器上，并在每一帧沿当前路线放置。修改共享绘制代码时，必须保留面的顺序、图层和捕获标志：它们决定屋顶可见性、木栈道支撑结构和预览渲染。
 

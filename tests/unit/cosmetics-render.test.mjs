@@ -58,7 +58,7 @@ test("the cap shell has no open boundary, including the underside exposed by sli
   }
 
   const preview = getSkinPreview("classic", { hat: "cap", shoes: null, effect: null });
-  // The store camera looks down on the hat: only six upper shell panels show.
+  // The store camera shows six upper shell panels plus the brim's top face.
   assert.equal(preview.filter((face) => face.fill === "#ffc0a5").length, 7);
 });
 
@@ -166,6 +166,43 @@ test("home restarts, season changes and railway preview caches retain every outf
     assert.notEqual(second, first, "cached passenger keeps an old outfit");
     assert.deepEqual(view.renderOutfit, changed);
     assert.equal(second, view.journeyPreview("spring", "rail", "classic", { ...changed }));
+  }
+});
+
+test("changing reduced motion rebuilds rail passengers and freezes their effects", () => {
+  for (const effect of ["sparkles", "petals", "orbit"]) {
+    const view = renderer(), seen = [];
+    view.canvas.ownerDocument = { createElement: () => ({ getContext: () => renderer().ctx }) };
+    const original = Renderer.prototype.railCart;
+    Renderer.prototype.railCart = function(state, time) {
+      const firstFace = this.faces.length;
+      const result = original.call(this, state, time);
+      seen.push({ reducedMotion: this.reducedMotion, state: structuredClone(state), faces: this.faces.slice(firstFace) });
+      return result;
+    };
+    try {
+      const outfit = { hat: "crown", shoes: "skates", effect };
+      const landscape = view.portalPreview("spring");
+      const previews = [];
+      for (const reducedMotion of [false, true, false]) {
+        view.reducedMotion = reducedMotion;
+        const preview = view.journeyPreview("spring", "rail", "classic", outfit);
+        assert.ok(preview);
+        previews.push(preview);
+        view.reducedMotion = reducedMotion;
+        assert.equal(view.journeyPreview("spring", "rail"), preview, "unchanged preferences discard reusable previews");
+        assert.equal(view.portalPreview("spring"), landscape, "passenger settings invalidate the empty landscape");
+      }
+      assert.equal(new Set(previews).size, 3, "a preference change keeps a previously baked passenger");
+    } finally { Renderer.prototype.railCart = original; }
+    assert.deepEqual(seen.map((entry) => entry.reducedMotion), [false, true, false]);
+    assert.notDeepEqual(seen[0].faces, seen[1].faces, `${effect} ignores the new reduced-motion preference`);
+    assert.deepEqual(seen[0].faces, seen[2].faces, `${effect} does not restore its normal appearance`);
+    const reduced = renderer();
+    reduced.reducedMotion = true;
+    seen[1].state.time += 10;
+    reduced.railCart(seen[1].state, 99);
+    assert.deepEqual(reduced.faces, seen[1].faces, `${effect} moves with reduced motion enabled`);
   }
 });
 
