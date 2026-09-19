@@ -9,6 +9,7 @@ import { fileHashes, changedFiles } from '../preview/build-info.mjs';
 import { validateBuildInfo } from '../preview/provenance.mjs';
 import { matrixSourceHashes } from '../outfit-matrix/build-info.mjs';
 import { fixtureHandler } from './runtime.mjs';
+import { reportPath } from './report-path.mjs';
 
 // Real wall-clock rendering soak, deliberately without Playwright clock APIs.
 // The authored renderer stages and actual App interaction checks are reported
@@ -98,7 +99,7 @@ and all non-fixture requests are blocked. No Toy saves or devices are used.`);
   const currentHashes = () => matrixSourceHashes(ROOT);
   assert.deepEqual(changedFiles(build.sourceHashes, await currentHashes()), [], 'Matrix fixture build is stale; rebuild after finishing source edits.');
   const harnessHashes = await fileHashes(ROOT, [
-    'tests/qa/web/outfit-matrix.mjs', 'tests/qa/web/runtime.mjs',
+    'tests/qa/web/outfit-matrix.mjs', 'tests/qa/web/runtime.mjs', 'tests/qa/web/report-path.mjs',
     'tests/qa/preview/build-info.mjs', 'tests/qa/preview/provenance.mjs',
   ].map(file => path.join(ROOT, file)));
   const fixtureBuildHash = digest(build);
@@ -537,10 +538,10 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     await verifySources(true);
     const previous = checkpoint.cases[job.id];
     const attempt = (previous?.attempts?.length ?? 0) + 1;
-    const relative = path.join('cases', job.id, `attempt-${String(attempt).padStart(3, '0')}`);
+    const relative = reportPath('cases', job.id, `attempt-${String(attempt).padStart(3, '0')}`);
     const caseDirectory = path.join(output, relative);
     await fs.mkdir(caseDirectory, { recursive: true });
-    const record = { attempt, status: 'running', startedAt: new Date().toISOString(), report: path.join(relative, 'report.json'), worker };
+    const record = { attempt, status: 'running', startedAt: new Date().toISOString(), report: reportPath(relative, 'report.json'), worker };
     checkpoint.cases[job.id] = { status: 'running', attempts: [...(previous?.attempts ?? []), record] };
     active++;
     await persist();
