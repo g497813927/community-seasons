@@ -1,0 +1,21 @@
+:root { color-scheme: light; }
+body { margin: 0; background: #e9f2ed; color: #183f37; overflow: auto; }
+.matrix-shell { min-height: 100dvh; display: grid; grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); }
+.matrix-controls { padding: 24px; background: #fffdf5; overflow-wrap: anywhere; font: 14px/1.5 system-ui, sans-serif; }
+.matrix-controls h1 { margin: 8px 0 16px; font-size: 28px; }
+.matrix-controls p { margin: 12px 0; }
+.matrix-controls .matrix-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.matrix-controls label { display: block; font-weight: 700; margin-top: 20px; }
+.matrix-controls select { width: 100%; padding: 10px 6px; border: 1px solid #6d9184; background: white; border-radius: 6px; }
+.matrix-actions { display: flex; gap: 10px; margin-top: 12px; }
+.matrix-actions button { padding: 10px 12px; background: #185d4b; color: white; border: 0; border-radius: 6px; cursor: pointer; }
+.matrix-actions button:disabled { opacity: .5; cursor: default; }
+.matrix-controls a { text-decoration: underline; }
+.matrix-controls pre { max-height: 50vh; overflow: auto; font-size: 11px; white-space: pre-wrap; }
+.matrix-stage { position: relative; min-height: 640px; height: 100dvh; overflow: hidden; }
+.matrix-stage > canvas { display: block; width: 100%; height: 100%; }
+.matrix-idle { position: absolute; inset: 40% 10% auto; text-align: center; padding: 20px; background: #fffdf5e6; border-radius: 12px; }
+@media (max-width: 700px) {
+  .matrix-shell { display: flex; flex-direction: column-reverse; }
+  .matrix-stage { min-height: 500px; height: 75dvh; }
+}

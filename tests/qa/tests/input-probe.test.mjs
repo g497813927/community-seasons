@@ -45,10 +45,15 @@ test('input snapshots observe real engine outcomes without returning writable st
   assert.ok(sliding.slide > 0);
   sliding.lane = 1;
   sliding.shield = 42;
+  sliding.outfit.hat = 'crown';
+  sliding.outfit.shoes = 'skates';
+  sliding.outfit.effect = 'orbit';
   assert.equal(f.inputs.snapshot().lane, -1);
   assert.equal(f.inputs.snapshot().shield, 0);
+  assert.deepEqual(f.inputs.snapshot().outfit, { hat: null, shoes: null, effect: null });
+  assert.deepEqual(f.run.outfit, { hat: null, shoes: null, effect: null }, 'snapshot cannot equip live accessories');
   assert.deepEqual(Object.keys(sliding).sort(), [
-    'mode', 'lane', 'x', 'jump', 'slide', 'height', 'distance', 'permanentSkill',
+    'mode', 'skin', 'outfit', 'lane', 'x', 'jump', 'slide', 'height', 'distance', 'permanentSkill',
     'skillCharge', 'skillChargeRequired', 'skillRechargeLocked', 'shield', 'shieldTime',
   ].sort());
   assert.ok(Object.isFrozen(f.inputs));
