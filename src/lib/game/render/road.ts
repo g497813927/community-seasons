@@ -96,8 +96,10 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
     }
   }
   renderer.layer = 1;
-  if (junction !== null && junction > -5 && junction < 130) {
-    // Keep the same physical center barrier as it passes behind the TV.
+  if (junction !== null && junction < 130) {
+    // The turn can leave a tall wall visible after the junction has passed
+    // behind the TV. Cull its transformed faces at the camera near plane,
+    // rather than dropping the whole barrier at a fixed road distance.
     const start = renderer.faces.length;
     const savedCapture = renderer.captureScenery;
     renderer.captureScenery = true;
