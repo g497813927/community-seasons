@@ -1,6 +1,54 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
 import { assertFixtureHealthy, caseFailureStatus, closeMatrixResources } from '../web/matrix-shutdown.mjs';
+
+test('actual source-change and worker-error handlers record the first stop cause and timestamp without inventing a signal', async () => {
+  const source = fs.readFileSync(new URL('../web/outfit-matrix.mjs', import.meta.url), 'utf8');
+  const ast = ts.createSourceFile('outfit-matrix.mjs', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  let signal;
+  const handlers = {};
+  function visit(node) {
+    if (ts.isVariableDeclaration(node) && node.name.getText(ast) === 'signal') signal = node.initializer.getText(ast);
+    if (ts.isCatchClause(node)) {
+      const block = node.block.getText(ast);
+      if (block.includes('/Source changed/')) handlers.source = block;
+      if (block.includes('console.error(error.stack)')) handlers.worker = block;
+    }
+    ts.forEachChild(node, visit);
+  }
+  visit(ast);
+  assert.ok(signal && handlers.source && handlers.worker, 'the actual runtime handlers must be exercised');
+  for (const [kind, reason] of [['source', 'Source changed during matrix run: src/lib/game/render.ts'], ['worker', 'Cannot read matrix source']]) {
+    let now = '2026-09-19T10:00:00.000Z';
+    const context = vm.createContext({
+      stopReason: null,
+      invocation: { stopReason: null, stopRequestedAt: null, stopSignal: null },
+      error: Error(reason), result: { errors: [], blockedRequests: [] }, page: null,
+      caseFailureStatus, errorDetails: error => ({ name: error.name, message: error.message }),
+      console: { log() {}, error() {} },
+      Date: class extends Date { constructor() { super(now); } },
+    });
+    vm.runInContext(`const signal = ${signal};`, context);
+    await vm.runInContext(`(async () => ${handlers[kind]})()`, context);
+    assert.equal(context.stopReason, reason);
+    assert.equal(context.invocation.stopReason, reason);
+    assert.equal(context.invocation.stopRequestedAt, now, `${kind} stop skipped its request timestamp`);
+    assert.equal(context.invocation.stopSignal, null, 'runtime failures must not be labeled operating-system signals');
+    const firstAt = context.invocation.stopRequestedAt;
+    now = '2026-09-19T10:00:10.000Z';
+    context.error = Error('Source changed again during shutdown');
+    await vm.runInContext(`(async () => ${handlers.source})()`, context);
+    await vm.runInContext(`(async () => ${handlers.worker})()`, context);
+    vm.runInContext("signal('SIGINT')", context);
+    assert.equal(context.stopReason, reason);
+    assert.equal(context.invocation.stopReason, reason);
+    assert.equal(context.invocation.stopRequestedAt, firstAt, 'later errors/signals replaced the first cause timestamp');
+    assert.equal(context.invocation.stopSignal, 'SIGINT', 'only an explicit signal should populate stopSignal');
+  }
+});
 
 test('stopping preserves renderer failures observed between host polls, excluding only the explicit stop reason', () => {
   assert.doesNotThrow(() => assertFixtureHealthy({ status: 'interrupted', errors: ['SIGINT'] }, { renderer: true, interruptedBy: 'SIGINT' }));

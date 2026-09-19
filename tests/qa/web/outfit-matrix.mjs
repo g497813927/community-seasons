@@ -573,7 +573,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       });
       result.error = errorDetails(error);
       if (result.status === 'interrupted') result.interruption = { reason: stopReason, signal: invocation.stopSignal, requestedAt: invocation.stopRequestedAt };
-      if (/Source changed/.test(error.message)) stopReason ||= error.message;
+      if (!stopReason && /Source changed/.test(error.message)) signal(error.message);
       if (result.status === 'failed' && page && !page.isClosed()) {
         await page.screenshot({ path: path.join(caseDirectory, 'failure.png'), fullPage: true, timeout: 10000 })
           .then(() => { result.failureScreenshot = 'failure.png'; })
@@ -613,7 +613,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       while (!stopReason && nextJob < jobs.length) {
         const job = jobs[nextJob++];
         try { await runCase(job, index + 1); }
-        catch (error) { stopReason ||= error.message; console.error(error.stack); }
+        catch (error) { if (!stopReason) signal(error.message); console.error(error.stack); }
       }
     })()));
   } finally {
