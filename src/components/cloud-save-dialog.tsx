@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/dialog";
 import { BOOSTERS, PERMANENT_SKILLS, UPGRADE_BOOSTERS } from "@/lib/game/boosts";
 import type { SaveSnapshot } from "@/lib/game/cloud-save";
+import { ACCESSORIES, accessoryDefinition, type CosmeticSlot } from "@/lib/game/cosmetics";
 import { translate, type Locale } from "@/lib/game/i18n";
 import { sceneDefinition } from "@/lib/game/scenes";
+import { SKINS, skinDefinition } from "@/lib/game/skins";
 import "./cloud-save-dialog.css";
 
 export function CloudSaveDialog({
@@ -47,6 +49,15 @@ export function CloudSaveDialog({
     UPGRADE_BOOSTERS.filter(({ id }) => save.progress.levels[id] > 1).length;
   const inventoryCount = (save: SaveSnapshot) =>
     BOOSTERS.reduce((total, { id }) => total + save.progress.inventory[id], 0);
+  const accessorySlots: { id: CosmeticSlot; label: string; empty: string }[] = [
+    { id: "hat", label: t("Hats"), empty: t("No hat") },
+    { id: "shoes", label: t("Shoes"), empty: t("Default shoes") },
+    { id: "effect", label: t("Effects"), empty: t("No effect") },
+  ];
+  const equippedAccessory = (save: SaveSnapshot, slot: CosmeticSlot, empty: string) => {
+    const accessory = accessoryDefinition(save.progress.outfit[slot]);
+    return accessory ? t(accessory.name) : empty;
+  };
   const saves = [
     { id: "local", title: l("This device", "本机存档"), save: localSnapshot },
     ...(cloudSnapshot
@@ -68,6 +79,28 @@ export function CloudSaveDialog({
       label: l("Stored boosters", "持有道具"),
       value: (save: SaveSnapshot) => number(inventoryCount(save)),
     },
+    {
+      label: l("Owned skins", "已拥有皮肤"),
+      value: (save: SaveSnapshot) =>
+        SKINS.filter((skin) => save.progress.ownedSkins.includes(skin.id))
+          .map((skin) => t(skin.name))
+          .join(l(", ", "、")),
+    },
+    {
+      label: l("Equipped skin", "已装备皮肤"),
+      value: (save: SaveSnapshot) => t(skinDefinition(save.progress.equippedSkin).name),
+    },
+    {
+      label: l("Owned accessories", "已拥有饰品"),
+      value: (save: SaveSnapshot) =>
+        ACCESSORIES.filter((item) => save.progress.ownedAccessories.includes(item.id))
+          .map((item) => t(item.name))
+          .join(l(", ", "、")) || l("None", "暂无"),
+    },
+    ...accessorySlots.map(({ id, label, empty }) => ({
+      label: l(`Equipped ${id}`, `已装备${label}`),
+      value: (save: SaveSnapshot) => equippedAccessory(save, id, empty),
+    })),
     {
       label: l("Last season", "上次场景"),
       value: (save: SaveSnapshot) => t(sceneDefinition(save.scene).name),
@@ -143,11 +176,41 @@ export function CloudSaveDialog({
         </table>
 
         <details className="cloud-save-details">
-          <summary>{l("View skills, levels and boosters", "查看技能、等级与道具")}</summary>
+          <summary>{l("View outfits, skills, levels and boosters", "查看装扮、技能、等级与道具")}</summary>
           <div className="cloud-save-detail-grid">
             {saves.map(({ id, title, save }) => (
               <section key={id} aria-label={title}>
                 <h3>{title}</h3>
+                <h4>{l("TV skins", "小电视皮肤")}</h4>
+                <ul>
+                  {SKINS.map((skin) => (
+                    <li key={skin.id}>
+                      <span>{t(skin.name)}</span>
+                      <span>
+                        {save.progress.equippedSkin === skin.id
+                          ? l("Equipped", "已装备")
+                          : save.progress.ownedSkins.includes(skin.id)
+                            ? l("Owned", "已拥有")
+                            : l("Locked", "未解锁")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <h4>{l("Owned accessories", "已拥有饰品")}</h4>
+                <ul className="cloud-save-accessories">
+                  {accessorySlots.map(({ id: slot, label }) => (
+                    <li key={slot}>
+                      <span>{label}</span>
+                      <span>
+                        {ACCESSORIES.filter(
+                          (item) => item.slot === slot && save.progress.ownedAccessories.includes(item.id),
+                        )
+                          .map((item) => t(item.name))
+                          .join(l(", ", "、")) || l("None", "暂无")}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
                 <h4>{l("Permanent skills", "永久技能")}</h4>
                 <ul>
                   {PERMANENT_SKILLS.map((skill) => (
@@ -198,12 +261,12 @@ export function CloudSaveDialog({
         <p className="cloud-save-consequence">
           {cloudSnapshot
             ? l(
-                "Saves are not merged. The save you choose will replace the other one, including coins, purchases and your last season.",
-                "存档不会合并。选中的存档将覆盖另一份，包括金币、购买内容和上次场景。",
+                "Saves are not merged. The save you choose will replace the other one, including coins, purchases, owned skins and accessories, your equipped outfit, and your last season.",
+                "存档不会合并。选中的存档将覆盖另一份，包括金币、购买内容、已拥有的皮肤与饰品、当前装扮，以及上次场景。",
               )
             : l(
-                "Your coins, purchases, best score and last season will be saved to this Bilibili account.",
-                "金币、购买内容、最高分和上次场景将保存到这个哔哩哔哩账号。",
+                "Your coins, purchases, owned skins and accessories, equipped outfit, best score and last season will be saved to this Bilibili account.",
+                "金币、购买内容、已拥有的皮肤与饰品、当前装扮、最高分和上次场景将保存到这个哔哩哔哩账号。",
               )}
         </p>
         {error && (

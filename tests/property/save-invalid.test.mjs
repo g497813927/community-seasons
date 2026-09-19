@@ -258,6 +258,27 @@ property(
       );
   },
 );
+property(
+  "cloud-envelope-cosmetic-fields-match-the-declared-version",
+  [valid, fc.constantFrom(1, 2, 3), fc.subarray(["ownedSkins", "equippedSkin", "ownedAccessories", "outfit"])],
+  (snapshot, version, omitted) => {
+    const input = structuredClone(snapshot);
+    for (const field of omitted) delete input.progress[field];
+    const text = JSON.stringify({ version, revision: "version_boundary", payload: input });
+    const required = version === 3 ? ["ownedSkins", "equippedSkin", "ownedAccessories", "outfit"]
+      : version === 2 ? ["ownedSkins", "equippedSkin"] : [];
+    const partialPair = [["ownedSkins", "equippedSkin"], ["ownedAccessories", "outfit"]]
+      .some(([owned, equipped]) => omitted.includes(owned) !== omitted.includes(equipped));
+    if (partialPair || required.some((field) => omitted.includes(field))) {
+      classifiedReject(() => decodeCloudSave(text));
+      return;
+    }
+    const expected = structuredClone(snapshot);
+    const defaults = createProgress();
+    for (const field of omitted) expected.progress[field] = defaults[field];
+    assert.deepEqual(decodeCloudSave(text).payload, expected);
+  },
+);
 property("cloud-unknown-shapes-reject-or-normalize", [unknown], (value) => {
   const before = structuredClone(value);
   let result;
