@@ -1,0 +1,15 @@
+{
+  "extends": "../../../src/tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true, "checkJs": false,
+    "paths": {
+      "@/*": ["../../../src/*"],
+      "react": ["../../../src/node_modules/@types/react"],
+      "react/*": ["../../../src/node_modules/@types/react/*"],
+      "react-dom/*": ["../../../src/node_modules/@types/react-dom/*"]
+    },
+    "typeRoots": ["../../../src/node_modules/@types", "../../../node_modules"]
+  },
+  "include": ["*.ts", "*.tsx", "*.mjs"],
+  "exclude": ["dist"]
+}
