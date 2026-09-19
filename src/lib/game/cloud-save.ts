@@ -1,5 +1,7 @@
 import { isSceneKind, type SceneKind } from "./scenes";
 import { readProgress, type Progress } from "./store";
+import { DEFAULT_SKIN, isSkinId } from "./skins";
+import { COSMETIC_SLOTS, isAccessoryId, isAccessoryForSlot } from "./cosmetics";
 
 export const CLOUD_SAVE_KEY = "community-seasons-save-v1";
 export const CLOUD_SYNC_KEY = "community-seasons-cloud-sync-v1";
@@ -39,7 +41,7 @@ export interface CloudSaveState {
 }
 
 interface CloudEnvelope {
-  version: 1;
+  version: 1 | 2 | 3;
   revision: string;
   payload: SaveSnapshot;
 }
@@ -126,6 +128,37 @@ export function normalizeSaveSnapshot(value: unknown): SaveSnapshot {
       !(p.skills[String(p.equippedSkill)] as Record<string, unknown>).unlocked)
   )
     throw new SaveError("invalid-save");
+  // Legacy saves have neither skin field. Once either is present, validate
+  // the complete pair so another client's newer cosmetics are never erased.
+  if ("ownedSkins" in p || "equippedSkin" in p) {
+    if (
+      !Array.isArray(p.ownedSkins) ||
+      !p.ownedSkins.every(isSkinId) ||
+      !p.ownedSkins.includes(DEFAULT_SKIN) ||
+      new Set(p.ownedSkins).size !== p.ownedSkins.length ||
+      !isSkinId(p.equippedSkin) ||
+      !p.ownedSkins.includes(p.equippedSkin)
+    )
+      throw new SaveError("invalid-save");
+  }
+  // Missing fields are a legacy save. Present fields must form a complete,
+  // known and owned outfit; never silently drop another client's purchases.
+  if ("ownedAccessories" in p || "outfit" in p) {
+    if (
+      !Array.isArray(p.ownedAccessories) ||
+      !p.ownedAccessories.every(isAccessoryId) ||
+      new Set(p.ownedAccessories).size !== p.ownedAccessories.length ||
+      !isRecord(p.outfit) ||
+      Object.keys(p.outfit).length !== COSMETIC_SLOTS.length
+    )
+      throw new SaveError("invalid-save");
+    const { outfit, ownedAccessories } = p;
+    for (const slot of COSMETIC_SLOTS) {
+      const selected = outfit[slot];
+      if (selected !== null && (!isAccessoryForSlot(slot, selected) || !ownedAccessories.includes(selected)))
+        throw new SaveError("invalid-save");
+    }
+  }
   return {
     version: 1,
     progress: readProgress(JSON.stringify(p)),
@@ -140,7 +173,9 @@ function snapshotText(value: SaveSnapshot): string {
 
 export function encodeCloudSave(payload: SaveSnapshot, revision: string): string {
   if (!/^[A-Za-z0-9_-]{1,80}$/.test(revision)) throw new SaveError("invalid-save");
-  const text = JSON.stringify({ version: 1, revision, payload: normalizeSaveSnapshot(payload) });
+  // Older clients reject this envelope before they can discard purchased accessories.
+  // Keep the storage key stable so those clients cannot overwrite a newer save.
+  const text = JSON.stringify({ version: 3, revision, payload: normalizeSaveSnapshot(payload) });
   if (new TextEncoder().encode(text).byteLength > 1024) throw new SaveError("too-large");
   return text;
 }
@@ -151,12 +186,12 @@ export function decodeCloudSave(text: string): CloudEnvelope {
     const value: unknown = JSON.parse(text);
     if (
       !isRecord(value) ||
-      value.version !== 1 ||
+      (value.version !== 1 && value.version !== 2 && value.version !== 3) ||
       typeof value.revision !== "string" ||
       !/^[A-Za-z0-9_-]{1,80}$/.test(value.revision)
     )
       throw new SaveError("invalid-save");
-    return { version: 1, revision: value.revision, payload: normalizeSaveSnapshot(value.payload) };
+    return { version: value.version, revision: value.revision, payload: normalizeSaveSnapshot(value.payload) };
   } catch (error) {
     throw error instanceof SaveError ? error : new SaveError("invalid-save");
   }
