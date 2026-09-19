@@ -11,6 +11,7 @@ import { matrixSourceHashes } from '../outfit-matrix/build-info.mjs';
 import { fixtureHandler } from './runtime.mjs';
 import { reportPath } from './report-path.mjs';
 import { assertCompletedRailReward } from './rail-reward.mjs';
+import { MATRIX_BROWSER_LAUNCH_OPTIONS, assertFixtureHealthy, bounded, caseFailureStatus, closeMatrixResources } from './matrix-shutdown.mjs';
 
 // Real wall-clock rendering soak, deliberately without Playwright clock APIs.
 // The authored renderer stages and actual App interaction checks are reported
@@ -29,15 +30,6 @@ const HATS = [null, 'cap', 'crown', 'sprout'];
 const SHOES = [null, 'sneakers', 'boots', 'skates'];
 const EFFECTS = [null, 'sparkles', 'petals', 'orbit'];
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-async function bounded(promise, milliseconds, label) {
-  let timer;
-  try {
-    return await Promise.race([promise, new Promise((_, reject) => {
-      timer = setTimeout(() => reject(Error(`${label} exceeded ${milliseconds}ms.`)), milliseconds);
-    })]);
-  } finally { clearTimeout(timer); }
-}
-
 function parseArgs(args) {
   if (args.length === 1 && ['--help', '-h'].includes(args[0])) return { help: true };
   const options = { engine: 'all', workers: 2, duration: 60, limit: null, resume: null, explicit: [] };
@@ -101,7 +93,7 @@ and all non-fixture requests are blocked. No Toy saves or devices are used.`);
   assert.deepEqual(changedFiles(build.sourceHashes, await currentHashes()), [], 'Matrix fixture build is stale; rebuild after finishing source edits.');
   const harnessHashes = await fileHashes(ROOT, [
     'tests/qa/web/outfit-matrix.mjs', 'tests/qa/web/runtime.mjs', 'tests/qa/web/report-path.mjs',
-    'tests/qa/web/rail-reward.mjs',
+    'tests/qa/web/rail-reward.mjs', 'tests/qa/web/matrix-shutdown.mjs',
     'tests/qa/preview/build-info.mjs', 'tests/qa/preview/provenance.mjs',
   ].map(file => path.join(ROOT, file)));
   const fixtureBuildHash = digest(build);
@@ -176,7 +168,7 @@ and all non-fixture requests are blocked. No Toy saves or devices are used.`);
   const invocation = {
     id: checkpoint.invocations.length + 1, startedAt: new Date().toISOString(),
     workers: options.workers, limit: options.limit, explicitlyPartial: options.limit !== null,
-    plannedCases: jobs.map(item => item.id), completedAt: null,
+    plannedCases: jobs.map(item => item.id), completedAt: null, stopReason: null, stopSignal: null, stopRequestedAt: null,
   };
   checkpoint.invocations.push(invocation);
   let stopReason = null, active = 0, nextJob = 0, persisted = Promise.resolve(), shuttingDown = false;
@@ -253,11 +245,19 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     })();
     try { await sourceCheck; } finally { sourceCheck = null; }
   }
-  const signal = name => { stopReason ||= name; console.log(`Stopping after checkpoint: ${name}`); };
+  const signal = name => {
+    stopReason ||= name;
+    invocation.stopReason = stopReason;
+    invocation.stopRequestedAt ||= new Date().toISOString();
+    if (['SIGINT', 'SIGTERM', 'SIGHUP'].includes(name)) invocation.stopSignal ||= name;
+    console.log(`Stopping after checkpoint: ${name}`);
+  };
   const onInterrupt = () => signal('SIGINT');
   const onTerminate = () => signal('SIGTERM');
+  const onHangup = () => signal('SIGHUP');
   process.on('SIGINT', onInterrupt);
   process.on('SIGTERM', onTerminate);
+  process.on('SIGHUP', onHangup);
   await persist();
 
   const server = http.createServer(fixtureHandler(DIST, PREFIX));
@@ -278,12 +278,11 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     }, { method, args, expected: build.sourceHashes, fixtureId: FIXTURE_ID }), 15000, `Renderer ${method}`);
   }
 
-  function validateSnapshot(snapshot, definition, { final = false } = {}) {
+  function validateSnapshot(snapshot, definition, { final = false, interruptedBy } = {}) {
     assert.equal(snapshot.caseId, definition.id);
     assert.ok(finite(snapshot.elapsedMs) && snapshot.elapsedMs >= 0, 'Elapsed time must be finite.');
     assert.ok(Number.isInteger(snapshot.frames) && snapshot.frames >= 0, 'Frame count must be finite.');
-    assert.deepEqual(snapshot.errors, [], 'Renderer reported an error.');
-    assert.notEqual(snapshot.status, 'failed', 'Renderer fixture failed.');
+    assertFixtureHealthy(snapshot, { renderer: true, interruptedBy });
     assert.equal(snapshot.environment.visible, true, 'Renderer tab must remain visible.');
     assert.equal(snapshot.canvas.finite, true, 'Canvas geometry must remain finite.');
     assert.ok(finite(snapshot.canvas.width) && snapshot.canvas.width > 0 && finite(snapshot.canvas.height) && snapshot.canvas.height > 0, 'Canvas dimensions must be finite and positive.');
@@ -310,9 +309,11 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     while (snapshot.status === 'running') {
       if (stopReason) {
         result.renderer.final = await rendererSnapshot(page, 'stop', [stopReason]);
+        validateSnapshot(result.renderer.final, job.definition, { interruptedBy: stopReason });
         throw Object.assign(Error(`Interrupted by ${stopReason}`), { interrupted: true });
       }
       await wait(Math.min(POLICY.pollMs, Math.max(500, options.duration * 1000 - snapshot.elapsedMs)));
+      if (stopReason) continue;
       await verifySources();
       snapshot = await rendererSnapshot(page, 'snapshot');
       validateSnapshot(snapshot, job.definition);
@@ -359,8 +360,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       assert.equal(snapshot.skin, job.definition.skin);
       assert.deepEqual(snapshot.outfit, job.definition.outfit);
       assert.equal(snapshot.environment.visible, 'visible');
-      assert.deepEqual(snapshot.errors, [], 'Production App raised a functional error.');
-      assert.deepEqual(snapshot.violations, [], 'Functional probe detected a production invariant failure.');
+      assertFixtureHealthy(snapshot);
       assert.ok([snapshot.elapsedMs, snapshot.distance, snapshot.x, snapshot.coins, snapshot.sceneTransition, snapshot.railReturnRemaining].every(finite), 'Production state must remain finite.');
       assert.equal(snapshot.ui.canvas, true);
       assert.equal(snapshot.ui.storeOpen, false, 'Store overlay must remain closed during actual gameplay.');
@@ -388,6 +388,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       while (!completed) {
         if (stopReason) {
           row.final = await invoke('stop');
+          validate(row.final, scenario);
           throw Object.assign(Error(`Interrupted by ${stopReason}`), { interrupted: true });
         }
         if (performance.now() - hostStarted > 88000) throw Error(`${scenario} exceeded its 88-second functional bound.`);
@@ -567,19 +568,23 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       await verifySources(true);
       result.status = 'passed';
     } catch (error) {
-      result.status = error.interrupted ? 'interrupted' : 'failed';
+      result.status = caseFailureStatus(error, {
+        stopSignal: invocation.stopSignal, pageErrors: result.errors, blockedRequests: result.blockedRequests,
+      });
       result.error = errorDetails(error);
+      if (result.status === 'interrupted') result.interruption = { reason: stopReason, signal: invocation.stopSignal, requestedAt: invocation.stopRequestedAt };
       if (/Source changed/.test(error.message)) stopReason ||= error.message;
-      if (page && !page.isClosed()) {
+      if (result.status === 'failed' && page && !page.isClosed()) {
         await page.screenshot({ path: path.join(caseDirectory, 'failure.png'), fullPage: true, timeout: 10000 })
           .then(() => { result.failureScreenshot = 'failure.png'; })
           .catch(capture => { result.screenshotError = capture.message; });
       }
     } finally {
-      await context?.close().catch(error => { result.contextCloseError = error.message; });
+      if (context) await bounded(context.close(), 10000, 'Case context close').catch(error => { result.contextCloseError = error.message; });
       result.completedAt = new Date().toISOString();
       result.hostElapsedMs = performance.now() - hostStarted;
       record.status = result.status;
+      if (result.interruption) record.interruption = result.interruption;
       record.completedAt = result.completedAt;
       record.hostElapsedMs = result.hostElapsedMs;
       record.rendererHostElapsedMs = result.renderer?.hostElapsedMs ?? null;
@@ -597,7 +602,8 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
 
   try {
     for (const engine of manifest.engines) {
-      const browser = await ENGINES[engine].launch({ headless: true });
+      if (stopReason) break;
+      const browser = await ENGINES[engine].launch(MATRIX_BROWSER_LAUNCH_OPTIONS);
       browser.on('disconnected', () => {
         if (!shuttingDown) signal(`${engine} browser process disconnected`);
       });
@@ -612,15 +618,16 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     })()));
   } finally {
     shuttingDown = true;
-    await Promise.allSettled([...browsers.values()].map(browser => browser.close()));
-    await new Promise(resolve => server.close(resolve));
+    invocation.cleanupErrors = await closeMatrixResources(browsers, server);
     invocation.completedAt = new Date().toISOString();
+    invocation.stopReason = stopReason;
     process.removeListener('SIGINT', onInterrupt);
     process.removeListener('SIGTERM', onTerminate);
+    process.removeListener('SIGHUP', onHangup);
     await persist();
     const final = summary();
     console.log(JSON.stringify({ output, ...final }, null, 2));
-    if (stopReason || final.counts.failed || final.counts.interrupted) process.exitCode = 1;
+    if (stopReason || final.counts.failed || final.counts.interrupted || invocation.cleanupErrors.length) process.exitCode = 1;
   }
 }
 
