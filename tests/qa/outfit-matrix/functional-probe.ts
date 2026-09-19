@@ -6,6 +6,7 @@ import { ACCESSORIES } from '../../../src/lib/game/cosmetics';
 import type { registerGameTools } from '../../../src/lib/game/tools';
 import { readEmbeddedBuildInfo } from '../preview/provenance.mjs';
 import { caseById, type MatrixCase } from './cases';
+import { createRailCompletionObserver } from './rail-completion.mjs';
 
 export const FUNCTIONAL_PREFIX = 'qa-community-seasons-outfit-functional-v1:';
 type Binding = Parameters<typeof registerGameTools>;
@@ -21,6 +22,7 @@ const displayedQuestions: string[] = [];
 const phaseHistory: Array<{phase: string; mode: string; elapsedMs: number; scene: string; question: number | null}> = [];
 const violations: string[] = [];
 const errors: string[] = [];
+const railCompletion = createRailCompletionObserver();
 let raf = 0;
 
 function phase(run: RunState) {
@@ -33,6 +35,7 @@ function phase(run: RunState) {
 function observe() {
   if (!binding || !selected || !active) return;
   const run = binding[0]();
+  railCompletion.observe(run);
   const current = phase(run);
   const previous = phaseHistory.at(-1);
   if (previous?.phase !== current || previous?.mode !== run.mode || previous?.scene !== run.scene || previous?.question !== (run.rail?.index ?? null)) {
@@ -64,7 +67,8 @@ function snapshot() {
     ready: true, active, caseId: selected?.id ?? null, scenario, elapsedMs: startedAt ? performance.now() - startedAt : 0,
     mode: run.mode, scene: run.scene, expectedDestination: selected ? nextScene(selected.scene) : null,
     skin: run.skin, outfit: {...run.outfit}, lane: run.lane, x: run.x, distance: run.distance,
-    coins: run.coins, initialCoins, sceneTransition: run.sceneTransition, railReturnRemaining: run.railReturnRemaining,
+    coins: run.coins, initialCoins, railCompletion: railCompletion.snapshot(),
+    sceneTransition: run.sceneTransition, railReturnRemaining: run.railReturnRemaining,
     rail: ride ? {
       phase: ride.phase, index: ride.index, count: ride.questions.length,
       remaining: ride.remaining, duration: ride.duration, correctCount: ride.correctCount,
@@ -122,6 +126,7 @@ function prepare(caseId: string, requested: Scenario) {
   // loop enters and advances travel, boarding, questions, feedback and return.
   // This API deliberately has no answer submission or phase-advance operation.
   initialCoins = run.coins;
+  railCompletion.reset();
   phaseHistory.length = 0;
   violations.length = 0;
   startedAt = performance.now();

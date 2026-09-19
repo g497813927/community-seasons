@@ -10,6 +10,7 @@ import { validateBuildInfo } from '../preview/provenance.mjs';
 import { matrixSourceHashes } from '../outfit-matrix/build-info.mjs';
 import { fixtureHandler } from './runtime.mjs';
 import { reportPath } from './report-path.mjs';
+import { assertCompletedRailReward } from './rail-reward.mjs';
 
 // Real wall-clock rendering soak, deliberately without Playwright clock APIs.
 // The authored renderer stages and actual App interaction checks are reported
@@ -100,6 +101,7 @@ and all non-fixture requests are blocked. No Toy saves or devices are used.`);
   assert.deepEqual(changedFiles(build.sourceHashes, await currentHashes()), [], 'Matrix fixture build is stale; rebuild after finishing source edits.');
   const harnessHashes = await fileHashes(ROOT, [
     'tests/qa/web/outfit-matrix.mjs', 'tests/qa/web/runtime.mjs', 'tests/qa/web/report-path.mjs',
+    'tests/qa/web/rail-reward.mjs',
     'tests/qa/preview/build-info.mjs', 'tests/qa/preview/provenance.mjs',
   ].map(file => path.join(ROOT, file)));
   const fixtureBuildHash = digest(build);
@@ -380,7 +382,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       result.functional.scenarios.push(row);
       const answered = new Set();
       const seenPictures = new Set();
-      let rideCount, startingQuestionIds, expectedReward = 0;
+      let rideCount, startingQuestionIds;
       let timeoutQuestion = null;
       let completed = false;
       while (!completed) {
@@ -420,7 +422,6 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
             startingQuestionIds ??= snapshot.rail.questionIds;
             assert.ok(rideCount === 3 || rideCount === 4, 'Actual train must contain three or four questions.');
             assert.deepEqual(snapshot.rail.questionIds, startingQuestionIds, 'Question deck changed during the ride.');
-            expectedReward = Math.max(expectedReward, snapshot.rail.reward);
           }
           if (snapshot.rail?.phase === 'question' && !answered.has(snapshot.rail.index)) {
             const pendingQuestion = snapshot.rail.questionId;
@@ -473,8 +474,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
             assert.equal(answered.size, rideCount, 'Every train question must be answered through the real UI.');
             for (const expected of ['rail:boarding', 'rail:question', 'rail:feedback', 'rail:complete', 'rail:return'])
               assert.ok(phases.has(expected), `Missing production train phase ${expected}.`);
-            assert.ok(expectedReward > 0, 'Completed train must award coins.');
-            assert.equal(snapshot.coins, snapshot.initialCoins + expectedReward, 'The train reward must be awarded exactly once.');
+            assertCompletedRailReward(snapshot, rideCount);
             const returned = snapshot;
             const stabilityStarted = performance.now();
             await wait(500);
