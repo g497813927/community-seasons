@@ -2,7 +2,7 @@ import type { EffectId, HatId, ShoesId } from "../../cosmetics";
 import type { Renderer } from "../../render";
 import type { V } from "../types";
 
-type ModelRenderer = Pick<Renderer, "face" | "box">;
+type ModelRenderer = Pick<Renderer, "face" | "box" | "faces">;
 type Attachment = (x: number, up: number, depth: number) => V;
 
 /** All accessories share the TV's pose transform; they never change its collider. */
@@ -19,9 +19,14 @@ export function drawHat(renderer: ModelRenderer, hat: HatId, attached: Attachmen
     ];
     panel(dome, 0.24, coral[1]);
     panel(dome, -0.24, coral[0]);
-    for (let edge = 1; edge < dome.length; edge++) {
+    for (let edge = 0; edge < dome.length; edge++) {
       const a = dome[edge], b = dome[(edge + 1) % dome.length];
-      renderer.face([attached(...a, -0.24), attached(...a, 0.24), attached(...b, 0.24), attached(...b, -0.24)], coral[2]);
+      const points = [attached(...a, -0.24), attached(...a, 0.24), attached(...b, 0.24), attached(...b, -0.24)];
+      const previousCount = renderer.faces.length;
+      renderer.face(edge === 0 ? points.reverse() : points, coral[2]);
+      // The underside is exposed while sliding. Cull it when viewed from above
+      // so a hidden base cannot overpaint the visible dome in depth sorting.
+      if (edge === 0 && renderer.faces.length > previousCount) renderer.faces[renderer.faces.length - 1].cull = true;
     }
     // A backwards brim makes the baseball cap legible from the chase camera.
     box(0, 0.47, -0.34, 0.8, 0.06, 0.45, coral);

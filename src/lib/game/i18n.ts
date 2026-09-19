@@ -276,6 +276,7 @@ const ZH: Readonly<Record<string, string>> = {
   "Choose an accessory from the store.": "请在商店中选择一款饰品。",
   "This accessory is already permanently unlocked.": "这款饰品已永久解锁。",
   "Choose an accessory category.": "请选择一个饰品分类。",
+  "Choose an accessory for this category.": "请选择此分类的饰品。",
   "Unlock this accessory before equipping it.": "请先解锁这款饰品，再装备它。",
   "Accessory removed.": "已移除饰品。",
   "Classic TV": "经典小电视",

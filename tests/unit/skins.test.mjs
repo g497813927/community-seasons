@@ -73,11 +73,15 @@ test("failed skin purchases and locked or invalid selections preserve wallet and
     const before = structuredClone(progress);
     for (const id of ids.slice(1)) {
       assert.equal(buySkin(progress, id).ok, false);
-      assert.equal(equipSkin(progress, id).ok, false);
+      assert.deepEqual(equipSkin(progress, id), {
+        ok: false, message: "Unlock this skin before equipping it.",
+      });
     }
     for (const bad of [undefined, null, "future-skin", "__proto__", 1, {}]) {
       assert.equal(buySkin(progress, bad).ok, false);
-      assert.equal(equipSkin(progress, bad).ok, false);
+      assert.deepEqual(equipSkin(progress, bad), {
+        ok: false, message: "Choose a TV skin from the store.",
+      });
     }
     assert.equal(buySkin(progress, "classic").ok, false);
     assert.deepEqual(progress, before);

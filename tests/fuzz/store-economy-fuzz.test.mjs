@@ -420,6 +420,8 @@ test("deterministic economy/save action sequences preserve money, inventory, eli
   }
   for (const op of only === null ? ["buy", "upgrade", "unlock", "equip", "owned", "buy-skin", "equip-skin", "buy-accessory", "equip-accessory"] : [])
     assert.ok(stats.success[op] > 0 && stats.failure[op] > 0, `insufficient ${op} coverage`);
+  if (only === null)
+    assert.ok(stats.success["remove-accessory"] > 0, "insufficient remove-accessory coverage");
 });
 test("seeded charging cycles block all active-effect coins and resume only after expiry", () => {
   for (let seed = 1; seed <= 48; seed++)

@@ -286,7 +286,8 @@ export function buySkin(progress: Progress, kind: SkinId): StoreResult {
   };
 }
 export function equipSkin(progress: Progress, kind: SkinId): StoreResult {
-  if (!isSkinId(kind) || !progress.ownedSkins.includes(kind))
+  if (!isSkinId(kind)) return { ok: false, message: "Choose a TV skin from the store." };
+  if (!progress.ownedSkins.includes(kind))
     return { ok: false, message: "Unlock this skin before equipping it." };
   return {
     ok: true,
@@ -323,8 +324,12 @@ export function equipAccessory(
   kind: AccessoryId | null,
 ): StoreResult {
   if (!COSMETIC_SLOTS.includes(slot)) return { ok: false, message: "Choose an accessory category." };
-  if (kind !== null && (!isAccessoryForSlot(slot, kind) || !progress.ownedAccessories.includes(kind)))
-    return { ok: false, message: "Unlock this accessory before equipping it." };
+  if (kind !== null) {
+    if (!accessoryDefinition(kind)) return { ok: false, message: "Choose an accessory from the store." };
+    if (!isAccessoryForSlot(slot, kind)) return { ok: false, message: "Choose an accessory for this category." };
+    if (!progress.ownedAccessories.includes(kind))
+      return { ok: false, message: "Unlock this accessory before equipping it." };
+  }
   return {
     ok: true,
     message: kind === null ? "Accessory removed." : `${accessoryDefinition(kind)!.name} equipped.`,

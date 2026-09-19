@@ -6,6 +6,8 @@ const { createRun, advancePreview, SLIDE_DURATION, JUMP_DURATION, EDGE_STUMBLE_D
 const { createOutfit, ACCESSORIES } = await import("../helpers/compiled/cosmetics.mjs");
 const { createRailRide } = await import("../helpers/compiled/railway.mjs");
 const { SKINS, skinDefinition } = await import("../helpers/compiled/skins.mjs");
+const { drawHat } = await import("../helpers/compiled/render/characters/cosmetics.mjs");
+const { paintFaces } = await import("../helpers/compiled/render/paint.mjs");
 
 globalThis.window = { devicePixelRatio: 1 };
 const noop = () => {};
@@ -24,6 +26,52 @@ const outfits = [];
 for (const hat of [null, "cap", "crown", "sprout"])
   for (const shoes of [null, "sneakers", "boots", "skates"])
     for (const effect of [null, "sparkles", "petals", "orbit"]) outfits.push({ hat, shoes, effect });
+
+test("the cap shell has no open boundary, including the underside exposed by sliding", () => {
+  const faces = [];
+  drawHat({ faces, box: noop, face(points, color) { faces.push({ points, color }); } }, "cap", (x, y, z) => [x, y, z], 0);
+  const shell = faces.filter((face) => ["#f07b7b", "#b84560", "#ffc0a5"].includes(face.color));
+  const incidence = new Map();
+  for (const { points } of shell) for (let i = 0; i < points.length; i++) {
+    const edge = [points[i].join(","), points[(i + 1) % points.length].join(",")].sort().join("|");
+    incidence.set(edge, (incidence.get(edge) ?? 0) + 1);
+  }
+  for (const [edge, count] of incidence) assert.equal(count, 2, `open cap edge: ${edge}`);
+  const underside = shell.find(({ points }) => points.every((point) => point[1] === 0.45));
+  assert.ok(underside, "the cap has no underside");
+  assert.equal(underside.cull, true, "hidden underside must not overpaint the dome");
+
+  for (const slide of [0, SLIDE_DURATION / 2]) {
+    const view = renderer();
+    const state = Object.assign(createRun(), { mode: "running", slide, outfit: { hat: "cap", shoes: null, effect: null } });
+    view.runner(state, 0);
+    const base = view.faces.find((face) => face.cull);
+    assert.ok(base);
+    assert.equal(view.frontFacing(view.faceView(base)), slide > 0, "underside visibility must follow the TV pose");
+    // Isolate this face: the real painter must omit the upright underside,
+    // yet draw it when sliding reveals the open base.
+    view.faces = [base];
+    let fills = 0;
+    view.ctx.fill = () => fills++;
+    paintFaces(view, "spring");
+    assert.equal(fills, slide > 0 ? 1 : 0);
+  }
+
+  const preview = getSkinPreview("classic", { hat: "cap", shoes: null, effect: null });
+  // The store camera looks down on the hat: only six upper shell panels show.
+  assert.equal(preview.filter((face) => face.fill === "#ffc0a5").length, 7);
+});
+
+test("a cap behind the camera never marks another object's face for culling", () => {
+  const view = renderer();
+  view.face([[0, 0, 0], [1, 0, 0], [0, 1, 0]], "#123456");
+  const before = structuredClone(view.faces);
+  drawHat(view, "cap", (x, y, z) => [x, y, z - 30], 0);
+  assert.deepEqual(view.faces, before);
+  view.faces = [];
+  assert.doesNotThrow(() => drawHat(view, "cap", (x, y, z) => [x, y, z - 30], 0));
+  assert.deepEqual(view.faces, []);
+});
 
 test("all 64 outfits stay finite and above the ground in every runner pose within a bounded drawing budget", () => {
   const poses = [
