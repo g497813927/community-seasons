@@ -101,7 +101,13 @@ test("invalid, wrong-slot, unowned and unaffordable accessory choices preserve t
       const result = buyAccessory(progress, id);
       assert.equal(result.ok, false);
       assert.equal(result.message, `Collect ${price - wallet} more coins to unlock ${name}.`);
-      assert.equal(equipAccessory(progress, slot, id).ok, false);
+      assert.deepEqual(equipAccessory(progress, slot, id), {
+        ok: false, message: "Unlock this accessory before equipping it.",
+      });
+      for (const wrongSlot of COSMETIC_SLOTS.filter((other) => other !== slot))
+        assert.deepEqual(equipAccessory(progress, wrongSlot, id), {
+          ok: false, message: "Choose an accessory for this category.",
+        });
       assert.deepEqual(progress, before);
     }
     const exact = buyAccessory({ ...createProgress(), wallet: price }, id);
@@ -113,16 +119,22 @@ test("invalid, wrong-slot, unowned and unaffordable accessory choices preserve t
     const before = structuredClone(progress);
     for (const invalid of [undefined, null, {}, 1, "future-item", "__proto__"]) {
       assert.equal(buyAccessory(progress, invalid).ok, false);
-      if (invalid !== null) assert.equal(equipAccessory(progress, "hat", invalid).ok, false);
-      assert.equal(equipAccessory(progress, invalid, null).ok, false);
+      if (invalid !== null) assert.deepEqual(equipAccessory(progress, "hat", invalid), {
+        ok: false, message: "Choose an accessory from the store.",
+      });
+      assert.deepEqual(equipAccessory(progress, invalid, null), {
+        ok: false, message: "Choose an accessory category.",
+      });
     }
     assert.deepEqual(progress, before);
   }
   const progress = buyAccessory({ ...createProgress(), wallet: 1000 }, "boots").progress;
   const before = structuredClone(progress);
   assert.equal(progress.wallet, 0);
-  assert.equal(equipAccessory(progress, "hat", "boots").ok, false);
-  assert.equal(equipAccessory(progress, "effect", "boots").ok, false);
+  for (const slot of ["hat", "effect"])
+    assert.deepEqual(equipAccessory(progress, slot, "boots"), {
+      ok: false, message: "Choose an accessory for this category.",
+    });
   assert.deepEqual(progress, before);
 });
 
