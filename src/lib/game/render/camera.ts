@@ -98,7 +98,12 @@ export function cameraPoint(renderer: Renderer, [x, y, z]: V): V {
   if (renderer.curveStrength > 0 || renderer.curveTail) {
     const along = renderer.curveAlong;
     const origin = renderer.turnPoint(along);
-    const point = renderer.turnPoint(along + z);
+    // Local objects stay on the selected lane as their rear crosses the
+    // junction. turnPoint's negative segment instead returns to the shared
+    // trunk for scenery; applying that lane offset to only the rear vertices
+    // tears the runner sideways for the first frames of a turn.
+    const depth = along + z;
+    const point = depth < 0 ? [0, depth, 0] : renderer.turnPoint(depth);
     const wx = point[0] - origin[0] + x * Math.cos(point[2]);
     const wz = point[1] - origin[1] - x * Math.sin(point[2]);
     const yaw = renderer.curveTail ? (renderer.curveDirection * Math.PI) / 2 : renderer.cameraYaw;

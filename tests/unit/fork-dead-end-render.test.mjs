@@ -97,3 +97,24 @@ test("dead ends, signs and course objects stay in place when committing to the o
     assert.equal(r.forkBlockedDirection, 0, "closure leaks into ordinary road");
   }
 });
+
+test("a departing dead-end wall remains visible after the junction passes five meters behind the runner", () => {
+  for (const blocked of [-1, 1]) for (const speed of [15, 66, 132]) {
+    const { r, s } = setup(blocked, "spring", speed);
+    s.distance = 472; s.lane = -blocked; s.x = -blocked * LANE_WIDTH;
+    r.render(s, 0);
+    Object.assign(s, {
+      lastForkAt: 472, lastForkBlockedDirection: blocked, fork: null,
+      turnDirection: -blocked, turnEntryX: s.x, x: 0, lane: 0,
+    });
+    for (const along of [4.99, 5, 5.01, 5.25]) {
+      s.distance = 472 + along;
+      s.turnRemaining = TURN_DURATION * (1 - along / r.turnArcLength);
+      r.render(s, 0);
+      const wall = r.faces.filter(f => f.color === "#a94f45");
+      const projected = wall.flatMap(f => r.clipNear(r.faceView(f)).map(point => r.projectView(point)));
+      assert.ok(projected.some(([x, y]) => x >= 0 && x <= r.w && y >= 0 && y <= r.h),
+        `${blocked}/${speed}/${along}: the wall disappears while its upper face is still on screen`);
+    }
+  }
+});
