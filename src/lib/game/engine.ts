@@ -13,6 +13,8 @@ import {
   type BoostLevel,
 } from "./boosts";
 import { nextScene, type SceneKind } from "./scenes";
+import { DEFAULT_SKIN, type SkinId } from "./skins";
+import { createOutfit, type Outfit } from "./cosmetics";
 import { beginRailQuestion, createRailQuestionDeck, createRailRide, currentRailQuestion, type RailQuestionDeck, type RailRide } from "./railway";
 export { currentRailQuestion } from "./railway";
 
@@ -67,6 +69,8 @@ export interface RunState {
   review: PostReview | null;
   reviewedPosts: number;
   scene: SceneKind;
+  skin: SkinId;
+  outfit: Outfit;
   nextPortalAt: number;
   portalLane: number;
   milestone: number;
@@ -192,6 +196,8 @@ export function createRun(
     review: null,
     reviewedPosts: 0,
     scene,
+    skin: DEFAULT_SKIN,
+    outfit: createOutfit(),
     nextPortalAt: PORTAL_INTERVAL,
     portalLane: ((seed >>> 0) % 3) - 1,
     milestone: 0,
@@ -1110,7 +1116,7 @@ export function update(
 // A separate, deterministic attract-mode run. It uses normal physics and
 // collisions, steering toward the clear coin trail before each simulation step.
 export function advancePreview(s: RunState, seconds: number) {
-  if (s.mode === "over") Object.assign(s, createRun(s.seed + 1, s.scene));
+  if (s.mode === "over") Object.assign(s, createRun(s.seed + 1, s.scene), { skin: s.skin, outfit: { ...s.outfit } });
   // The home preview demonstrates the saved starting world without travelling.
   s.nextPortalAt = Infinity;
   s.nextForkAt = Infinity;

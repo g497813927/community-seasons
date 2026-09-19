@@ -3,6 +3,9 @@ import type { Locale } from "@/lib/game/i18n";
 import type { RailTravelFrame } from "@/lib/game/rail-transition";
 import type { Renderer } from "@/lib/game/render";
 import type { SceneKind } from "@/lib/game/scenes";
+import { DEFAULT_SKIN, type SkinId } from "@/lib/game/skins";
+import type { Outfit } from "@/lib/game/cosmetics";
+import { getSkinPreview } from "@/lib/game/render/skin-preview";
 import { travelPalette } from "@/lib/game/travel-colors";
 import { SeasonTravel } from "./season-travel";
 import "./rail-travel.css";
@@ -12,18 +15,22 @@ function DestinationPreview({
   scene,
   mode,
   label,
+  skin,
+  outfit,
 }: {
   renderer: Renderer | null;
   scene: SceneKind;
   mode: "rail" | "run";
   label: string;
+  skin: SkinId;
+  outfit?: Outfit;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    const source = renderer?.journeyPreview?.(scene, mode);
+    const source = renderer?.journeyPreview?.(scene, mode, skin, outfit);
     const context = canvas.current?.getContext("2d");
     if (source && context) context.drawImage(source, 0, 0, 256, 512);
-  }, [renderer, scene, mode]);
+  }, [renderer, scene, mode, skin, outfit]);
   return (
     <div className="rail-travel-preview">
       <canvas ref={canvas} width={256} height={512} role="img" aria-label={label} />
@@ -38,6 +45,8 @@ export function RailTravel({
   scene,
   renderer,
   paused,
+  skin = DEFAULT_SKIN,
+  outfit,
   onResume,
 }: {
   frame: RailTravelFrame | null;
@@ -45,10 +54,13 @@ export function RailTravel({
   scene: SceneKind;
   renderer: Renderer | null;
   paused: boolean;
+  skin?: SkinId;
+  outfit?: Outfit;
   onResume: () => void;
 }) {
   if (!frame) return null;
   const returning = frame.direction === "return";
+  const faces = getSkinPreview(skin, outfit);
   const zh = locale === "zh-CN";
   const colors = travelPalette(
     scene,
@@ -76,6 +88,8 @@ export function RailTravel({
           locale={locale}
           paused={paused}
           journey="rail-return"
+          skin={skin}
+          outfit={outfit}
           onResume={onResume}
         />
       </div>
@@ -87,6 +101,8 @@ export function RailTravel({
           renderer={renderer}
           scene={scene}
           mode="rail"
+          skin={skin}
+          outfit={outfit}
           label={zh ? "即将进入 · 社区铁路" : "NEXT · COMMUNITY RAILWAY"}
         />
         <svg className="rail-travel-art" viewBox="0 0 280 160" fill="none" aria-hidden="true">
@@ -103,21 +119,9 @@ export function RailTravel({
             strokeLinecap="round"
           />
           <g className="rail-travel-cart">
-            <path
-              d="M89 70l-6-15m54 15 6-15"
-              stroke="#74bed0"
-              strokeWidth="4"
-              strokeLinecap="round"
-            />
-            <rect x="83" y="67" width="62" height="43" rx="9" fill="#75cada" />
-            <rect x="91" y="75" width="46" height="27" rx="5" fill="#1a4545" />
-            <path
-              d="m100 85 4 3-4 3m26-6-4 3 4 3"
-              stroke="#e8e8c8"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
+            <g transform="translate(58 10) scale(.7)">
+              {faces.map((face, index) => <polygon key={index} points={face.points} fill={face.fill} />)}
+            </g>
             <path d="M77 107h78l-8 19H85z" fill="#cfa657" stroke="#f3d58c" strokeWidth="3" />
             <circle cx="92" cy="128" r="8" fill="#163e3b" stroke="#f3d58c" strokeWidth="3" />
             <circle cx="142" cy="128" r="8" fill="#163e3b" stroke="#f3d58c" strokeWidth="3" />

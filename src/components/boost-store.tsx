@@ -40,6 +40,9 @@ import {
 import { nextPortalScene, type Progress } from "@/lib/game/store";
 import { translate, type Locale } from "@/lib/game/i18n";
 import { SCENES, sceneDefinition, type SceneKind } from "@/lib/game/scenes";
+import type { SkinId } from "@/lib/game/skins";
+import type { AccessoryId, CosmeticSlot } from "@/lib/game/cosmetics";
+import { SkinStore } from "@/components/skin-store";
 const icons = {
   portal: Orbit,
   shield: Shield,
@@ -58,6 +61,10 @@ export function BoostStore({
   onUnlock,
   onEquip,
   onUpgrade,
+  onBuySkin,
+  onEquipSkin,
+  onBuyAccessory,
+  onEquipAccessory,
   runInProgress,
   message,
   savingAvailable,
@@ -72,6 +79,10 @@ export function BoostStore({
   onUnlock: (kind: BoostKind) => void;
   onEquip: (kind: BoostKind) => void;
   onUpgrade: (kind: BoostKind) => void;
+  onBuySkin: (skin: SkinId) => void;
+  onEquipSkin: (skin: SkinId) => void;
+  onBuyAccessory: (id: AccessoryId) => void;
+  onEquipAccessory: (slot: CosmeticSlot, id: AccessoryId | null) => void;
   runInProgress: boolean;
   message: string;
   savingAvailable: boolean;
@@ -85,10 +96,10 @@ export function BoostStore({
           <span className="store-eyebrow">
             <ShoppingBag size={16} /> {t("THE COMMUNITY STORE")}
           </span>
-          <DialogTitle className="store-title">{t("Tools for a kinder community.")}</DialogTitle>
+          <DialogTitle className="store-title">{t("Tools, skills, and a look of your own.")}</DialogTitle>
           <DialogDescription className="store-description">
             {t(
-              "Spend collected coins on helpful tools and lasting skills. Build momentum for the next journey.",
+              "Spend collected coins on helpful tools, lasting skills, and TV outfits.",
             )}
           </DialogDescription>
         </DialogHeader>
@@ -106,6 +117,7 @@ export function BoostStore({
               <InfinityIcon size={15} />
               {t("Permanent skills")}
             </TabsTrigger>
+            <TabsTrigger value="skins">{t("Skins")}</TabsTrigger>
             <TabsTrigger value="levels">{t("Levels")}</TabsTrigger>
           </TabsList>
           <TabsContent value="boosters">
@@ -293,6 +305,10 @@ export function BoostStore({
                 );
               })}
             </div>
+          </TabsContent>
+          <TabsContent value="skins">
+            <SkinStore locale={locale} progress={progress} onBuy={onBuySkin} onEquip={onEquipSkin}
+              onBuyAccessory={onBuyAccessory} onEquipAccessory={onEquipAccessory} />
           </TabsContent>
           <TabsContent value="levels">
             <p className="store-tab-note">

@@ -6,10 +6,12 @@ import {
   jumpHeight,
 } from "../../engine";
 import type { Renderer } from "../../render";
+import { skinDefinition } from "../../skins";
 import type { V } from "../types";
+import { drawHat, drawShoes, drawCosmeticEffect } from "./cosmetics";
 
 export function runner(
-  renderer: Renderer,
+  renderer: Pick<Renderer, "faces" | "face" | "box"> & Partial<Pick<Renderer, "reducedMotion">>,
   s: RunState,
   t: number,
   pose?: { seated?: number; elevation?: number; depth?: number; stride?: number },
@@ -31,8 +33,8 @@ export function runner(
     const base = standing.map((v, i) => mix(v, sliding[i]) * (1 - seated) + sitting[i] * seated);
     return [s.x + base[0], y + base[1], base[2] + (pose?.depth ?? 0)];
   };
-  const shell = ["#72d0e7", "#3295b3", "#b5eff9"];
-  const trim = ["#284c60", "#183444", "#4c7285"];
+  const palette = skinDefinition(s.skin).palette;
+  const { shell, trim } = palette;
   const segment = (a: V, b: V, width: number, depth: number, colors: string[]) => {
     const dx = b[0] - a[0],
       dy = b[1] - a[1],
@@ -80,19 +82,21 @@ export function runner(
       ],
       color,
     );
-  panelRect(0, 0, 0.79, 0.58, "#3295b3");
-  panelRect(0, 0, 0.71, 0.5, "#60bfd8");
-  for (const up of [-0.08, 0.035, 0.15]) panelRect(0, up, 0.43, 0.037, "#284c60");
-  panelRect(0.27, -0.17, 0.055, 0.045, "#f4a4bc");
+  panelRect(0, 0, 0.79, 0.58, shell[1]);
+  panelRect(0, 0, 0.71, 0.5, palette.panel);
+  for (const up of [-0.08, 0.035, 0.15]) panelRect(0, up, 0.43, 0.037, trim[0]);
+  panelRect(0.27, -0.17, 0.055, 0.045, palette.indicator);
   for (const side of [-1, 1]) {
     const swing = stride * side;
-    segment(
-      attached(side * 0.19, 0.41, 0.04),
-      attached(side * 0.37, 0.76, 0.04),
-      0.065,
-      0.065,
-      trim,
-    );
+    if (!s.outfit?.hat) {
+      segment(
+        attached(side * 0.19, 0.41, 0.04),
+        attached(side * 0.37, 0.76, 0.04),
+        0.065,
+        0.065,
+        trim,
+      );
+    }
     const hip = point(
       [side * 0.26, 0.53, 0],
       [side * 0.26, 0.25, 0.11],
@@ -104,17 +108,13 @@ export function runner(
       [side * 0.26, 0.65, 0.4],
     );
     segment(hip, ankle, 0.14, 0.16, trim);
-    renderer.box(
-      ...point(
-        [side * 0.26, 0.13, swing * 0.24],
-        [side * 0.3, 0.13, 0.86],
-        [side * 0.26, 0.61, 0.46],
-      ),
-      0.25,
-      0.2,
-      0.32,
-      trim,
+    const foot = point(
+      [side * 0.26, 0.13, swing * 0.24],
+      [side * 0.3, 0.13, 0.86],
+      [side * 0.26, 0.61, 0.46],
     );
+    if (s.outfit?.shoes) drawShoes(renderer, s.outfit.shoes, foot);
+    else renderer.box(...foot, 0.25, 0.2, 0.32, trim);
     segment(
       attached(side * 0.5, 0.06, 0),
       point(
@@ -127,6 +127,8 @@ export function runner(
       shell,
     );
   }
+  if (s.outfit?.hat) drawHat(renderer, s.outfit.hat, attached, lean);
+  if (s.outfit?.effect) drawCosmeticEffect(renderer, s.outfit.effect, attached, renderer.reducedMotion ? 0 : s.time);
   if (!s.rail && (s.boosts.rush > 0 || s.boosts.headstart > 0 || s.boosts.portal > 0)) {
     // A softly phased TV signals that these boosts pass through obstacles.
     // Simulation time freezes the pulse on pause; cart answers remain solid.

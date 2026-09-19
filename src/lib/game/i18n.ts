@@ -233,6 +233,78 @@ const ZH: Readonly<Record<string, string>> = {
   STORE: "商店",
   Store: "商店",
   "Open store": "打开商店",
+  Skins: "皮肤",
+  Body: "机身",
+  Hats: "帽子",
+  Shoes: "鞋子",
+  Effects: "特效",
+  Hat: "帽子",
+  Effect: "特效",
+  "No hat": "不戴帽子",
+  "Default shoes": "默认鞋子",
+  "No effect": "无特效",
+  "Build your own TV.": "搭配你的专属小电视。",
+  "Mix a body color, hat, shoes, and effect. Every item is cosmetic.":
+    "自由搭配机身颜色、帽子、鞋子与特效。所有装扮仅改变外观。",
+  "YOUR OUTFIT": "当前装扮",
+  "Customize your look": "自定义造型",
+  "Unlock items permanently. Mix and match owned items for free; changes apply immediately.":
+    "装扮永久解锁。已拥有的装扮可免费混搭，立即生效。",
+  "Included with every TV": "所有小电视均免费拥有",
+  "Use default": "使用默认造型",
+  "Equip item": "装备饰品",
+  "Spend collected coins on helpful tools, lasting skills, and TV outfits.":
+    "用收集的金币购买实用道具、永久技能和小电视装扮。",
+  "Trail Cap": "旅途鸭舌帽",
+  "Golden Crown": "金色王冠",
+  "Little Sprout": "小小嫩芽",
+  "Canvas Sneakers": "帆布运动鞋",
+  "Explorer Boots": "探险短靴",
+  "Roller Skates": "轮滑鞋",
+  "Sparkle Trail": "闪光足迹",
+  "Petal Drift": "飞舞花瓣",
+  "Star Orbit": "环绕星光",
+  "A sporty cap for every path.": "戴上运动鸭舌帽，奔向每一条跑道。",
+  "A little royal shine above your screen.": "屏幕上方，点缀一抹金色光彩。",
+  "Fresh green leaves for a growing community.": "嫩绿新叶，陪伴社区共同成长。",
+  "Comfy canvas kicks for colorful adventures.": "穿上舒适帆布鞋，开启缤纷冒险。",
+  "Sturdy boots for all four seasons.": "结实的短靴，陪你走过四季。",
+  "Retro wheels with purely cosmetic flair.": "复古小轮，只添造型，不改变速度。",
+  "A twinkling trail that follows your TV.": "闪烁的光点，跟随小电视一路前行。",
+  "Soft petals float around your TV.": "轻柔花瓣，飘落在小电视周围。",
+  "Little stars circle your TV.": "小小星光，环绕你的小电视。",
+  "Choose an accessory from the store.": "请在商店中选择一款饰品。",
+  "This accessory is already permanently unlocked.": "这款饰品已永久解锁。",
+  "Choose an accessory category.": "请选择一个饰品分类。",
+  "Unlock this accessory before equipping it.": "请先解锁这款饰品，再装备它。",
+  "Accessory removed.": "已移除饰品。",
+  "Classic TV": "经典小电视",
+  "Blossom TV": "樱花小电视",
+  "Ocean TV": "海洋小电视",
+  "Amber TV": "琥珀小电视",
+  "Frost TV": "冰霜小电视",
+  "The original sky-blue TV, ready for every season.": "经典的天蓝小电视，陪你走过每个季节。",
+  "Soft pink petals bring spring to every run.": "柔粉花瓣，让每次奔跑都充满春意。",
+  "Deep blue and seafoam colors for a summer escape.": "深蓝与海沫绿，带你畅游夏日。",
+  "Warm amber and copper colors inspired by autumn.": "温暖的琥珀与铜色，带来秋日气息。",
+  "Icy lavender and silver colors for winter adventures.": "冰紫与银色，陪你踏上冬日冒险。",
+  "Make it your TV.": "换上你的专属造型。",
+  "Choose a look for every season. Skins change appearance only, with no effect on gameplay.":
+    "为每个季节选择造型。皮肤仅改变外观，不影响玩法。",
+  "Unlock once with collected coins. Switch owned skins for free; your look changes immediately.":
+    "用收集的金币永久解锁。已拥有的皮肤可免费切换，立即换装。",
+  Equipped: "已装备",
+  Owned: "已拥有",
+  Included: "免费拥有",
+  "Equip skin": "装备皮肤",
+  "Unlock & equip": "解锁并装备",
+  "Your look, your way": "你的造型，由你选择",
+  "Tools, skills, and a look of your own.": "道具、技能，还有你的专属造型。",
+  "Spend collected coins on helpful tools, lasting skills, and TV skins for every season.":
+    "用收集的金币购买实用道具、永久技能和四季小电视皮肤。",
+  "Choose a TV skin from the store.": "请在商店中选择一款小电视皮肤。",
+  "This skin is already permanently unlocked.": "这款皮肤已永久解锁。",
+  "Unlock this skin before equipping it.": "请先解锁这款皮肤，再装备它。",
   Close: "关闭",
   "Back to game": "返回游戏",
   "THE COMMUNITY STORE": "社区补给站",
@@ -348,6 +420,8 @@ const N = "[0-9]+(?:,[0-9]{3})*(?:\\.[0-9]+)?";
 const B =
   "(Boundary Shield|Kindness Magnet|Momentum|Shield|Magnet|Rush|Fresh Start|Shared Rewards|Season Pass)";
 const S = "(Personal Boundaries|Active Listening|Community Momentum)";
+const COSMETIC =
+  "(Classic TV|Blossom TV|Ocean TV|Amber TV|Frost TV|Trail Cap|Golden Crown|Little Sprout|Canvas Sneakers|Explorer Boots|Roller Skates|Sparkle Trail|Petal Drift|Star Orbit)";
 const ITEM =
   "(Boundary Shield|Kindness Magnet|Community Momentum|Fresh Start|Shared Rewards|Season Pass)";
 const name = (value: string): string => ZH[value] ?? value;
@@ -355,6 +429,20 @@ const name = (value: string): string => ZH[value] ?? value;
 // Every expression is anchored and restricted to the game's known wording.
 // This is intentionally not a general word-replacement translator.
 const RULES: readonly Rule[] = [
+  [new RegExp(`^Equip ${COSMETIC}$`), (m) => `装备${name(m[1])}`],
+  [
+    new RegExp(`^Unlock and equip ${COSMETIC} for (${N}) coins$`),
+    (m) => `花费 ${m[2]} 枚金币解锁并装备${name(m[1])}`,
+  ],
+  [
+    new RegExp(`^Collect (${N}) more coins to unlock ${COSMETIC}\\.$`),
+    (m) => `再收集 ${m[1]} 枚金币即可解锁${name(m[2])}。`,
+  ],
+  [
+    new RegExp(`^${COSMETIC} unlocked forever and equipped\\.$`),
+    (m) => `${name(m[1])}已永久解锁并装备。`,
+  ],
+  [new RegExp(`^${COSMETIC} equipped\\.$`), (m) => `${name(m[1])}已装备。`],
   [/^([0-9]+(?:,[0-9]{3})*)m reached!$/, (m) => `已跑过 ${m[1]} 米！`],
   [
     /^(Personal Boundaries|Active Listening|Community Momentum) activated! Charging resumes when the effect ends\.$/,

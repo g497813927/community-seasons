@@ -10,6 +10,8 @@ type-only, so they do not create runtime import cycles.
 | Change | Module |
 | --- | --- |
 | TV body, running, sliding, recoil and seated poses | `characters/runner.ts` |
+| Hats, footwear and simulation-time cosmetic motes | `characters/cosmetics.ts` |
+| Bounded static outfit previews for the store and travel artwork | `skin-preview.ts` |
 | Chasing commenters | `characters/commenters.ts` |
 | Cart body, boarding and falling passenger | `characters/cart.ts` |
 | Seasonal roadside scenery and distant panorama | `scenes/spring.ts`, `summer.ts`, `autumn.ts`, `winter.ts` |

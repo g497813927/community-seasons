@@ -25,11 +25,17 @@ The lesson's reference links open public Bilibili moderation cases in a separate
 
 The first launch follows the browser’s preferred supported language (English or Simplified Chinese). A manually selected language is remembered and takes priority on later visits.
 
+## TV outfits
+
+Open the store with **B** or the store button and choose **Skins**. Use **Body**, **Hats**, **Shoes** and **Effects** to mix a body color with one item in each accessory slot. The outfit preview shows your complete look. Classic TV, no hat, default shoes and no effect are included. Blossom, Ocean, Amber and Frost TV each cost 1,000 collected game coins; the nine accessories range from 500 to 2,500 coins. Each purchase unlocks the item permanently. See the [gameplay guide](GAMEPLAY.md#tv-outfits) for individual prices. Purchases equip immediately; switching owned items or returning a slot to its default is free. Changing one slot keeps the rest of your outfit.
+
+Your outfit appears on the home screen, while running and riding the cart, and after retries. All outfits are cosmetic: hats, shoes and effects do not change speed, collisions, rewards, skills or boosts. Owned skins and accessories and your selected outfit save in this browser and sync through Toy when cloud sync is enabled.
+
 ## Saved progress
 
 The game's browser storage keys use the `community-seasons-*` prefix. Builds on the same origin share these keys; use the [dedicated QA fixtures](../docs/QA.md) on their own origins when testing.
 
-On Toy, signed-in players can sync their coin wallet, purchased booster inventory, skill unlocks, upgrade levels, equipped skill, best score, and last season across devices using the same account. Existing browser progress is kept until the player chooses which save to use. If local and cloud saves differ, the comparison dialog offers **Use cloud save**, **Use this device’s save**, or **Keep playing on this device only**. If cloud storage is empty, uploading existing browser progress also requires a choice. Choosing a save replaces the other complete save; balances and purchases are not added together.
+On Toy, signed-in players can sync their coin wallet, purchased booster inventory, skill unlocks, upgrade levels, equipped skill, owned skins and accessories, equipped outfit, best score, and last season across devices using the same account. Existing browser progress is kept until the player chooses which save to use. If local and cloud saves differ, the comparison dialog offers **Use cloud save**, **Use this device’s save**, or **Keep playing on this device only**. If cloud storage is empty, uploading existing browser progress also requires a choice. Choosing a save replaces the other complete save; balances and purchases are not added together.
 
 The browser copy remains available when cloud storage or sign-in is unavailable. The home screen reports sync status and offers Retry or Enable cloud. Small screens use a cloud icon beside the home actions; failures show a dismissible toast with details and Retry, and tapping the icon reopens it. Larger screens retain the inline explanation. Before a new run, the game checks for cloud changes; a late response cannot replace an active run. Local-only mode stays selected until the player enables cloud again. Standalone builds, including self-hosted copies, use browser storage and do not load the Toy SDK.
 
