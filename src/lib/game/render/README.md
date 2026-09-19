@@ -10,8 +10,6 @@ type-only, so they do not create runtime import cycles.
 | Change | Module |
 | --- | --- |
 | TV body, running, sliding, recoil and seated poses | `characters/runner.ts` |
-| Hats, footwear and simulation-time cosmetic motes | `characters/cosmetics.ts` |
-| Bounded static outfit previews for the store and travel artwork | `skin-preview.ts` |
 | Chasing commenters | `characters/commenters.ts` |
 | Cart body, boarding and falling passenger | `characters/cart.ts` |
 | Seasonal roadside scenery and distant panorama | `scenes/spring.ts`, `summer.ts`, `autumn.ts`, `winter.ts` |
@@ -27,6 +25,8 @@ type-only, so they do not create runtime import cycles.
 | Faces, boxes, projection and clipping | `geometry.ts`, `types.ts` |
 | Face sorting, textures, fog and text painting | `paint.ts` |
 | Boost overlays, lighting and travel tunnels | `effects.ts` |
+| Hats, footwear and simulation-time cosmetic motes | `characters/cosmetics.ts` |
+| Bounded static outfit previews for the store and travel artwork | `skin-preview.ts` |
 
 Scenery components emit reusable geometry at depth zero. `scenes/index.ts` keeps
 those templates on the renderer and places them along the current route each

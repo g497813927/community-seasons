@@ -44,6 +44,7 @@ import {
   type RunState,
 } from "@/lib/game/engine";
 import { Renderer } from "@/lib/game/render";
+import { listenToMediaQuery } from "@/lib/game/media-query";
 import { BackgroundMusic } from "@/lib/game/music";
 import { createRecordProgress, updateRecordProgress } from "@/lib/game/records";
 import { PostReviewDialog } from "@/components/post-review";
@@ -1013,15 +1014,15 @@ export default function Home() {
     window.addEventListener("orientationchange", updateViewport);
     window.visualViewport?.addEventListener("resize", updateViewport);
     window.screen.orientation?.addEventListener("change", updateViewport);
-    coarse.addEventListener("change", updateViewport);
-    hover.addEventListener("change", updateViewport);
+    const stopCoarseChanges = listenToMediaQuery(coarse, updateViewport);
+    const stopHoverChanges = listenToMediaQuery(hover, updateViewport);
     return () => {
       window.removeEventListener("resize", updateViewport);
       window.removeEventListener("orientationchange", updateViewport);
       window.visualViewport?.removeEventListener("resize", updateViewport);
       window.screen.orientation?.removeEventListener("change", updateViewport);
-      coarse.removeEventListener("change", updateViewport);
-      hover.removeEventListener("change", updateViewport);
+      stopCoarseChanges();
+      stopHoverChanges();
     };
   }, []);
   useEffect(() => {
@@ -1152,7 +1153,7 @@ export default function Home() {
       needsRedraw = true;
     };
     updateMotionPreference();
-    motionPreference.addEventListener("change", updateMotionPreference);
+    const stopMotionChanges = listenToMediaQuery(motionPreference, updateMotionPreference);
     const ro = new ResizeObserver(() => {
       if (!renderer.resize()) return;
       // Resizing clears the canvas after this frame's animation callback.
@@ -1462,7 +1463,7 @@ export default function Home() {
       cancelAnimationFrame(raf);
       if (rendererRef.current === renderer) rendererRef.current = null;
       ro.disconnect();
-      motionPreference.removeEventListener("change", updateMotionPreference);
+      stopMotionChanges();
       window.removeEventListener("keydown", onGameSpace, true);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blur", blur);
