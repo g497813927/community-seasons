@@ -21,6 +21,22 @@ const backdropComponents = {
   winter: winterBackdrop,
 } satisfies Record<SceneKind, (renderer: Renderer) => void>;
 
+export function shouldOmitInnerCurveBuilding(
+  junction: number | null,
+  side: number,
+  branch: number,
+  buildingStart: number,
+  buildingEnd: number,
+  turnArcLength: number,
+) {
+  return (
+    junction !== null &&
+    side === -branch &&
+    buildingEnd > 0 &&
+    buildingStart < turnArcLength
+  );
+}
+
 export function scenery(renderer: Renderer, scene: SceneKind, row: number, z: number) {
   const variant = ((row % 6) + 6) % 6;
   for (const side of [-1, 1]) {
@@ -43,10 +59,35 @@ export function scenery(renderer: Renderer, scene: SceneKind, row: number, z: nu
     // end has no outgoing street or boardwalk platforms beyond its stub.
     const junction = renderer.sceneryForkAt;
     const branches = junction !== null && row * 14 - junction > 14 ? [-1, 1] : [side];
+    const largeBuildingFaces = template.filter(
+      (face) => face.roadsideClearance === "large-building",
+    );
+    const routeOrigin = renderer.forkDepth ?? -renderer.curveAlong;
+    const largeBuildingStart = largeBuildingFaces.length
+      ? Math.min(...largeBuildingFaces.flatMap((face) => face.points.map((point) => point[2]))) +
+        z - routeOrigin
+      : Infinity;
+    const largeBuildingEnd = largeBuildingFaces.length
+      ? Math.max(...largeBuildingFaces.flatMap((face) => face.points.map((point) => point[2]))) +
+        z - routeOrigin
+      : -Infinity;
     for (const branch of branches) {
       if (branch === renderer.forkBlockedDirection && junction !== null && row * 14 > junction + 4)
         continue;
+      // A large cottage on the inside of a right-angle connector occupies
+      // the same narrow median as the other branch's cottage. Keep the outer
+      // cottage and the smaller street furniture, but leave the inner bend
+      // clear until the road has straightened.
+      const omitInnerCurveBuilding = shouldOmitInnerCurveBuilding(
+        junction,
+        side,
+        branch,
+        largeBuildingStart,
+        largeBuildingEnd,
+        renderer.turnArcLength,
+      );
       for (const face of template) {
+        if (omitInnerCurveBuilding && face.roadsideClearance === "large-building") continue;
         const cameraSpace = junction !== null;
         const points: V[] = face.points.map(([x, y, pz]) => {
           if (cameraSpace && face.boardwalk && Math.abs(x) < 2.321) {

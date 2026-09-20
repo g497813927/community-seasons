@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import "../helpers/compile.mjs";
 const { Renderer } = await import("../helpers/compiled/render.mjs");
 const { createRun, TURN_DURATION } = await import("../helpers/compiled/engine.mjs");
+const { shouldOmitInnerCurveBuilding } = await import("../helpers/compiled/render/scenes/index.mjs");
 
 globalThis.window = { devicePixelRatio: 1 };
 const roofColors = (winter) => winter
@@ -126,6 +127,22 @@ test("cottage roofs retain a closed outward-facing solid when captured for scene
   }
 });
 
+test("cottage doors and lights are camera-culled exterior facade panels", () => {
+  for (const winter of [false, true]) {
+    const facadeColors = new Set(["#43545e", winter ? "#f6d289" : "#a9d4d1"]);
+    const panels = capturedHouse(winter, 1).filter((face) => facadeColors.has(face.color));
+    assert.equal(panels.length, 3, "a cottage must retain one door and two window lights");
+    for (const panel of panels) {
+      assert.equal(panel.cull, true, "a hidden facade panel could flash through a side wall");
+      assert.equal(
+        panel.roadsideClearance,
+        "large-building",
+        "facade panels must be removed with a cottage cleared from an inner bend",
+      );
+    }
+  }
+});
+
 test("direct cottage roofs paint the nearest surface on either roadside throughout approach and turns", (t) => {
   let samples = 0;
   for (const winter of [false, true]) for (const side of [-1, 1]) for (const z of [-3, 2, 8, 24, 70, 130]) {
@@ -181,6 +198,11 @@ test("scenery rechecks cached roof visibility against each current road and fork
         const junction = r.sceneryForkAt;
         const branches = junction !== null && row * 14 - junction > 14 ? [-1, 1] : [side];
         for (const branch of branches) {
+          const routeOrigin = r.forkDepth ?? -r.curveAlong;
+          const building = r.sceneryTemplates.get(`${scene}:${row % 6}:${side}`).filter((f) => f.roadsideClearance === "large-building");
+          const buildingStart = Math.min(...building.flatMap((f) => f.points.map((p) => p[2]))) + z - routeOrigin;
+          const buildingEnd = Math.max(...building.flatMap((f) => f.points.map((p) => p[2]))) + z - routeOrigin;
+          if (shouldOmitInnerCurveBuilding(junction, side, branch, buildingStart, buildingEnd, r.turnArcLength)) continue;
           const full = template.map((f) => ({ ...f, points: f.points.map(([x, y, pz]) => junction === null
             ? r.cameraPoint([x, y, pz + z]) : r.sceneryViewPoint(branch, x, y, pz + z)) }));
           const keys = new Set(full.map(key));

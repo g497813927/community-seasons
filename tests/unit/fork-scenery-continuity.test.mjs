@@ -284,6 +284,23 @@ test("turn scenery stays bounded and reuses twelve templates at first-fork and m
     }
 });
 
+test("autumn and winter cottages leave the inside of a high-speed bend clear", () => {
+  for (const [scene, bendRow, straightRow, light] of [
+    ["autumn", 73, 79, "#a9d4d1"],
+    ["winter", 75, 81, "#f6d289"],
+  ]) {
+    const { r } = renderer(), s = state(scene, 1, MAX_SPEED);
+    const panelCount = (row) => {
+      setup(r, s);
+      r.faces = [];
+      r.scenery(scene, row, row * 14 - s.distance);
+      return r.faces.filter((face) => face.color === "#43545e" || face.color === light).length;
+    };
+    assert.equal(panelCount(bendRow), 6, `${scene}: inner bend still contains two crowded cottages`);
+    assert.equal(panelCount(straightRow), 12, `${scene}: cottages do not return after the road straightens`);
+  }
+});
+
 test("rendered walls obey current camera depth while the TV panel keeps all three visible vents", () => {
   for (const dir of [-1, 1]) {
     const { r } = renderer(),

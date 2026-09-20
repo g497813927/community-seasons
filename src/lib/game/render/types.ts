@@ -12,5 +12,6 @@ export type Face = {
   cameraSpace?: boolean;
   cull?: boolean;
   boardwalk?: boolean;
+  roadsideClearance?: "large-building";
   opacity?: number;
 };

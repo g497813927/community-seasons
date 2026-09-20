@@ -6,6 +6,14 @@ export const MATRIX_BROWSER_LAUNCH_OPTIONS = Object.freeze({
   headless: true, handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
 });
 
+export class MatrixSourceChangedError extends Error {
+  constructor(files) {
+    super(`Source changed during matrix run: ${files.join(', ')}`);
+    this.name = 'MatrixSourceChangedError';
+    this.interrupted = true;
+  }
+}
+
 export function caseFailureStatus(error, { stopSignal, pageErrors = [], blockedRequests = [] } = {}) {
   if (error.name === 'AssertionError' || pageErrors.length || blockedRequests.length) return 'failed';
   if (error.interrupted) return 'interrupted';
@@ -15,7 +23,8 @@ export function caseFailureStatus(error, { stopSignal, pageErrors = [], blockedR
 }
 
 export function assertFixtureHealthy(snapshot, { renderer = false, interruptedBy } = {}) {
-  if (renderer) assert.notEqual(snapshot.status, 'failed', 'Renderer fixture failed before interruption.');
+  if (renderer) assert.notEqual(snapshot.status, 'failed',
+    `Renderer fixture failed${interruptedBy ? ' before interruption' : ''}: ${snapshot.errors.join('; ') || 'No fixture diagnostic was provided.'}`);
   let errors = snapshot.errors;
   // The renderer appends the requested stop reason to an otherwise healthy
   // interrupted snapshot. Remove only that exact entry, never a real failure.
