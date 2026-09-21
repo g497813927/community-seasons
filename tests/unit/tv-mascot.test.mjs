@@ -82,6 +82,34 @@ test('interrupting jump with slide updates the TV pose immediately without mutat
   assert.equal(s.jump, JUMP_DURATION);
 });
 
+test('both arms rise to the top of the TV at the jump apex and fall before landing', () => {
+  const armHeight = (jump) => {
+    const renderer = new Renderer({ getContext: () => ({}) });
+    const boxes = [];
+    const box = renderer.box.bind(renderer);
+    renderer.box = (...args) => { boxes.push(args); box(...args); };
+    renderer.runner(run({ jump }), 0);
+    const body = boxes.find((args) => args[3] === 1.02 && args[4] === .86);
+    const limbs = boxes.filter((args) => args[3] === .14 && args[5] === .16);
+    assert.ok(body);
+    assert.equal(limbs.length, 4);
+    return [limbs[1], limbs[3]].map((arm) => arm[1] - body[1]);
+  };
+  const launch = armHeight(JUMP_DURATION);
+  const rising = armHeight(JUMP_DURATION * .75);
+  const apex = armHeight(JUMP_DURATION * .5);
+  const falling = armHeight(JUMP_DURATION * .25);
+  const landed = armHeight(0);
+  for (const side of [0, 1]) {
+    assert.ok(launch[side] < rising[side]);
+    assert.ok(rising[side] < apex[side]);
+    assert.ok(apex[side] > falling[side]);
+    assert.ok(falling[side] > landed[side]);
+    assert.ok(Math.abs(rising[side] - falling[side]) < 1e-10);
+    assert.ok(apex[side] > .25, 'the raised hand must reach above the TV body center');
+  }
+});
+
 test('generate a contact sheet from actual sorted mascot polygons for visual review', () => {
   const poses = [
     ['Running', run(), .1],

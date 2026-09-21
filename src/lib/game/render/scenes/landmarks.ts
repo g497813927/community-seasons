@@ -76,6 +76,7 @@ export function bench(renderer: Renderer, x: number, z: number, scene: SceneKind
 }
 
 export function cottage(renderer: Renderer, x: number, z: number, winter = false, variant = 0) {
+  const firstFace = renderer.faces.length;
   const wall = winter ? ["#a47d6e", "#6f6365", "#caa391"] : ["#c58e73", "#955f58", "#e5b297"];
   const roof = winter ? ["#f0f5ed", "#b6cdd6", "#ffffff"] : ["#78596a", "#534754", "#ac7880"];
   const width = 3.4,
@@ -106,10 +107,38 @@ export function cottage(renderer: Renderer, x: number, z: number, winter = false
       if (renderer.captureScenery) renderer.faces[renderer.faces.length - 1].cull = true;
     }
   });
-  renderer.label(x, 0.86, z - 1.515, 0.68, 1.72, "", "#314c59", "#43545e");
+  // Doors and windows are exterior surfaces, just like the cottage walls.
+  // Keep their winding camera-facing and cull them with the facade so they
+  // cannot flash through a side wall while the camera rotates around a bend.
+  const facadePanel = (
+    panelX: number,
+    panelY: number,
+    panelZ: number,
+    panelWidth: number,
+    panelHeight: number,
+    color: string,
+  ) => {
+    const points: V[] = [
+      [panelX - panelWidth / 2, panelY - panelHeight / 2, panelZ],
+      [panelX - panelWidth / 2, panelY + panelHeight / 2, panelZ],
+      [panelX + panelWidth / 2, panelY + panelHeight / 2, panelZ],
+      [panelX + panelWidth / 2, panelY - panelHeight / 2, panelZ],
+    ];
+    if (
+      renderer.captureScenery ||
+      renderer.frontFacing(points.map((point) => renderer.cameraPoint(point)))
+    ) {
+      renderer.face(points, color);
+      const face = renderer.faces[renderer.faces.length - 1];
+      if (renderer.captureScenery) face.cull = true;
+    }
+  };
+  facadePanel(x, 0.86, z - 1.515, 0.68, 1.72, "#43545e");
   for (const dx of [-1.08, 1.08])
-    renderer.label(x + dx, 1.6, z - 1.52, 0.64, 0.85, "", "#fff0b3", winter ? "#f6d289" : "#a9d4d1");
+    facadePanel(x + dx, 1.6, z - 1.52, 0.64, 0.85, winter ? "#f6d289" : "#a9d4d1");
   renderer.box(x + 1, height + 1.15, z + 0.45, 0.45, 1, 0.48, wall);
+  for (let i = firstFace; i < renderer.faces.length; i++)
+    renderer.faces[i].roadsideClearance = "large-building";
 }
 
 export function market(renderer: Renderer, x: number, z: number, variant: number) {

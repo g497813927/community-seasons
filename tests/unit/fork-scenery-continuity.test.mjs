@@ -128,6 +128,32 @@ test("complete scenery templates are independent of the camera pose when first c
   }
 });
 
+test("straight scenery does not inspect cached building clearance metadata", () => {
+  for (const scene of ["spring", "summer", "autumn", "winter"]) {
+    const { r } = renderer(), s = state(scene);
+    s.fork = null;
+    setup(r, s);
+    assert.equal(r.sceneryForkAt, null);
+    // Warm every variant so only placement work is measured, not capture.
+    for (let row = 72; row < 78; row++) r.scenery(scene, row, 42);
+    const expectedGeometry = r.faces.map(({ roadsideClearance, ...face }) => face);
+    let clearanceReads = 0;
+    for (const template of r.sceneryTemplates.values()) for (const face of template) {
+      const clearance = face.roadsideClearance;
+      Object.defineProperty(face, "roadsideClearance", {
+        // Exclude the ordinary face-copy spread from this bounds-work probe.
+        enumerable: false,
+        get() { clearanceReads++; return clearance; },
+      });
+    }
+    r.faces = [];
+    for (let row = 72; row < 78; row++) r.scenery(scene, row, 42);
+    assert.ok(r.faces.length > 0, `${scene}: straight scenery must still render`);
+    assert.equal(clearanceReads, 0, `${scene}: straight scenery scans fork-only building bounds`);
+    assert.deepEqual(r.faces, expectedGeometry, `${scene}: straight scenery geometry changed`);
+  }
+});
+
 test("both populated streets keep exactly the same landmarks at the fork crossing in every season", () => {
   for (const scene of ["spring", "summer", "autumn", "winter"])
     for (const dir of [-1, 1])
@@ -282,6 +308,23 @@ test("turn scenery stays bounded and reuses twelve templates at first-fork and m
         assert.equal(r.sceneryTemplates.size, 12);
       }
     }
+});
+
+test("autumn and winter cottages leave the inside of a high-speed bend clear", () => {
+  for (const [scene, bendRow, straightRow, light] of [
+    ["autumn", 73, 79, "#a9d4d1"],
+    ["winter", 75, 81, "#f6d289"],
+  ]) {
+    const { r } = renderer(), s = state(scene, 1, MAX_SPEED);
+    const panelCount = (row) => {
+      setup(r, s);
+      r.faces = [];
+      r.scenery(scene, row, row * 14 - s.distance);
+      return r.faces.filter((face) => face.color === "#43545e" || face.color === light).length;
+    };
+    assert.equal(panelCount(bendRow), 6, `${scene}: inner bend still contains two crowded cottages`);
+    assert.equal(panelCount(straightRow), 12, `${scene}: cottages do not return after the road straightens`);
+  }
 });
 
 test("rendered walls obey current camera depth while the TV panel keeps all three visible vents", () => {

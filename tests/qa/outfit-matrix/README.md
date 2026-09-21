@@ -20,6 +20,11 @@ fixture server also exposes a visible case selector and live evidence. A Vite
 development page is inspectable but cannot start a measured case without build
 provenance.
 
+`--workers` is the total concurrency pool, divided into per-browser limits.
+Use `npm run qa:outfits -- --engine all --workers 16` for at most eight active
+Chromium cases and eight active WebKit cases. A faster browser cannot borrow
+the other browser's slots. Limits are recorded in the checkpoint and progress page.
+
 ## Measurement contract
 
 `window.__communitySeasonsOutfitMatrix` is confined to this fixture. It exposes
@@ -48,3 +53,12 @@ the case. These are desktop browser checks, not native-device timing evidence.
 The runner records each completed case separately for resumability. A short
 pilot is a subset of cases with the same full real duration, never an accelerated
 substitute for a completed matrix.
+
+Source changes stop scheduling and mark healthy active cases as interrupted,
+including the worker that first detects the change. Active renderer and functional
+checks still capture and validate their final state: real fixture failures, page
+errors, and blocked external requests remain failures during interruption.
+Stopped renderer captures of at least three seconds must also meet the 15 FPS
+cumulative average; the last cadence window of at least three seconds must meet
+8 FPS. Shorter captures are not judged for average cadence. Interrupted attempts
+do not need completed duration or coverage and never count as passes.

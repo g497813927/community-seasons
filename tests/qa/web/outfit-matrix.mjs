@@ -11,7 +11,8 @@ import { matrixSourceHashes } from '../outfit-matrix/build-info.mjs';
 import { fixtureHandler } from './runtime.mjs';
 import { reportPath } from './report-path.mjs';
 import { assertCompletedRailReward } from './rail-reward.mjs';
-import { MATRIX_BROWSER_LAUNCH_OPTIONS, assertFixtureHealthy, bounded, caseFailureStatus, closeMatrixResources } from './matrix-shutdown.mjs';
+import { MATRIX_BROWSER_LAUNCH_OPTIONS, MatrixSourceChangedError, assertFixtureHealthy, bounded, caseFailureStatus, closeMatrixResources } from './matrix-shutdown.mjs';
+import { createMatrixScheduler } from './matrix-scheduler.mjs';
 
 // Real wall-clock rendering soak, deliberately without Playwright clock APIs.
 // The authored renderer stages and actual App interaction checks are reported
@@ -78,6 +79,8 @@ Each renderer case runs at least 60 REAL seconds, followed by actual App
 transition/rail UI scenarios. No browser time acceleration is used.
 
 Default workers: 2. Pilot with an explicit --limit before raising concurrency.
+Workers are a total pool, divided into per-engine caps. With both engines,
+--workers 16 allows at most 8 Chromium and 8 WebKit cases concurrently.
 --limit always labels that invocation partial. Resume validates all source,
 fixture-build and harness hashes and reruns failed/interrupted cases while
 retaining passed cases and every attempt. Worker count may change on resume.
@@ -93,7 +96,7 @@ and all non-fixture requests are blocked. No Toy saves or devices are used.`);
   assert.deepEqual(changedFiles(build.sourceHashes, await currentHashes()), [], 'Matrix fixture build is stale; rebuild after finishing source edits.');
   const harnessHashes = await fileHashes(ROOT, [
     'tests/qa/web/outfit-matrix.mjs', 'tests/qa/web/runtime.mjs', 'tests/qa/web/report-path.mjs',
-    'tests/qa/web/rail-reward.mjs', 'tests/qa/web/matrix-shutdown.mjs',
+    'tests/qa/web/rail-reward.mjs', 'tests/qa/web/matrix-shutdown.mjs', 'tests/qa/web/matrix-scheduler.mjs',
     'tests/qa/preview/build-info.mjs', 'tests/qa/preview/provenance.mjs',
   ].map(file => path.join(ROOT, file)));
   const fixtureBuildHash = digest(build);
@@ -165,13 +168,15 @@ and all non-fixture requests are blocked. No Toy saves or devices are used.`);
   const jobs = options.limit && pilotCount > 1
     ? Array.from({ length: pilotCount }, (_, index) => pending[Math.floor(index * (pending.length - 1) / (pilotCount - 1))])
     : options.limit ? pending.slice(0, pilotCount) : pending;
+  const scheduler = createMatrixScheduler(jobs, manifest.engines, options.workers);
   const invocation = {
     id: checkpoint.invocations.length + 1, startedAt: new Date().toISOString(),
     workers: options.workers, limit: options.limit, explicitlyPartial: options.limit !== null,
+    workerLimits: scheduler.limits,
     plannedCases: jobs.map(item => item.id), completedAt: null, stopReason: null, stopSignal: null, stopRequestedAt: null,
   };
   checkpoint.invocations.push(invocation);
-  let stopReason = null, active = 0, nextJob = 0, persisted = Promise.resolve(), shuttingDown = false;
+  let stopReason = null, active = 0, persisted = Promise.resolve(), shuttingDown = false;
   let lastSourceCheck = 0, sourceCheck = null;
   const browsers = new Map();
   const summary = () => {
@@ -216,7 +221,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
         : `<span class="tile ${status}" title="${escape(item.id)} — ${status}"></span>`;
     }).join('')}</div>
 <p><a href="summary.json">Summary</a> · <a href="manifest.json">Sources and case manifest</a> · <a href="checkpoint.json">Resume checkpoint</a></p>
-<p class="meta">Updated ${escape(state.updatedAt)}. Refreshes every 10 seconds. Invocation ${invocation.id}, ${invocation.workers} workers. Build <code>${escape(fixtureBuildHash)}</code>.</p>
+<p class="meta">Updated ${escape(state.updatedAt)}. Refreshes every 10 seconds. Invocation ${invocation.id}, ${invocation.workers} total workers (${Object.entries(invocation.workerLimits).map(([engine, limit]) => `${escape(engine)}: max ${limit}`).join(', ')}). Build <code>${escape(fixtureBuildHash)}</code>.</p>
 <p class="meta">Minimum average cadence ${POLICY.averageFps} fps; observed windows ${POLICY.windowFps} fps; maximum gap ${POLICY.maximumFrameGapMs} ms. Desktop browser evidence only; this page makes no physical-device performance claim.</p></html>`;
   }
   async function persist() {
@@ -242,7 +247,11 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     if (!force && performance.now() - lastSourceCheck < 5000) return;
     sourceCheck = (async () => {
       const changed = changedFiles(build.sourceHashes, await currentHashes());
-      if (changed.length) throw Error(`Source changed during matrix run: ${changed.join(', ')}`);
+      if (changed.length) {
+        const error = new MatrixSourceChangedError(changed);
+        signal(error.message);
+        throw error;
+      }
       lastSourceCheck = performance.now();
     })();
     try { await sourceCheck; } finally { sourceCheck = null; }
@@ -280,10 +289,14 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     assert.equal(snapshot.canvas.finite, true, 'Canvas geometry must remain finite.');
     assert.ok(finite(snapshot.canvas.width) && snapshot.canvas.width > 0 && finite(snapshot.canvas.height) && snapshot.canvas.height > 0, 'Canvas dimensions must be finite and positive.');
     assert.ok(finite(snapshot.metrics.maxGapMs) && snapshot.metrics.maxGapMs <= POLICY.maximumFrameGapMs, 'Frame gap exceeded the bounded cadence threshold.');
+    // A stop must not erase cumulative cadence failures. Use the same minimum
+    // observation length as cadence windows, without requiring full coverage.
+    if (final || (interruptedBy && snapshot.elapsedMs >= 3000)) {
+      assert.ok(snapshot.frames >= snapshot.elapsedMs / 1000 * POLICY.averageFps, `Average cadence below ${POLICY.averageFps} frames/s.`);
+    }
     if (final) {
       assert.equal(snapshot.status, 'passed');
       assert.ok(snapshot.elapsedMs >= options.duration * 1000, 'Renderer did not run for the requested real duration.');
-      assert.ok(snapshot.frames >= snapshot.elapsedMs / 1000 * POLICY.averageFps, `Average cadence below ${POLICY.averageFps} frames/s.`);
       assert.ok(snapshot.canvas.samples >= Math.floor(options.duration * .9), 'Too few finite/nonblank canvas observations.');
       assert.equal(snapshot.canvas.nonBlankSamples, snapshot.canvas.samples, 'A canvas sample was blank.');
     }
@@ -297,25 +310,43 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     const requirements = await rendererSnapshot(page, 'requirements');
     const hostStarted = performance.now();
     let snapshot = await rendererSnapshot(page, 'start', [job.definition.id, options.duration * 1000]);
-    result.renderer = { requirements, samples: [], timing: 'Native real-time RAF; no clock override.', hostElapsedMs: null };
+    result.renderer = { requirements, initial: snapshot, final: snapshot, samples: [],
+      timing: 'Native real-time RAF; no clock override.', hostElapsedMs: performance.now() - hostStarted };
     let previous = snapshot;
+    const validateCadence = current => {
+      const elapsed = current.elapsedMs - previous.elapsedMs;
+      if (elapsed >= 3000) {
+        const fps = (current.frames - previous.frames) / (elapsed / 1000);
+        assert.ok(fps >= POLICY.windowFps, `Observed ${fps.toFixed(2)} frames/s in a ${elapsed.toFixed(0)}ms window; minimum ${POLICY.windowFps}.`);
+      }
+    };
     while (snapshot.status === 'running') {
       if (stopReason) {
         result.renderer.final = await rendererSnapshot(page, 'stop', [stopReason]);
+        result.renderer.hostElapsedMs = performance.now() - hostStarted;
         validateSnapshot(result.renderer.final, job.definition, { interruptedBy: stopReason });
+        // Shutdown must retain cadence failures accumulated since the last
+        // accepted poll, including when source detection skipped that poll.
+        validateCadence(result.renderer.final);
         throw Object.assign(Error(`Interrupted by ${stopReason}`), { interrupted: true });
       }
       await wait(Math.min(POLICY.pollMs, Math.max(500, options.duration * 1000 - snapshot.elapsedMs)));
       if (stopReason) continue;
-      await verifySources();
-      snapshot = await rendererSnapshot(page, 'snapshot');
-      validateSnapshot(snapshot, job.definition);
-      const elapsed = snapshot.elapsedMs - previous.elapsedMs;
-      if (elapsed >= 3000) {
-        const fps = (snapshot.frames - previous.frames) / (elapsed / 1000);
-        assert.ok(fps >= POLICY.windowFps, `Observed ${fps.toFixed(2)} frames/s in a ${elapsed.toFixed(0)}ms window; minimum ${POLICY.windowFps}.`);
+      try { await verifySources(); }
+      catch (error) {
+        // Route the detecting worker through the same final health check as
+        // its peers before classifying a source change as an interruption.
+        if (!(error instanceof MatrixSourceChangedError)) throw error;
+        continue;
       }
+      snapshot = await rendererSnapshot(page, 'snapshot');
+      // Persist the observation before any assertion can throw. In particular,
+      // a failed fixture or cadence window must not erase its own evidence.
+      result.renderer.final = snapshot;
       result.renderer.samples.push(snapshot);
+      result.renderer.hostElapsedMs = performance.now() - hostStarted;
+      validateSnapshot(snapshot, job.definition);
+      validateCadence(snapshot);
       previous = snapshot;
       if (performance.now() - hostStarted > options.duration * 1000 + 30000) throw Error('Renderer exceeded its bounded case timeout.');
     }
@@ -385,7 +416,11 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
           throw Object.assign(Error(`Interrupted by ${stopReason}`), { interrupted: true });
         }
         if (performance.now() - hostStarted > 88000) throw Error(`${scenario} exceeded its 88-second functional bound.`);
-        await verifySources();
+        try { await verifySources(); }
+        catch (error) {
+          if (!(error instanceof MatrixSourceChangedError)) throw error;
+          continue;
+        }
         snapshot = await invoke('snapshot');
         validate(snapshot, scenario);
         row.samples.push(snapshot);
@@ -566,7 +601,6 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       });
       result.error = errorDetails(error);
       if (result.status === 'interrupted') result.interruption = { reason: stopReason, signal: invocation.stopSignal, requestedAt: invocation.stopRequestedAt };
-      if (!stopReason && /Source changed/.test(error.message)) signal(error.message);
       if (result.status === 'failed' && page && !page.isClosed()) {
         await page.screenshot({ path: path.join(caseDirectory, 'failure.png'), fullPage: true, timeout: 10000 })
           .then(() => { result.failureScreenshot = 'failure.png'; })
@@ -602,7 +636,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
     origin = `http://127.0.0.1:${server.address().port}`;
     url = origin + PREFIX;
-    console.log(JSON.stringify({ output, caseCount: manifest.caseCount, scheduled: jobs.length, explicitlyPartial: invocation.explicitlyPartial, workers: options.workers, minimumRealRendererSeconds: options.duration }));
+    console.log(JSON.stringify({ output, caseCount: manifest.caseCount, scheduled: jobs.length, explicitlyPartial: invocation.explicitlyPartial, workers: options.workers, workerLimits: scheduler.limits, minimumRealRendererSeconds: options.duration }));
     for (const engine of manifest.engines) {
       if (stopReason) break;
       const browser = await ENGINES[engine].launch(MATRIX_BROWSER_LAUNCH_OPTIONS);
@@ -612,10 +646,12 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       browsers.set(engine, browser);
     }
     await Promise.all(Array.from({ length: Math.min(options.workers, Math.max(1, jobs.length)) }, (_, index) => (async () => {
-      while (!stopReason && nextJob < jobs.length) {
-        const job = jobs[nextJob++];
+      while (!stopReason) {
+        const job = scheduler.take();
+        if (!job) break;
         try { await runCase(job, index + 1); }
         catch (error) { if (!stopReason) signal(error.message); console.error(error.stack); }
+        finally { scheduler.release(job); }
       }
     })()));
   } catch (error) {
