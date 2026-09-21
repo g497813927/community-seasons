@@ -2,6 +2,8 @@
 
 Run `node tests/qa/web/leaderboard.mjs` from the repository root. The bounded runner builds this fixture immediately before testing the production leaderboard component in Chromium and WebKit, in English and Simplified Chinese, at desktop and small-phone sizes and with 200% text.
 
+Avatar recovery checks first serve a real image failure, then return a different valid avatar URL for the same player and rank. Both Refresh and day/week switching must replace the fallback with a fully loaded image without posting a score or writing consent. Avatar requests use local fixture responses; no real CDN request is sent.
+
 The fixture imports the production dialog and its pure avatar sanitizer; it does not load the game page or call the Toy SDK. The fixture aliases the SDK module to the disabled QA stub. Requests and submission outcomes are controlled here, saves use `qa-community-seasons-leaderboard-v1:`, and each case uses a fresh browser context and a dedicated temporary local origin. Known test-avatar requests are fulfilled with local image bytes or a local error response; all other external requests are blocked. Controls in `window.__leaderboardQA` exist only in this test build. Never publish this fixture as the game.
 
 Reports under `results/qa/leaderboard-*` include source/build hashes, checks, browser errors and screenshots. Profile checks cover public nicknames and avatars, plain-text markup escaping, unsafe avatar URLs, missing/broken-image fallback, no profile links or inferred self identity, fixed-size lazy images, and no-referrer requests. Layout checks cover long names, keyboard focus, and enlarged-text reachability.

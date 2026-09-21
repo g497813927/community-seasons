@@ -43,7 +43,7 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
   });
   await context.route('**/*', async route => {
     const url = route.request().url();
-    if (url === 'https://i0.hdslb.com/bfs/face/leaderboard-qa.png') {
+    if (url === 'https://i0.hdslb.com/bfs/face/leaderboard-qa.png' || url === 'https://i0.hdslb.com/bfs/face/leaderboard-qa-recovered.png') {
       await route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64') });
     } else if (url === 'https://i0.hdslb.com/bfs/face/leaderboard-qa-missing.png') {
       await route.fulfill({ status: 404, body: '' });
@@ -158,6 +158,34 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
       }), baseline);
       await open();
       await waitReady();
+    });
+    for (const trigger of ['refresh', 'period-switch']) await check(`avatar-recovers-after-failed-image-on-${trigger}`, async () => {
+      const before = await snapshot();
+      const firstAvatar = page.locator('.leaderboard-table tbody tr').first().locator('.leaderboard-avatar');
+      const reload = async phase => {
+        if (trigger === 'refresh') await page.locator('.leaderboard-refresh').click();
+        else await page.locator(`input[value="${phase === 'failed' ? 'day' : 'week'}"]`).check();
+        await waitReady();
+        await firstAvatar.scrollIntoViewIfNeeded();
+      };
+      await page.evaluate(() => window.__leaderboardQA.setAvatarSource('https://i0.hdslb.com/bfs/face/leaderboard-qa-missing.png'));
+      await reload('failed');
+      await firstAvatar.locator('svg').waitFor();
+      assert.equal(await firstAvatar.locator('img').count(), 0, 'A real 404 must reach the fallback before testing recovery');
+      const replacement = trigger === 'refresh'
+        ? 'https://i0.hdslb.com/bfs/face/leaderboard-qa-recovered.png'
+        : 'https://i0.hdslb.com/bfs/face/leaderboard-qa.png';
+      await page.evaluate(source => window.__leaderboardQA.setAvatarSource(source), replacement);
+      await reload('recovered');
+      await page.waitForFunction(source => {
+        const img = document.querySelector('.leaderboard-table tbody tr .leaderboard-avatar img');
+        return img?.getAttribute('src') === source && img.complete && img.naturalWidth > 0;
+      }, replacement);
+      assert.equal(await firstAvatar.locator('svg').count(), 0, 'The new image replaces the error fallback');
+      assert.equal(await page.locator('.leaderboard-player-name').first().innerText(), 'Toy Runner');
+      const after = await snapshot();
+      assert.equal(after.submissionCount, before.submissionCount);
+      assert.equal(after.choiceWrites, before.choiceWrites);
     });
     await check('preconsent-reading-and-not-now-never-submit', async () => {
       await page.evaluate(() => window.__leaderboardQA.finishRun());

@@ -19,11 +19,12 @@ let submissionCount = 0;
 let choiceWrites = 0;
 let failChoice = false;
 let choiceGeneration = 0;
+let avatarSource = "https://i0.hdslb.com/bfs/face/leaderboard-qa.png";
 const loadRequests: { id: number; period: LeaderboardPeriod; settled: boolean; resolve: (value: LeaderboardResult) => void; reject: (reason: Error) => void }[] = [];
 const submissions: { run: number; explicit: boolean; generation: number; resolve?: () => void; reject?: (error: Error) => void }[] = [];
 const result = (score: number): LeaderboardResult => ({
   entries: [
-    { rank: 1, score, name: "Toy Runner", avatar: "https://i0.hdslb.com/bfs/face/leaderboard-qa.png", isSelf: false },
+    { rank: 1, score, name: "Toy Runner", avatar: avatarSource, isSelf: false },
     { rank: 2, score: 12000, name: '<img src=x onerror="window.profileInjected=true">', avatar: "javascript:alert('unsafe')", isSelf: false },
     { rank: 3, score: 11999, name: null, avatar: "https://i0.hdslb.com/bfs/face/leaderboard-qa-missing.png", isSelf: false },
     { rank: 4, score: 11000, name: "LongPlayerNameWithoutBreaks".repeat(2), avatar: null, isSelf: false },
@@ -111,6 +112,7 @@ Object.assign(window, { __leaderboardQA: Object.freeze({
     render();
   },
   failChoice(value: boolean) { failChoice = value; },
+  setAvatarSource(value: string) { avatarSource = value; },
   newRun(score = 12345) { run++; options.score = score; options.eligibility = "ready"; render(); },
   finishRun,
   holdLoads(value: boolean) { holdLoads = value; },

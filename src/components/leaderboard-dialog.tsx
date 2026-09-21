@@ -179,6 +179,7 @@ export function LeaderboardDialog({
                   return <tr key={`${entry.rank}-${index}`} className={entry.isSelf ? "leaderboard-self-row" : undefined}>
                     <td>{number(entry.rank)}</td>
                     <th scope="row"><span className="leaderboard-player">
+                      {/* A new URL key remounts this avatar and clears its image-error state. */}
                       <PlayerAvatar key={avatar ?? "fallback"} source={avatar} />
                       <span className="leaderboard-player-name">{entry.name?.trim() || l("Player", "玩家")}
                         {entry.isSelf && <span className="leaderboard-you">{l("You", "你")}</span>}
