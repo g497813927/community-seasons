@@ -265,6 +265,68 @@ test('actual renderer and functional loops validate final health after detecting
   }
 });
 
+test('stopping the actual renderer checks the last cadence window before classifying an interruption', async (t) => {
+  const parts = matrixRuntimeParts();
+  const definition = { id: 'ocean_sprout_skates_none_spring' };
+  for (const scenario of [
+    { name: 'source change preserves a slow final window despite a healthy overall average', trigger: 'source', elapsedMs: 10000, frames: 320, expected: 'failed' },
+    { name: 'healthy source-change interruption remains interrupted', trigger: 'source', elapsedMs: 10000, frames: 600, expected: 'interrupted' },
+    { name: 'a source change detected by another worker preserves a slow final window', trigger: 'peer', elapsedMs: 10000, frames: 320, expected: 'failed' },
+    { name: 'an explicit stop also preserves a slow final window', trigger: 'signal', elapsedMs: 10000, frames: 320, expected: 'failed' },
+    { name: 'a short final tail retains the existing three-second minimum', trigger: 'signal', elapsedMs: 7500, frames: 301, expected: 'interrupted' },
+  ]) await t.test(scenario.name, async () => {
+    let now = 10000, waits = 0, reads = 0, stopped;
+    const initial = {
+      caseId: definition.id, status: 'running', elapsedMs: 0, frames: 0, errors: [],
+      environment: { visible: true }, canvas: { finite: true, width: 940, height: 900 }, metrics: { maxGapMs: 250 },
+    };
+    const healthy = { ...initial, elapsedMs: 5000, frames: 300 };
+    const result = {};
+    const context = sourceCheckContext({
+      assert, assertFixtureHealthy, finite: value => typeof value === 'number' && Number.isFinite(value),
+      performance: { now: () => now }, POLICY: { pollMs: 5000, maximumFrameGapMs: 1000, windowFps: 8 },
+      options: { duration: 60 }, baseCases: [definition], url: 'http://fixture.test/',
+      page: { async goto() {}, async waitForFunction() {} }, job: { definition }, result,
+      async wait() {
+        waits++;
+        now += waits === 1 ? 5000 : scenario.elapsedMs - 5000;
+        if (waits === 2 && scenario.trigger !== 'source') vm.runInContext(
+          scenario.trigger === 'signal' ? "signal('SIGINT')" : "signal('Source changed during matrix run: src/lib/game/render.ts')", context);
+        assert.ok(waits <= 2, 'the requested stop must be handled at the next loop boundary');
+      },
+      async currentHashes() { return { 'src/lib/game/render.ts': ++reads === 1 ? 'before' : 'after' }; },
+      async rendererSnapshot(_page, method) {
+        if (method === 'cases') return [definition];
+        if (method === 'requirements') return {};
+        if (method === 'start') return initial;
+        if (method === 'snapshot') {
+          assert.equal(waits, 1, 'only the first healthy poll may precede shutdown');
+          return healthy;
+        }
+        assert.equal(method, 'stop');
+        stopped = { ...initial, status: 'interrupted', elapsedMs: scenario.elapsedMs, frames: scenario.frames, errors: [context.stopReason] };
+        return stopped;
+      },
+    });
+    installSourceCheck(context, parts);
+    vm.runInContext(`${parts.validateSnapshot}\n${parts.runRenderer}`, context);
+    let observed;
+    await assert.rejects(vm.runInContext("runRenderer(page, job, result, '/unused')", context), error => {
+      observed = error;
+      return true;
+    });
+    assert.equal(caseFailureStatus(observed, { stopSignal: context.invocation.stopSignal }), scenario.expected);
+    assert.equal(result.renderer.final, stopped, 'retain stopped evidence even when its cadence fails');
+    assert.equal(result.renderer.samples[0], healthy);
+    assert.equal(result.renderer.hostElapsedMs, scenario.elapsedMs);
+    if (scenario.expected === 'failed') {
+      assert.match(observed.message, /Observed 4\.00 frames\/s in a 5000ms window; minimum 8\./);
+    } else assert.equal(observed.interrupted, true);
+    assert.equal(context.invocation.stopSignal, scenario.trigger === 'signal' ? 'SIGINT' : null);
+    assert.equal(reads, scenario.trigger === 'source' ? 2 : 1);
+  });
+});
+
 test('actual renderer retains the failing snapshot and elapsed time before fixture, cadence and geometry assertions', async () => {
   const parts = matrixRuntimeParts();
   const definition = { id: 'ocean_sprout_skates_none_spring' };

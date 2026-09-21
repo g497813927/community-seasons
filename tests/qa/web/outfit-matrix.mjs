@@ -309,11 +309,21 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     result.renderer = { requirements, initial: snapshot, final: snapshot, samples: [],
       timing: 'Native real-time RAF; no clock override.', hostElapsedMs: performance.now() - hostStarted };
     let previous = snapshot;
+    const validateCadence = current => {
+      const elapsed = current.elapsedMs - previous.elapsedMs;
+      if (elapsed >= 3000) {
+        const fps = (current.frames - previous.frames) / (elapsed / 1000);
+        assert.ok(fps >= POLICY.windowFps, `Observed ${fps.toFixed(2)} frames/s in a ${elapsed.toFixed(0)}ms window; minimum ${POLICY.windowFps}.`);
+      }
+    };
     while (snapshot.status === 'running') {
       if (stopReason) {
         result.renderer.final = await rendererSnapshot(page, 'stop', [stopReason]);
         result.renderer.hostElapsedMs = performance.now() - hostStarted;
         validateSnapshot(result.renderer.final, job.definition, { interruptedBy: stopReason });
+        // Shutdown must retain cadence failures accumulated since the last
+        // accepted poll, including when source detection skipped that poll.
+        validateCadence(result.renderer.final);
         throw Object.assign(Error(`Interrupted by ${stopReason}`), { interrupted: true });
       }
       await wait(Math.min(POLICY.pollMs, Math.max(500, options.duration * 1000 - snapshot.elapsedMs)));
@@ -332,11 +342,7 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
       result.renderer.samples.push(snapshot);
       result.renderer.hostElapsedMs = performance.now() - hostStarted;
       validateSnapshot(snapshot, job.definition);
-      const elapsed = snapshot.elapsedMs - previous.elapsedMs;
-      if (elapsed >= 3000) {
-        const fps = (snapshot.frames - previous.frames) / (elapsed / 1000);
-        assert.ok(fps >= POLICY.windowFps, `Observed ${fps.toFixed(2)} frames/s in a ${elapsed.toFixed(0)}ms window; minimum ${POLICY.windowFps}.`);
-      }
+      validateCadence(snapshot);
       previous = snapshot;
       if (performance.now() - hostStarted > options.duration * 1000 + 30000) throw Error('Renderer exceeded its bounded case timeout.');
     }
