@@ -59,18 +59,22 @@ export function scenery(renderer: Renderer, scene: SceneKind, row: number, z: nu
     // end has no outgoing street or boardwalk platforms beyond its stub.
     const junction = renderer.sceneryForkAt;
     const branches = junction !== null && row * 14 - junction > 14 ? [-1, 1] : [side];
-    const largeBuildingFaces = template.filter(
-      (face) => face.roadsideClearance === "large-building",
-    );
-    const routeOrigin = renderer.forkDepth ?? -renderer.curveAlong;
-    const largeBuildingStart = largeBuildingFaces.length
-      ? Math.min(...largeBuildingFaces.flatMap((face) => face.points.map((point) => point[2]))) +
-        z - routeOrigin
-      : Infinity;
-    const largeBuildingEnd = largeBuildingFaces.length
-      ? Math.max(...largeBuildingFaces.flatMap((face) => face.points.map((point) => point[2]))) +
-        z - routeOrigin
-      : -Infinity;
+    let largeBuildingStart = Infinity,
+      largeBuildingEnd = -Infinity;
+    // Clearance only applies at forks. Keep this scan off straight-road frames
+    // and avoid temporary face/point arrays when finding the cottage bounds.
+    if (junction !== null) {
+      for (const face of template) {
+        if (face.roadsideClearance !== "large-building") continue;
+        for (const point of face.points) {
+          largeBuildingStart = Math.min(largeBuildingStart, point[2]);
+          largeBuildingEnd = Math.max(largeBuildingEnd, point[2]);
+        }
+      }
+      const routeOrigin = renderer.forkDepth ?? -renderer.curveAlong;
+      largeBuildingStart += z - routeOrigin;
+      largeBuildingEnd += z - routeOrigin;
+    }
     for (const branch of branches) {
       if (branch === renderer.forkBlockedDirection && junction !== null && row * 14 > junction + 4)
         continue;
