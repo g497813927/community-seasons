@@ -58,3 +58,7 @@ Source changes stop scheduling and mark healthy active cases as interrupted,
 including the worker that first detects the change. Active renderer and functional
 checks still capture and validate their final state: real fixture failures, page
 errors, and blocked external requests remain failures during interruption.
+Stopped renderer captures of at least three seconds must also meet the 15 FPS
+cumulative average; the last cadence window of at least three seconds must meet
+8 FPS. Shorter captures are not judged for average cadence. Interrupted attempts
+do not need completed duration or coverage and never count as passes.

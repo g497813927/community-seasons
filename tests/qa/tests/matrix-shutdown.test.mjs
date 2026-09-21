@@ -284,7 +284,7 @@ test('stopping the actual renderer checks the last cadence window before classif
     const result = {};
     const context = sourceCheckContext({
       assert, assertFixtureHealthy, finite: value => typeof value === 'number' && Number.isFinite(value),
-      performance: { now: () => now }, POLICY: { pollMs: 5000, maximumFrameGapMs: 1000, windowFps: 8 },
+      performance: { now: () => now }, POLICY: { pollMs: 5000, maximumFrameGapMs: 1000, windowFps: 8, averageFps: 15 },
       options: { duration: 60 }, baseCases: [definition], url: 'http://fixture.test/',
       page: { async goto() {}, async waitForFunction() {} }, job: { definition }, result,
       async wait() {
@@ -325,6 +325,92 @@ test('stopping the actual renderer checks the last cadence window before classif
     assert.equal(context.invocation.stopSignal, scenario.trigger === 'signal' ? 'SIGINT' : null);
     assert.equal(reads, scenario.trigger === 'source' ? 2 : 1);
   });
+});
+
+test('interrupted renderers enforce average cadence without requiring completed coverage', async (t) => {
+  const parts = matrixRuntimeParts();
+  const definition = { id: 'ocean_sprout_skates_none_spring' };
+  for (const scenario of [
+    { name: 'source change at completion retains a 10 FPS average failure', trigger: 'source', elapsedMs: 60000, fps: 10, expected: 'failed' },
+    { name: 'peer stop near completion retains a 10 FPS average failure', trigger: 'peer', elapsedMs: 59900, fps: 10, expected: 'failed' },
+    { name: 'signal at completion retains a 10 FPS average failure', trigger: 'signal', elapsedMs: 60000, fps: 10, expected: 'failed' },
+    { name: 'a recovered final window cannot hide a low cumulative average', trigger: 'source', elapsedMs: 60000, fps: 10, recovered: true, expected: 'failed' },
+    { name: 'a partial capture retains a 10 FPS average failure', trigger: 'peer', elapsedMs: 30000, fps: 10, expected: 'failed' },
+    { name: 'average validation begins at three seconds', trigger: 'signal', elapsedMs: 3000, fps: 10, expected: 'failed' },
+    { name: '44 frames at three seconds fails average cadence', trigger: 'signal', elapsedMs: 3000, fps: 44 / 3, expected: 'failed' },
+    { name: '45 frames at three seconds remains interrupted', trigger: 'signal', elapsedMs: 3000, fps: 15, expected: 'interrupted' },
+    { name: 'a sub-three-second capture remains interrupted', trigger: 'source', elapsedMs: 2999, fps: 10, expected: 'interrupted' },
+    { name: 'an immediate stop remains interrupted', trigger: 'source', elapsedMs: 0, fps: 0, expected: 'interrupted' },
+    { name: 'exactly 15 FPS at completion remains interrupted', trigger: 'peer', elapsedMs: 60000, fps: 15, expected: 'interrupted' },
+    { name: 'a healthy partial capture does not require full duration or coverage', trigger: 'source', elapsedMs: 5000, fps: 15, expected: 'interrupted' },
+  ]) await t.test(scenario.name, async () => {
+    let elapsed = 0, waits = 0, stopped;
+    const result = {};
+    const snapshot = status => ({
+      caseId: definition.id, status, elapsedMs: elapsed,
+      frames: Math.floor(elapsed / 1000 * scenario.fps) + (scenario.recovered ? Math.max(0, elapsed - 55000) / 100 : 0),
+      errors: status === 'interrupted' ? [context.stopReason] : [],
+      environment: { visible: true }, canvas: { finite: true, width: 940, height: 900 }, metrics: { maxGapMs: 100 },
+    });
+    const context = sourceCheckContext({
+      assert, assertFixtureHealthy, finite: Number.isFinite,
+      performance: { now: () => 10000 + elapsed },
+      POLICY: { pollMs: 5000, maximumFrameGapMs: 1000, windowFps: 8, averageFps: 15 },
+      options: { duration: 60 }, baseCases: [definition], url: 'http://fixture.test/',
+      page: { async goto() {}, async waitForFunction() {} }, job: { definition }, result,
+      async wait(milliseconds) {
+        assert.ok(++waits <= 12, 'shutdown must finish within the bounded capture');
+        elapsed = Math.min(scenario.elapsedMs, elapsed + milliseconds);
+        if (elapsed === scenario.elapsedMs && scenario.trigger !== 'source') vm.runInContext(
+          scenario.trigger === 'signal' ? "signal('SIGINT')" : "signal('Source changed during matrix run: src/lib/game/render.ts')", context);
+      },
+      async currentHashes() { return { 'src/lib/game/render.ts': elapsed === scenario.elapsedMs ? 'after' : 'before' }; },
+      async rendererSnapshot(_page, method) {
+        if (method === 'cases') return [definition];
+        if (method === 'requirements') return {};
+        if (method === 'start' || method === 'snapshot') return snapshot('running');
+        assert.equal(method, 'stop');
+        // The fixture keeps its passed status if it already reached duration.
+        stopped = snapshot(elapsed >= 60000 ? 'passed' : 'interrupted');
+        return stopped;
+      },
+    });
+    installSourceCheck(context, parts);
+    vm.runInContext(`${parts.validateSnapshot}\n${parts.runRenderer}`, context);
+    let observed;
+    await assert.rejects(vm.runInContext("runRenderer(page, job, result, '/unused')", context), error => {
+      observed = error;
+      return true;
+    });
+    assert.equal(caseFailureStatus(observed, { stopSignal: context.invocation.stopSignal }), scenario.expected);
+    assert.equal(result.renderer.final, stopped, 'average failures must retain the final snapshot');
+    assert.equal(result.renderer.hostElapsedMs, scenario.elapsedMs);
+    assert.equal(context.invocation.stopSignal, scenario.trigger === 'signal' ? 'SIGINT' : null);
+    if (scenario.expected === 'failed') assert.match(observed.message, /Average cadence below 15 frames\/s\./);
+    else assert.equal(observed.interrupted, true);
+  });
+});
+
+test('normal final snapshots still require average cadence, duration and coverage', () => {
+  const definition = { id: 'ocean_sprout_skates_none_spring' };
+  const snapshot = {
+    caseId: definition.id, status: 'passed', elapsedMs: 60000, frames: 900, errors: [],
+    environment: { visible: true }, canvas: { finite: true, width: 940, height: 900, samples: 60, nonBlankSamples: 60 },
+    metrics: { maxGapMs: 100 },
+  };
+  const context = vm.createContext({ assert, assertFixtureHealthy, finite: Number.isFinite,
+    POLICY: { averageFps: 15, maximumFrameGapMs: 1000 }, options: { duration: 60 }, snapshot, definition });
+  vm.runInContext(matrixRuntimeParts().validateSnapshot, context);
+  const validate = () => vm.runInContext('validateSnapshot(snapshot, definition, { final: true })', context);
+  assert.doesNotThrow(validate);
+  snapshot.frames = 899;
+  assert.throws(validate, /Average cadence below 15 frames\/s\./);
+  snapshot.frames = 900;
+  snapshot.elapsedMs = 59999;
+  assert.throws(validate, /requested real duration/);
+  snapshot.elapsedMs = 60000;
+  snapshot.canvas.samples = 0;
+  assert.throws(validate, /Too few finite\/nonblank canvas observations/);
 });
 
 test('actual renderer retains the failing snapshot and elapsed time before fixture, cadence and geometry assertions', async () => {

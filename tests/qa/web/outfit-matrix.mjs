@@ -289,10 +289,14 @@ ${stopReason ? `<p class="partial">Stopped: ${escape(stopReason)}</p>` : ''}
     assert.equal(snapshot.canvas.finite, true, 'Canvas geometry must remain finite.');
     assert.ok(finite(snapshot.canvas.width) && snapshot.canvas.width > 0 && finite(snapshot.canvas.height) && snapshot.canvas.height > 0, 'Canvas dimensions must be finite and positive.');
     assert.ok(finite(snapshot.metrics.maxGapMs) && snapshot.metrics.maxGapMs <= POLICY.maximumFrameGapMs, 'Frame gap exceeded the bounded cadence threshold.');
+    // A stop must not erase cumulative cadence failures. Use the same minimum
+    // observation length as cadence windows, without requiring full coverage.
+    if (final || (interruptedBy && snapshot.elapsedMs >= 3000)) {
+      assert.ok(snapshot.frames >= snapshot.elapsedMs / 1000 * POLICY.averageFps, `Average cadence below ${POLICY.averageFps} frames/s.`);
+    }
     if (final) {
       assert.equal(snapshot.status, 'passed');
       assert.ok(snapshot.elapsedMs >= options.duration * 1000, 'Renderer did not run for the requested real duration.');
-      assert.ok(snapshot.frames >= snapshot.elapsedMs / 1000 * POLICY.averageFps, `Average cadence below ${POLICY.averageFps} frames/s.`);
       assert.ok(snapshot.canvas.samples >= Math.floor(options.duration * .9), 'Too few finite/nonblank canvas observations.');
       assert.equal(snapshot.canvas.nonBlankSamples, snapshot.canvas.samples, 'A canvas sample was blank.');
     }
