@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, LoaderCircle, Trophy, X } from "lucide-react";
+import { Check, LoaderCircle, Trophy, UserRound, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Locale } from "@/lib/game/i18n";
+import { normalizeLeaderboardAvatar } from "@/lib/game/leaderboard";
 import "./leaderboard-dialog.css";
 
 export type LeaderboardPeriod = "day" | "week";
@@ -13,6 +14,7 @@ export interface LeaderboardEntry {
   rank: number;
   score: number;
   name: string | null;
+  avatar: string | null;
   isSelf: boolean;
 }
 export interface LeaderboardResult {
@@ -34,12 +36,24 @@ export interface LeaderboardDialogProps {
   available: boolean;
 }
 
+function PlayerAvatar({ source }: { source: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return <span className="leaderboard-avatar" aria-hidden="true">
+    {source && !failed
+      ? <img src={source} alt="" width={32} height={32} referrerPolicy="no-referrer"
+          loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      : <UserRound size={19} />}
+  </span>;
+}
+
 export function LeaderboardDialog({
   open, onOpenChange, locale, returnFocus, load, consented, preference, join, decline, score, eligibility, available,
 }: LeaderboardDialogProps) {
   const titleRef = useRef<HTMLHeadingElement>(null);
   const previousEligibility = useRef(eligibility);
   const joiningRef = useRef(false);
+  const decliningRef = useRef(false);
+  const choiceSequenceRef = useRef(0);
   const joinViewRef = useRef(0);
   const [choiceAction, setChoiceAction] = useState<"join" | "decline" | null>(null);
   const [choiceFailed, setChoiceFailed] = useState<"preference" | "join" | "decline" | null>(null);
@@ -80,10 +94,14 @@ export function LeaderboardDialog({
   }, [open, available, period, load, attempt]);
 
   const canJoin = available && !consented && preference !== "checking" && score !== null && ["ready", "declined", "failed", "submitted"].includes(eligibility);
+  const canDecline = available && (preference !== "disabled" || canJoin);
+  const stopping = consented || preference === "checking" || preference === "unavailable" || eligibility === "pending" || eligibility === "uncertain";
   async function chooseParticipation(action: "join" | "decline") {
-    if (!canJoin || joiningRef.current) return;
-    joiningRef.current = true;
+    if (action === "join" ? !canJoin || joiningRef.current || decliningRef.current : !canDecline || decliningRef.current) return;
+    if (action === "join") joiningRef.current = true;
+    else decliningRef.current = true;
     const view = joinViewRef.current;
+    const sequence = ++choiceSequenceRef.current;
     setChoiceAction(action);
     setChoiceFailed(null);
     try {
@@ -94,10 +112,11 @@ export function LeaderboardDialog({
       }
     } catch (error) {
       const cloudFailure = typeof error === "object" && error !== null && "code" in error && error.code === "preference-unavailable";
-      if (view === joinViewRef.current) setChoiceFailed(cloudFailure ? "preference" : action);
+      if (view === joinViewRef.current && sequence === choiceSequenceRef.current) setChoiceFailed(cloudFailure ? "preference" : action);
     } finally {
-      joiningRef.current = false;
-      setChoiceAction(null);
+      if (action === "join") joiningRef.current = false;
+      else decliningRef.current = false;
+      if (sequence === choiceSequenceRef.current) setChoiceAction(null);
     }
   }
 
@@ -155,13 +174,19 @@ export function LeaderboardDialog({
                   <th scope="col">{l("Player", "玩家")}</th>
                   <th scope="col">{l("Score", "分数")}</th>
                 </tr></thead>
-                <tbody>{result.entries.map((entry, index) => <tr key={`${entry.rank}-${index}`} className={entry.isSelf ? "leaderboard-self-row" : undefined}>
-                  <td>{number(entry.rank)}</td>
-                  <th scope="row">{l("Hidden name", "匿名玩家")}
-                    {entry.isSelf && <span className="leaderboard-you">{l("You", "你")}</span>}
-                  </th>
-                  <td>{number(entry.score)}</td>
-                </tr>)}</tbody>
+                <tbody>{result.entries.map((entry, index) => {
+                  const avatar = normalizeLeaderboardAvatar(entry.avatar);
+                  return <tr key={`${entry.rank}-${index}`} className={entry.isSelf ? "leaderboard-self-row" : undefined}>
+                    <td>{number(entry.rank)}</td>
+                    <th scope="row"><span className="leaderboard-player">
+                      <PlayerAvatar key={avatar ?? "fallback"} source={avatar} />
+                      <span className="leaderboard-player-name">{entry.name?.trim() || l("Player", "玩家")}
+                        {entry.isSelf && <span className="leaderboard-you">{l("You", "你")}</span>}
+                      </span>
+                    </span></th>
+                    <td>{number(entry.score)}</td>
+                  </tr>;
+                })}</tbody>
               </table> : <p className="leaderboard-empty" role="status">
                 {l("No scores yet for this period. A fresh challenge awaits!", "本期还没有成绩，新的挑战等着你！")}
               </p>}
@@ -184,20 +209,26 @@ export function LeaderboardDialog({
               {score !== null && <strong>{l(`${number(score)} points`, `${number(score)} 分`)}</strong>}
             </div>
             <p className="leaderboard-privacy" id="leaderboard-privacy-note">
-              {l("Names are hidden in this game. Toy links submitted scores to your Bilibili account and may request permission.", "本游戏内不显示任何玩家昵称。Toy 会将提交的成绩关联至你的哔哩哔哩账号，并可能请求授权。")}
+              {l("Joining makes your Toy nickname, avatar and score public on this leaderboard. Toy uses your Bilibili account and may request permission.", "参与后，你的 Toy 昵称、头像和成绩会在本排行榜公开显示。Toy 会使用你的哔哩哔哩账号，并可能请求授权。")}
             </p>
             <p className="leaderboard-privacy" id="leaderboard-consent-note">
               {consented ? l("Your leaderboard choice is saved to your Bilibili account and synced across devices. Eligible new runs are submitted automatically after they finish.", "参与选择已保存至你的哔哩哔哩账号，并在设备间同步。通过检查的新成绩会在每局结束后自动提交。")
                 : eligibility === "submitted" ? l("Your score is already posted. Save your leaderboard choice to enable automatic submission for eligible future runs. The choice syncs through your Bilibili account across devices.", "本局成绩已经提交。保存排行参与选择后，以后各局有效新成绩会自动提交。选择会通过你的哔哩哔哩账号在设备间同步。")
                 : l("Joining posts this score and turns on automatic submission for eligible future runs. Your choice is saved to your Bilibili account and synced across devices. Choose Not now to keep automatic submissions off.", "选择参与会提交本局成绩，并开启以后各局有效新成绩的自动提交。选择会保存至你的哔哩哔哩账号，并在设备间同步。选择“暂不参与”可保持自动提交关闭。")}
             </p>
+            <p className="leaderboard-privacy" id="leaderboard-optout-note">
+              {l("You can stop future submissions at any time. This does not remove scores already posted or cancel a submission already in progress.", "你可以随时停止提交后续成绩。这不会删除已发布的成绩，也无法取消正在进行的提交。")}
+            </p>
+            {preference === "disabled" && <p className="leaderboard-notice" role="status">
+              {l("Future submissions are off.", "后续成绩提交已关闭。")}
+            </p>}
             {preference === "checking" && <p className="leaderboard-notice" role="status">
               {l("Checking your Bilibili leaderboard choice…", "正在读取哔哩哔哩账号的排行参与选择…")}
             </p>}
             {preference === "unavailable" && <p className="leaderboard-error" role="status">
               {eligibility === "submitted"
                 ? l("Score posted, but your choice could not sync. Automatic posting stays off until your choice is saved.", "成绩已提交，但参与选择未能同步。成功保存选择前，自动提交会保持关闭。")
-                : l("Your leaderboard choice could not sync with Bilibili. Automatic submissions stay off. Refresh scores to check again.", "暂时无法同步哔哩哔哩账号的排行参与选择，自动提交会保持关闭。刷新成绩可重试读取。")}
+                : l("Your leaderboard choice could not sync with Bilibili. Automatic submissions stay off here. Retry saving your choice to sync it across devices.", "暂时无法同步哔哩哔哩账号的排行参与选择，本次游玩不会自动提交。请重试保存选择，以同步至其他设备。")}
             </p>}
             {eligibility === "submitted" ? <p className="leaderboard-status leaderboard-success" role="status">
               <Check size={18} aria-hidden="true" />{l("Score submitted. Thanks for playing!", "成绩已提交，感谢参与！")}
@@ -220,21 +251,22 @@ export function LeaderboardDialog({
               <LoaderCircle className="leaderboard-spinner" size={17} aria-hidden="true" />
               {l("Saving your leaderboard choice…", "正在保存排行参与选择…")}
             </p>}
-            {canJoin && <div className="leaderboard-join-actions">
-              <button type="button" className="leaderboard-join" disabled={choiceAction !== null}
-                aria-describedby="leaderboard-privacy-note leaderboard-consent-note" onClick={() => void chooseParticipation("join")}>
+            {(canJoin || canDecline) && <div className="leaderboard-join-actions">
+              {canJoin && <button type="button" className="leaderboard-join" disabled={choiceAction !== null}
+                aria-describedby="leaderboard-privacy-note leaderboard-consent-note leaderboard-optout-note" onClick={() => void chooseParticipation("join")}>
                 {eligibility === "submitted" ? l("Save leaderboard choice", "保存排行参与选择") : l("Join leaderboard & post this score", "参与排行并提交本局成绩")}
-              </button>
-              <button type="button" className="leaderboard-defer" disabled={choiceAction !== null} onClick={() => void chooseParticipation("decline")}>
-                {l("Not now", "暂不参与")}
-              </button>
+              </button>}
+              {canDecline && <button type="button" className="leaderboard-defer" disabled={choiceAction === "decline"}
+                aria-describedby="leaderboard-optout-note" onClick={() => void chooseParticipation("decline")}>
+                {stopping ? l("Stop future submissions", "停止提交后续成绩") : l("Not now", "暂不参与")}
+              </button>}
               {choiceFailed && (choiceFailed !== "join" || eligibility === "ready") && !(choiceFailed === "preference" && preference === "unavailable") && <p className="leaderboard-error" role="alert">
                 {choiceFailed === "preference"
                   ? eligibility === "submitted"
                     ? l("Score posted, but your choice could not sync. Automatic posting stays off until your choice is saved.", "成绩已提交，但参与选择未能同步。成功保存选择前，自动提交会保持关闭。")
                     : l("Your leaderboard choice could not be saved to Bilibili. Automatic submissions stay off. Please try again.", "排行参与选择未能保存至哔哩哔哩账号，自动提交会保持关闭。请重试。")
                   : choiceFailed === "decline"
-                    ? l("Your choice could not be saved. Please try Not now again.", "未能保存你的选择，请再次点击“暂不参与”。")
+                    ? l("Your choice could not be saved. Future submissions are off here; retry to sync this choice across devices.", "未能保存你的选择。本次游玩不会再自动提交，请重试以将选择同步至其他设备。")
                     : eligibility === "ready"
                       ? l("Could not join. Your progress is saved locally. Please try again when you are ready.", "暂时无法参与排行，进度已保存在本机。你可以稍后重试。")
                       : null}

@@ -40,17 +40,18 @@ function completedRun(t) {
 function harness(run, consented) {
   const writes = [];
   let storedReads = 0, selectedReceipt, status;
-  let enabled = consented;
+  const cloudValues = { "community-seasons-leaderboard-consent-v1": JSON.stringify({ version: 1, enabled: true }) };
+  if (typeof consented === "boolean") cloudValues[LEADERBOARD_CONSENT_KEY] = JSON.stringify({ version: 2, enabled: consented });
   const sdk = {
     async isSupport() { return true; },
     async submitScore(request) { writes.push(request); return { score: request.score }; },
     async getCloudStorage(keys) {
       assert.deepEqual(keys, [LEADERBOARD_CONSENT_KEY]);
-      return { [LEADERBOARD_CONSENT_KEY]: JSON.stringify({ version: 1, enabled }) };
+      return Object.fromEntries(keys.filter((key) => key in cloudValues).map((key) => [key, cloudValues[key]]));
     },
     async setCloudStorage(items) {
       assert.deepEqual(Object.keys(items), [LEADERBOARD_CONSENT_KEY]);
-      enabled = JSON.parse(items[LEADERBOARD_CONSENT_KEY]).enabled;
+      Object.assign(cloudValues, items);
     },
   };
   const client = createLeaderboardClient(async () => sdk);
@@ -74,7 +75,7 @@ function harness(run, consented) {
   return { c, writes, participation, observe: () => c.observeCompletedRun(),
     get receipt() { return selectedReceipt; }, get status() { return status; },
     get storedReads() { return storedReads; },
-    setCloudChoice(value) { enabled = value; } };
+    setCloudChoice(value) { cloudValues[LEADERBOARD_CONSENT_KEY] = JSON.stringify({ version: 2, enabled: value }); } };
 }
 
 test("actual page completion observer rejects a forged stored last run of 999,999,999,999,999", async () => {
@@ -97,7 +98,7 @@ test("the actual page observes a fresh result without posting until one-time con
   assert.deepEqual(h.writes, []);
   assert.equal(h.receipt.score, run.score);
   await h.participation.join(h.receipt);
-  assert.deepEqual(h.writes, [{ board: 2, score: run.score }]);
+  assert.deepEqual(h.writes, [{ board: 3, score: run.score }]);
   assert.equal(h.storedReads, 0);
 });
 
@@ -110,7 +111,7 @@ test("automatic posting waits for the fatal lesson and submits only the sealed l
   finishReview(run);
   for (let i = 0; i < 20; i++) h.observe();
   await h.participation.observe(h.receipt);
-  assert.deepEqual(h.writes, [{ board: 2, score: run.score }]);
+  assert.deepEqual(h.writes, [{ board: 3, score: run.score }]);
   assert.equal(h.storedReads, 0);
   h.c.game.current = createRun();
   h.observe();
@@ -128,4 +129,18 @@ test("a choice changed on another device does not leave the page claiming a post
   assert.equal(h.participation.hasConsent(), false);
   assert.equal(h.status, "ready");
   assert.deepEqual(h.writes, []);
+});
+
+test("hidden-name consent cannot automatically enter a fresh run in the public-profile leaderboard", async (t) => {
+  const run = completedRun(t);
+  const h = harness(run, undefined);
+  await h.participation.refresh();
+  assert.equal(h.participation.hasConsent(), false);
+  h.observe();
+  await h.participation.observe(h.receipt);
+  assert.equal(h.status, "ready");
+  assert.deepEqual(h.writes, []);
+  await h.participation.join(h.receipt);
+  assert.deepEqual(h.writes, [{ board: 3, score: run.score }]);
+  assert.equal(h.participation.hasConsent(), true);
 });

@@ -695,8 +695,8 @@ export function RunSetup({
           </RadioGroup>
           {automaticLeaderboard && <p className="run-leaderboard-note">
             {locale === "zh-CN"
-              ? "本局结束后，符合条件的成绩会自动提交至 Toy 排行榜。游戏内昵称均隐藏；Toy 会使用你的哔哩哔哩账号，并可能请求授权。存档中的最高分不会提交。"
-              : "Eligible completed runs post automatically to Toy. Names are hidden here; Toy uses your Bilibili account and may request permission. Saved best scores are never submitted."}
+              ? "本局结束后，符合条件的成绩会自动提交至 Toy 排行榜，并公开展示你的哔哩哔哩昵称和头像。可在排行榜中关闭以后的提交；已提交的成绩不会因此移除。存档中的最高分不会提交。"
+              : "Eligible completed runs post automatically to Toy with your Bilibili nickname and avatar. You can stop future submissions in the leaderboard; scores already posted are not removed. Saved best scores are never submitted."}
           </p>}
           <div className="run-setup-footer">
             <Button type="button" variant="outline" onClick={onStore}>

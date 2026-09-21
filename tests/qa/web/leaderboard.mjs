@@ -15,6 +15,7 @@ const previewPath = '/qa/leaderboard/';
 const storagePrefix = 'qa-community-seasons-leaderboard-v1:';
 const watched = [
   'src/components/leaderboard-dialog.tsx', 'src/components/leaderboard-dialog.css',
+  'src/lib/game/leaderboard.ts', 'src/lib/game/toy-sdk.ts', 'src/lib/game/ranked-run.ts',
   'src/components/ui/dialog.tsx', 'src/components/ui/button.tsx', 'src/lib/utils.ts',
   'src/app/globals.css', 'tests/qa/leaderboard', 'tests/qa/web/leaderboard.mjs',
   'tests/qa/web/runtime.mjs', 'tests/qa/preview/storage.mjs',
@@ -41,7 +42,12 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
     localStorage.setItem('qa-unrelated-sentinel', 'preserve-this-value');
   });
   await context.route('**/*', async route => {
-    if (new URL(route.request().url()).origin !== origin) {
+    const url = route.request().url();
+    if (url === 'https://i0.hdslb.com/bfs/face/leaderboard-qa.png') {
+      await route.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64') });
+    } else if (url === 'https://i0.hdslb.com/bfs/face/leaderboard-qa-missing.png') {
+      await route.fulfill({ status: 404, body: '' });
+    } else if (new URL(url).origin !== origin) {
       row.blockedRequests.push(route.request().url());
       await route.abort();
     } else await route.continue();
@@ -80,16 +86,30 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
     await page.locator('.leaderboard-dialog').evaluate(async dialog => {
       await Promise.all(dialog.getAnimations().map(animation => animation.finished.catch(() => {})));
     });
-    await check('private-names-default-week-read-only-view', async () => {
+    await check('public-profiles-default-week-read-only-view', async () => {
       assert.equal(await page.locator('input[value="week"]').isChecked(), true);
-      assert.equal(await page.locator('.leaderboard-table tbody th').innerText(), text('Hidden name', '匿名玩家'));
-      assert.ok(!(await page.locator('.leaderboard-dialog').innerText()).includes('PRIVATE'));
-      assert.equal(await page.locator('.leaderboard-dialog a, .leaderboard-dialog img, .leaderboard-dialog input[type=checkbox]').count(), 0);
+      assert.equal(await page.locator('.leaderboard-player-name').first().innerText(), 'Toy Runner');
+      assert.equal(await page.locator('.leaderboard-player-name').nth(1).innerText(), '<img src=x onerror="window.profileInjected=true">');
+      assert.equal(await page.locator('.leaderboard-player-name').nth(2).innerText(), text('Player', '玩家'));
+      assert.equal(await page.locator('.leaderboard-dialog a, .leaderboard-player-name img, .leaderboard-dialog input[type=checkbox]').count(), 0);
+      assert.equal(await page.evaluate(() => window.profileInjected), undefined);
+      assert.equal(await page.locator('.leaderboard-self-row').count(), 0, 'No self identity inferred from matching score');
+      const avatar = page.locator('.leaderboard-avatar img').first();
+      assert.equal(await avatar.getAttribute('referrerpolicy'), 'no-referrer');
+      assert.equal(await avatar.getAttribute('loading'), 'lazy');
+      assert.equal(await avatar.getAttribute('decoding'), 'async');
+      assert.equal(await avatar.getAttribute('width'), '32');
+      assert.equal(await avatar.getAttribute('height'), '32');
+      assert.equal(await page.locator('img[src^="javascript:"]').count(), 0);
+      await page.locator('.leaderboard-table tbody tr').nth(2).scrollIntoViewIfNeeded();
+      await page.waitForFunction(() => document.querySelectorAll('.leaderboard-avatar svg').length === 3);
+      await page.locator('.leaderboard-dialog').evaluate(dialog => { dialog.scrollTop = 0; });
       assert.equal((await snapshot()).submissionCount, 0);
       assert.equal(await page.locator('.leaderboard-submit').count(), 0);
       assert.equal(await page.locator('.leaderboard-join').count(), 1);
       assert.equal(await page.locator('.leaderboard-title').evaluate(element => document.activeElement === element), true);
-      assert.ok((await page.locator('#leaderboard-privacy-note').innerText()).includes('Toy'));
+      assert.ok((await page.locator('#leaderboard-privacy-note').innerText()).includes(text('nickname, avatar and score public', '昵称、头像和成绩会在本排行榜公开显示')));
+      assert.ok((await page.locator('#leaderboard-optout-note').innerText()).includes(text('does not remove scores already posted', '不会删除已发布的成绩')));
       assert.ok((await page.locator('#leaderboard-consent-note').innerText()).includes(text('synced across devices', '设备间同步')));
     });
     await check('responsive-and-enlarged-text', async entry => {
@@ -173,7 +193,8 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
       await page.evaluate(() => { window.__leaderboardQA.newRun(); window.__leaderboardQA.finishRun(); });
       await open();
       await page.getByText(text('Submitting your completed run…', '正在提交本局成绩…'), { exact: true }).waitFor();
-      assert.equal(await page.locator('.leaderboard-post button').count(), 0);
+      assert.equal(await page.locator('.leaderboard-join').count(), 0);
+      assert.equal(await page.locator('.leaderboard-defer').isEnabled(), true);
       assert.equal((await snapshot()).submissionCount, 2);
       await requestAfter(() => page.evaluate(() => window.__leaderboardQA.settleSubmission('success')));
       await page.locator('.leaderboard-success').waitFor();
@@ -217,7 +238,8 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
     await check('failed-auto-submission-keeps-local-progress', async () => {
       await page.evaluate(() => { window.__leaderboardQA.configure({ consented: true }); window.__leaderboardQA.newRun(); window.__leaderboardQA.finishRun(); window.__leaderboardQA.settleSubmission('error'); });
       await page.getByText(text('This score could not be submitted. Your progress is saved locally. Check your connection and Bilibili sign-in; a new run can try again.', '本局成绩暂时无法提交，进度已保存在本机。请检查网络及哔哩哔哩登录状态，新的一局结束后可再次尝试。'), { exact: true }).waitFor();
-      assert.equal(await page.locator('.leaderboard-post button').count(), 0);
+      assert.equal(await page.locator('.leaderboard-join').count(), 0);
+      assert.equal(await page.locator('.leaderboard-defer').isEnabled(), true);
       assert.equal((await snapshot()).submissionCount, 8);
     });
     await check('period-response-race', async () => {
@@ -227,7 +249,7 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
       await settleLoad(week, 999);
       await waitReady();
       await settleLoad(day, 888);
-      assert.equal(await page.locator('.leaderboard-table tbody td').last().innerText(), '999');
+      assert.equal(await page.locator('.leaderboard-table tbody tr').first().locator('td').last().innerText(), '999');
       assert.equal(await page.locator('input[value="week"]').isChecked(), true);
       assert.equal((await snapshot()).submissionCount, 8, 'Period changes only read scores');
     });
@@ -254,7 +276,8 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
       await page.evaluate(outcome => window.__leaderboardQA.settleSubmission(outcome), outcome);
       await page.getByText(text('Only new, completed runs are eligible. Finish a fresh run to take part.', '仅限本次游玩中完成的新成绩。完成新的一局后即可参与。'), { exact: true }).waitFor();
       assert.equal(await page.locator('.leaderboard-success').count(), 0);
-      assert.equal(await page.locator('.leaderboard-post button').count(), 0);
+      assert.equal(await page.locator('.leaderboard-join').count(), 0);
+      assert.equal(await page.locator('.leaderboard-defer').isEnabled(), true);
       assert.equal((await snapshot()).eligibility, 'ready');
     });
     await check('late-explicit-decline-does-not-mark-new-run', async () => {
@@ -284,7 +307,7 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
       await page.getByText(text('Checking your Bilibili leaderboard choice…', '正在读取哔哩哔哩账号的排行参与选择…'), { exact: true }).waitFor();
       assert.equal(await page.locator('.leaderboard-join').count(), 0);
       await page.evaluate(() => { window.__leaderboardQA.configure({ preference: 'unavailable' }); window.__leaderboardQA.newRun(); window.__leaderboardQA.finishRun(); });
-      await page.getByText(text('Your leaderboard choice could not sync with Bilibili. Automatic submissions stay off. Refresh scores to check again.', '暂时无法同步哔哩哔哩账号的排行参与选择，自动提交会保持关闭。刷新成绩可重试读取。'), { exact: true }).waitFor();
+      await page.getByText(text('Your leaderboard choice could not sync with Bilibili. Automatic submissions stay off here. Retry saving your choice to sync it across devices.', '暂时无法同步哔哩哔哩账号的排行参与选择，本次游玩不会自动提交。请重试保存选择，以同步至其他设备。'), { exact: true }).waitFor();
       assert.equal((await snapshot()).submissionCount, previous);
       assert.equal(await page.locator('.leaderboard-join').isEnabled(), true);
     });
@@ -320,6 +343,56 @@ async function runCase(browser, engine, profile, locale, origin, reportDirectory
       assert.equal((await snapshot()).preference, 'enabled');
       assert.equal(await page.locator('.leaderboard-join').count(), 0);
     });
+    for (const state of ['no-run', 'pending', 'uncertain', 'checking', 'unavailable']) await check(`optout-independent-of-${state}`, async () => {
+      const previous = (await snapshot()).submissionCount;
+      await page.evaluate(state => window.__leaderboardQA.configure({
+        consented: state !== 'checking' && state !== 'unavailable',
+        preference: state === 'checking' || state === 'unavailable' ? state : 'enabled',
+        score: state === 'no-run' ? null : 12345,
+        eligibility: state === 'pending' || state === 'uncertain' ? state : 'unavailable',
+      }), state);
+      const stop = page.getByRole('button', { name: text('Stop future submissions', '停止提交后续成绩'), exact: true });
+      assert.equal(await stop.isEnabled(), true);
+      await stop.click();
+      await page.waitForFunction(() => !document.querySelector('.leaderboard-dialog') && document.activeElement?.id === 'leaderboard-launcher');
+      assert.equal((await snapshot()).preference, 'disabled');
+      assert.equal((await snapshot()).consented, false);
+      await page.evaluate(() => { window.__leaderboardQA.newRun(); window.__leaderboardQA.finishRun(); });
+      assert.equal((await snapshot()).submissionCount, previous, 'Optout keeps later fresh runs local');
+      await open();
+      await waitReady();
+    });
+    await check('optout-cloud-failure-remains-local-off-and-retryable', async () => {
+      const previous = (await snapshot()).submissionCount;
+      await page.evaluate(() => { window.__leaderboardQA.configure({ consented: true, score: null, eligibility: 'unavailable' }); window.__leaderboardQA.failChoice(true); });
+      await page.locator('.leaderboard-defer').click();
+      await page.waitForFunction(() => window.__leaderboardQA.snapshot().preference === 'unavailable');
+      assert.equal((await snapshot()).consented, false);
+      assert.equal(await page.locator('.leaderboard-dialog').count(), 1);
+      assert.equal(await page.locator('.leaderboard-defer').isEnabled(), true);
+      assert.ok((await page.locator('.leaderboard-post').innerText()).includes(text('Automatic submissions stay off here', '本次游玩不会自动提交')));
+      await page.evaluate(() => { window.__leaderboardQA.newRun(); window.__leaderboardQA.finishRun(); });
+      assert.equal((await snapshot()).submissionCount, previous);
+      await page.evaluate(() => window.__leaderboardQA.failChoice(false));
+      await page.locator('.leaderboard-defer').click();
+      await page.waitForFunction(() => !document.querySelector('.leaderboard-dialog'));
+      await open();
+      await waitReady();
+    });
+    await check('optout-during-explicit-join-prevents-late-reenable', async () => {
+      await page.evaluate(() => { window.__leaderboardQA.configure({ consented: false }); window.__leaderboardQA.newRun(); });
+      await page.locator('.leaderboard-join').click();
+      await page.getByText(text('Submitting your completed run…', '正在提交本局成绩…'), { exact: true }).waitFor();
+      const stop = page.getByRole('button', { name: text('Stop future submissions', '停止提交后续成绩'), exact: true });
+      assert.equal(await stop.isEnabled(), true);
+      await stop.click();
+      await page.waitForFunction(() => !document.querySelector('.leaderboard-dialog'));
+      await page.evaluate(() => window.__leaderboardQA.settleSubmission('success'));
+      assert.equal((await snapshot()).consented, false);
+      assert.equal((await snapshot()).preference, 'disabled');
+      await open();
+      await waitReady();
+    });
     await check('standalone-graceful-unavailability', async () => {
       const requests = (await snapshot()).requests.length;
       await page.evaluate(() => window.__leaderboardQA.configure({ available: false }));
@@ -345,7 +418,7 @@ const reportDirectory = path.join(root, 'results/qa', `leaderboard-${new Date().
 await fs.mkdir(reportDirectory, { recursive: true });
 const report = {
   version: 1, startedAt: new Date().toISOString(),
-  method: 'Production leaderboard component and Base UI dialog with fixture-only async responses. Dedicated localhost server, fresh isolated saves, no Toy SDK and blocked external requests. Chromium/WebKit desktop, touch and 200% text are browser simulations, not native-device performance measurements.',
+  method: 'Production leaderboard component and Base UI dialog with fixture-only async responses. Dedicated localhost server, fresh isolated saves, no Toy SDK. Avatar requests are fulfilled with local test bytes; all other external requests are blocked. Chromium/WebKit desktop, touch and 200% text are browser simulations, not native-device performance measurements.',
   sourceHashes: await sources(), rows: [], errors: [],
 };
 let server;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { compileGameModules } from "../helpers/compile-game-modules.mjs";
 
 compileGameModules(new URL("../helpers/compiled/", import.meta.url), { entries: ["leaderboard", "engine"] });
-const { createLeaderboardClient, createLeaderboardParticipation, LEADERBOARD_CONSENT_KEY, LEADERBOARD_BOARD, LEADERBOARD_LIMIT, MAX_RANKED_SCORE } =
+const { createLeaderboardClient, createLeaderboardParticipation, normalizeLeaderboardAvatar, LEADERBOARD_CONSENT_KEY, LEADERBOARD_BOARD, LEADERBOARD_LIMIT, MAX_RANKED_SCORE } =
   await import("../helpers/compiled/leaderboard.mjs");
 const { createRun, update, finishReview } = await import("../helpers/compiled/engine.mjs");
 const { beginRankedRun, getRankedRunReceipt } = await import("../helpers/compiled/ranked-run.mjs");
@@ -42,13 +42,13 @@ function code(expected) {
 
 test("public and personal reads always select the new board and an explicit day/week", async () => {
   const { calls, client } = fakeSdk();
-  assert.equal(LEADERBOARD_BOARD, 2);
+  assert.equal(LEADERBOARD_BOARD, 3);
   for (const period of ["day", "week"]) assert.deepEqual(await client.read(period), { entries: [], self: null });
   assert.deepEqual(calls.reads, [
-    { board: 2, period: "day", limit: LEADERBOARD_LIMIT },
-    { board: 2, period: "week", limit: LEADERBOARD_LIMIT },
+    { board: 3, period: "day", limit: LEADERBOARD_LIMIT },
+    { board: 3, period: "week", limit: LEADERBOARD_LIMIT },
   ]);
-  assert.deepEqual(calls.mine, [{ board: 2, period: "day" }, { board: 2, period: "week" }]);
+  assert.deepEqual(calls.mine, [{ board: 3, period: "day" }, { board: 3, period: "week" }]);
   assert.deepEqual(calls.support, ["getRankList", "getMyRank", "getRankList", "getMyRank"]);
   const previousLoads = calls.loads;
   for (const invalid of [undefined, null, "all", "month", "", 0]) {
@@ -57,12 +57,12 @@ test("public and personal reads always select the new board and an explicit day/
   assert.equal(calls.loads, previousLoads, "invalid periods are rejected before SDK access");
 });
 
-test("read discards profile data and malformed/extreme scores without renumbering valid ranks", async () => {
+test("read preserves bounded Toy public profiles and filters invalid scores without renumbering ranks", async () => {
   const { client } = fakeSdk({
     async getRankList() {
       return [
-        { rank: 4, score: 150, nickname: "private name", avatar: "https://private.invalid/photo", extra: "profile" },
-        { rank: 1, score: MAX_RANKED_SCORE, nickname: "another private name", avatar: "secret" },
+        { rank: 4, score: 150, nickname: "  River TV  ", avatar: "https://i0.hdslb.com/bfs/face/river.jpg", extra: "private field" },
+        { rank: 1, score: MAX_RANKED_SCORE, nickname: "春日同学", avatar: "//i1.hdslb.com/bfs/face/spring.jpg" },
         { rank: 4, score: 200, nickname: "duplicate" },
         { rank: 2, score: MAX_RANKED_SCORE + 1 },
         { rank: 3, score: 0 },
@@ -86,12 +86,59 @@ test("read discards profile data and malformed/extreme scores without renumberin
   const result = await client.read("day");
   assert.deepEqual(result, {
     entries: [
-      { rank: 1, score: MAX_RANKED_SCORE, name: null, isSelf: false },
-      { rank: 4, score: 150, name: null, isSelf: false },
+      { rank: 1, score: MAX_RANKED_SCORE, name: "春日同学", avatar: "https://i1.hdslb.com/bfs/face/spring.jpg", isSelf: false },
+      { rank: 4, score: 150, name: "River TV", avatar: "https://i0.hdslb.com/bfs/face/river.jpg", isSelf: false },
     ],
-    self: { rank: 12, score: 90, name: null, isSelf: true },
+    self: { rank: 12, score: 90, name: null, avatar: null, isSelf: true },
   });
-  assert.doesNotMatch(JSON.stringify(result), /private|avatar|nickname|account|photo|profile/);
+  assert.doesNotMatch(JSON.stringify(result), /private|nickname|account|my photo|extra/);
+});
+
+test("public names remain bounded Unicode text and cannot add profile metadata or infer self identity", async () => {
+  const nicknames = [
+    "<img src=x onerror=alert(1)>", "  春日📺  ", "📺".repeat(80),
+    "\u202eA\u0000da\u2069", "\u0000\n\u202e", "", null, 123, "x".repeat(1025),
+  ];
+  const { client } = fakeSdk({
+    async getRankList() {
+      return nicknames.map((nickname, i) => ({
+        rank: i + 1, score: 100, nickname, avatar: "https://attacker.invalid/profile.png", account: "private id",
+      }));
+    },
+    async getMyRank() {
+      return { ranked: true, rank: 1, score: 100, nickname: "not in this endpoint", avatar: "https://i0.hdslb.com/face.png" };
+    },
+  });
+  const result = await client.read("week");
+  assert.deepEqual(result.entries.map(({ name }) => name), [
+    "<img src=x onerror=alert(1)>", "春日📺", "📺".repeat(64), "Ada", null, null, null, null, null,
+  ]);
+  assert.ok(result.entries.every(({ avatar, isSelf }) => avatar === null && isSelf === false));
+  assert.deepEqual(result.self, { rank: 1, score: 100, name: null, avatar: null, isSelf: true });
+  assert.doesNotMatch(JSON.stringify(result), /private id|account|not in this endpoint/);
+});
+
+test("avatars only use normalized HTTPS Bilibili CDN URLs", () => {
+  for (const [source, expected] of [
+    ["https://p0.hdslb.com/bfs/face/toy-normalized.jpg", "https://p0.hdslb.com/bfs/face/toy-normalized.jpg"],
+    ["https://i0.hdslb.com/bfs/face/a.jpg", "https://i0.hdslb.com/bfs/face/a.jpg"],
+    ["//i1.hdslb.com/bfs/face/a.jpg", "https://i1.hdslb.com/bfs/face/a.jpg"],
+    ["http://i2.hdslb.com/bfs/face/a.jpg", "https://i2.hdslb.com/bfs/face/a.jpg"],
+    ["http://hdslb.com:80/a.png", "https://hdslb.com/a.png"],
+    ["https://I0.HDSLB.COM:443/a.png?size=96#ignored", "https://i0.hdslb.com/a.png?size=96"],
+    [" https://hdslb.com/a.png ", "https://hdslb.com/a.png"],
+  ]) assert.equal(normalizeLeaderboardAvatar(source), expected, source);
+  for (const source of [
+    null, undefined, 12, {}, "", " ", "x".repeat(2049),
+    "javascript:alert(1)", "data:image/svg+xml,<svg/>", "blob:https://hdslb.com/id", "file:///avatar.png",
+    "https://evil.invalid/a.png", "https://hdslb.com.evil.invalid/a.png", "https://evilhdslb.com/a.png",
+    "//evil.invalid/a.png", "https://user:password@i0.hdslb.com/a.png", "https://@i0.hdslb.com/a.png",
+    "https://i0.hdslb.com:8443/a.png", "https://i0.hdslb.com:80/a.png", "http://i0.hdslb.com:443/a.png",
+    "https://i0.hdslb.com\\evil/a.png", "https://i0.hdslb.com/white space.png", "https://i0.hdslb.com/\na.png",
+    "/bfs/face/a.jpg", "https:hdslb.com/a.png", "https:/hdslb.com/a.png", "https:///hdslb.com/a.png",
+    "///hdslb.com/a.png", "https://hdslb.com./a.png", "ftp://i0.hdslb.com/a.png",
+    "https://i0.hdslb.com/" + "春".repeat(700),
+  ]) assert.equal(normalizeLeaderboardAvatar(source), null, String(source));
 });
 
 test("read limits displayed entries and rejects a non-list SDK response", async () => {
@@ -133,7 +180,7 @@ test("guest denial or unsupported personal rank still permits reading the public
       ...overrides,
     });
     assert.deepEqual(await client.read("week"), {
-      entries: [{ rank: 1, score: 100, name: null, isSelf: false }], self: null,
+      entries: [{ rank: 1, score: 100, name: null, avatar: null, isSelf: false }], self: null,
     });
   }
 });
@@ -148,12 +195,12 @@ test("forged or copied receipts are rejected before the SDK is loaded", async (t
   assert.deepEqual(calls.writes, []);
 });
 
-test("submission sends exactly the sealed score to board 2, ignores all-time response, and deduplicates success", async (t) => {
+test("submission sends exactly the sealed score to board 3, ignores all-time response, and deduplicates success", async (t) => {
   const receipt = sealedReceipt(t);
   const { calls, client } = fakeSdk();
   assert.equal(client.submissionStatus(receipt), "ready");
   assert.equal(await client.submit(receipt), undefined);
-  assert.deepEqual(calls.writes, [{ board: 2, score: receipt.score }]);
+  assert.deepEqual(calls.writes, [{ board: 3, score: receipt.score }]);
   assert.equal(client.submissionStatus(receipt), "submitted");
   assert.equal(await client.submit(receipt), undefined);
   assert.equal(calls.loads, 1);
@@ -323,13 +370,13 @@ function cloudHarness(initial = undefined) {
   }
   return { values, device };
 }
-const cloudChoice = (enabled) => JSON.stringify({ version: 1, enabled });
+const cloudChoice = (enabled) => JSON.stringify({ version: 2, enabled });
 
 test("missing account choice asks once without posting; observation never opens score consent by itself", async (t) => {
   const receipt = sealedReceipt(t);
   const { values, device } = cloudHarness();
   const { calls, preferences, statuses, participation } = device();
-  assert.equal(LEADERBOARD_CONSENT_KEY, "community-seasons-leaderboard-consent-v1");
+  assert.equal(LEADERBOARD_CONSENT_KEY, "community-seasons-leaderboard-consent-v2");
   for (let render = 0; render < 20; render++) await participation.observe(receipt);
   assert.equal(participation.hasConsent(), false);
   assert.equal(participation.submissionStatus(receipt), "ready");
@@ -362,7 +409,7 @@ test("explicit join posts its authentic score before persisting enabled account 
   assert.equal(participation.hasConsent(), true);
   assert.equal(participation.submissionStatus(receipt), "submitted");
   assert.deepEqual(calls.order, ["score", "preference"]);
-  assert.deepEqual(calls.scores, [{ board: 2, score: receipt.score }]);
+  assert.deepEqual(calls.scores, [{ board: 3, score: receipt.score }]);
   assert.deepEqual(calls.writes, [{ [LEADERBOARD_CONSENT_KEY]: cloudChoice(true) }]);
   assert.equal(values[LEADERBOARD_CONSENT_KEY], cloudChoice(true));
   assert.equal(values["community-seasons-save-v1"], "untouched player save");
@@ -381,7 +428,7 @@ test("account opt-in and opt-out propagate between devices without reading or re
   await b.participation.refresh();
   assert.equal(b.participation.hasConsent(), true);
   await b.participation.observe(secondReceipt);
-  assert.deepEqual(b.calls.scores, [{ board: 2, score: secondReceipt.score }]);
+  assert.deepEqual(b.calls.scores, [{ board: 3, score: secondReceipt.score }]);
   const declined = a.participation.decline();
   assert.equal(a.participation.hasConsent(), false, "explicit opt-out blocks this page immediately");
   await declined;
@@ -411,7 +458,7 @@ test("each new automatic result re-reads enabled cloud consent and only posts on
   await participation.observe(firstReceipt);
   await participation.observe(secondReceipt);
   assert.equal(calls.reads.length, 3, "refresh cannot replace the fresh read required for each run");
-  assert.deepEqual(calls.scores, [{ board: 2, score: firstReceipt.score }, { board: 2, score: secondReceipt.score }]);
+  assert.deepEqual(calls.scores, [{ board: 3, score: firstReceipt.score }, { board: 3, score: secondReceipt.score }]);
   assert.deepEqual(statuses.filter(({ status }) => status === "submitted").map(({ run }) => run), [firstReceipt, secondReceipt]);
 });
 
@@ -440,10 +487,11 @@ test("corrupt, unsupported-version and non-boolean cloud choices fail closed", a
   const receipt = sealedReceipt(t);
   for (const value of [
     "", "not json", "null", "[]", "true", "{}", "1", null, 1,
-    JSON.stringify({ version: 2, enabled: true }),
-    JSON.stringify({ version: 1, enabled: "true" }),
-    JSON.stringify({ version: 1, enabled: 1 }),
-    JSON.stringify({ version: 1, enabled: true, privateName: "ignored" }),
+    JSON.stringify({ version: 1, enabled: true }),
+    JSON.stringify({ version: 3, enabled: true }),
+    JSON.stringify({ version: 2, enabled: "true" }),
+    JSON.stringify({ version: 2, enabled: 1 }),
+    JSON.stringify({ version: 2, enabled: true, privateName: "ignored" }),
   ]) {
     const { device } = cloudHarness(value);
     const { participation, calls, preferences } = device();
@@ -633,7 +681,7 @@ test("cloud consent and posting ignore huge localStorage values and reject forge
   const stored = {
     "community-seasons-best": String(huge),
     "community-seasons-last-run": JSON.stringify({ ...receipt, score: huge }),
-    "community-seasons-leaderboard-consent-v1": cloudChoice(true),
+    "community-seasons-leaderboard-consent-v2": cloudChoice(true),
   };
   const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
   let storageReads = 0;
@@ -658,7 +706,7 @@ test("cloud consent and posting ignore huge localStorage values and reject forge
   assert.equal(participation.hasConsent(), false, "a forged local opt-in cannot replace the missing account choice");
   assert.deepEqual(calls.scores, []);
   await participation.join(receipt);
-  assert.deepEqual(calls.scores, [{ board: 2, score: receipt.score }]);
+  assert.deepEqual(calls.scores, [{ board: 3, score: receipt.score }]);
   assert.ok(receipt.score < huge);
   assert.equal(storageReads, 0);
 });
@@ -770,3 +818,87 @@ test("opt-out waiting behind a timed-out write saves once when the raw request s
   assert.equal(calls.writes.length, 2, "the recovery task recognizes that the queued decline already saved false");
   assert.equal(calls.scores.length, 1);
 });
+
+test("hidden-name board participation never migrates to public-profile board 3", async (t) => {
+  const receipt = sealedReceipt(t);
+  const oldKey = "community-seasons-leaderboard-consent-v1";
+  for (const priorChoice of [true, false]) {
+    const { values, device } = cloudHarness();
+    const oldValue = JSON.stringify({ version: 1, enabled: priorChoice });
+    values[oldKey] = oldValue;
+    const { participation, calls, preferences } = device();
+    await participation.refresh();
+    await participation.observe(receipt);
+    assert.equal(participation.hasConsent(), false);
+    assert.equal(preferences.at(-1), "ask", "public profile display requires a new explicit account choice");
+    assert.deepEqual(calls.scores, []);
+    assert.deepEqual(calls.writes, [], "old consent is never silently migrated");
+    assert.ok(calls.reads.every((keys) => keys.length === 1 && keys[0] === "community-seasons-leaderboard-consent-v2"));
+    await participation.join(receipt);
+    assert.deepEqual(calls.scores, [{ board: 3, score: receipt.score }]);
+    assert.deepEqual(calls.writes, [{ [LEADERBOARD_CONSENT_KEY]: JSON.stringify({ version: 2, enabled: true }) }]);
+    assert.equal(values[oldKey], oldValue, "the previous hidden-profile account choice is left intact");
+  }
+});
+
+test("an immediate opt-out cancels a queued explicit Join before any score dispatch", async (t) => {
+  const receipt = sealedReceipt(t);
+  const { values, device } = cloudHarness();
+  const { participation, calls, statuses } = device();
+  const joined = participation.join(receipt);
+  const declined = participation.decline();
+  await Promise.all([joined, declined]);
+  assert.deepEqual(calls.scores, []);
+  assert.equal(participation.submissionStatus(receipt), "ready");
+  assert.ok(statuses.every(({ status }) => status !== "submitted" && status !== "declined"));
+  assert.equal(participation.hasConsent(), false);
+  assert.equal(values[LEADERBOARD_CONSENT_KEY], cloudChoice(false));
+});
+
+test("an opt-out cancels a Join queued behind an outstanding cloud read", async (t) => {
+  const receipt = sealedReceipt(t);
+  const { values, device } = cloudHarness();
+  let releaseRead, began;
+  const readStarted = new Promise((resolve) => { began = resolve; });
+  const { participation, calls } = device({
+    read() { began(); return new Promise((resolve) => { releaseRead = resolve; }); },
+  });
+  const refreshed = participation.refresh();
+  await readStarted;
+  const joined = participation.join(receipt);
+  const declined = participation.decline();
+  releaseRead({});
+  await Promise.all([refreshed, joined, declined]);
+  assert.deepEqual(calls.scores, []);
+  assert.equal(participation.submissionStatus(receipt), "ready");
+  assert.equal(participation.hasConsent(), false);
+  assert.equal(values[LEADERBOARD_CONSENT_KEY], cloudChoice(false));
+});
+
+for (const automatic of [false, true]) {
+  test(`opt-out cancels ${automatic ? "automatic posting" : "explicit Join"} while SDK capability checking waits`, async (t) => {
+    const receipt = sealedReceipt(t);
+    const { values, device } = cloudHarness(automatic ? cloudChoice(true) : undefined);
+    let releaseSupport, began;
+    const supportStarted = new Promise((resolve) => { began = resolve; });
+    const { participation, calls, statuses } = device({
+      support(ability) {
+        if (ability !== "submitScore") return true;
+        began();
+        return new Promise((resolve) => { releaseSupport = resolve; });
+      },
+    });
+    const pending = automatic ? participation.observe(receipt) : participation.join(receipt);
+    await supportStarted;
+    assert.equal(participation.submissionStatus(receipt), "pending");
+    const declined = participation.decline();
+    assert.equal(participation.hasConsent(), false);
+    releaseSupport(true);
+    await Promise.all([pending, declined]);
+    assert.deepEqual(calls.scores, [], "SDK method must not be called after opt-out while its prerequisites were loading");
+    assert.equal(participation.submissionStatus(receipt), "ready");
+    assert.ok(statuses.every(({ status }) => status !== "submitted" && status !== "declined"));
+    assert.equal(values[LEADERBOARD_CONSENT_KEY], cloudChoice(false));
+    assert.deepEqual(calls.writes, [{ [LEADERBOARD_CONSENT_KEY]: cloudChoice(false) }]);
+  });
+}

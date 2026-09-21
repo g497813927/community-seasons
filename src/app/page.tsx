@@ -1853,9 +1853,11 @@ export default function Home() {
                     {!rankConsented && onToy ? l("Join leaderboard", "参与排行榜") : l("Leaderboard", "排行榜")} <Trophy aria-hidden="true" />
                   </Button>
                   {onToy && <p className="leaderboard-run-status" role="status">
-                    {rankEligibility === "submitted" ? l("Score posted · Names hidden", "成绩已提交 · 昵称已隐藏") :
+                    {rankEligibility === "submitted" ? l("Score posted to leaderboard", "成绩已提交至排行榜") :
                       rankEligibility === "pending" ? l("Posting your score…", "正在提交成绩…") :
-                      rankEligibility === "ready" ? l("Your score stays local until you join", "参与排行榜前，成绩不会提交") :
+                      rankEligibility === "ready" ? rankPreference === "disabled"
+                        ? l("Leaderboard participation is off · Score not posted", "已关闭排行参与 · 成绩未提交")
+                        : l("Your score stays local until you join", "参与排行榜前，成绩不会提交") :
                       rankEligibility === "declined" ? l("Permission declined · Score kept on this device", "未同意授权 · 成绩仅保存在本机") :
                       rankEligibility === "uncertain" ? l("Submission unconfirmed · Check the leaderboard", "暂无法确认提交结果 · 可查看排行榜") :
                       rankEligibility === "invalid" ? l("Run validation failed · Score not submitted", "本局未通过成绩检查 · 未提交") :

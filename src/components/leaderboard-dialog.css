@@ -38,6 +38,10 @@
 .leaderboard-table td:last-child { width: 32%; text-align: right; }
 .leaderboard-table tbody th { font-weight: 400; }
 .leaderboard-table tbody td:last-child { color: #f0ddb5; font-weight: 600; }
+.leaderboard-player { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 7px; min-width: 0; }
+.leaderboard-player-name { flex: 1 1 4em; min-width: 0; overflow-wrap: anywhere; unicode-bidi: plaintext; }
+.leaderboard-avatar { display: inline-grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; overflow: hidden; border-radius: 50%; background: #294b3b; color: #b5cab4; }
+.leaderboard-avatar img { width: 32px; height: 32px; object-fit: cover; }
 .leaderboard-self-row { background: #254536; }
 .leaderboard-you { display: inline-block; margin-inline-start: 7px; color: #cae4bf; font-size: 0.7rem; font-weight: 600; }
 .leaderboard-own-position { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; margin-top: 13px; color: #b5cab4; font-size: 0.8rem; line-height: 1.6; }

@@ -1,18 +1,20 @@
 import { loadToySdk, type ToySdk } from "./toy-sdk";
 import { isRankedRunReceipt, type RankedRunReceipt } from "./ranked-run";
 
-// A new board isolates this difficulty revision from any earlier/default board.
-// Bump to an unused Toy board when scoring or difficulty changes incompatibly.
-export const LEADERBOARD_BOARD = 2;
+// Public Toy profiles require fresh participation: board 2 was offered with
+// hidden names, so its scores and consent must never migrate to this board.
+export const LEADERBOARD_BOARD = 3;
 export const LEADERBOARD_LIMIT = 50;
 export const MAX_RANKED_SCORE = 16_777_215;
 export type LeaderboardPeriod = "day" | "week";
-export interface LeaderboardEntry { rank: number; score: number; name: null; isSelf: boolean }
+export interface LeaderboardEntry {
+  rank: number; score: number; name: string | null; avatar: string | null; isSelf: boolean;
+}
 export interface LeaderboardResult { entries: LeaderboardEntry[]; self: LeaderboardEntry | null }
 export type SubmissionStatus = "ready" | "pending" | "submitted" | "uncertain";
 
 export class LeaderboardError extends Error {
-  constructor(readonly code: "unsupported" | "unavailable" | "invalid-run" | "user-denied" | "uncertain" | "busy" | "preference-unavailable") {
+  constructor(readonly code: "unsupported" | "unavailable" | "invalid-run" | "user-denied" | "uncertain" | "busy" | "preference-unavailable" | "cancelled") {
     super(`Leaderboard: ${code}`);
     this.name = "LeaderboardError";
   }
@@ -29,13 +31,46 @@ function validScore(value: unknown): value is number {
   return Number.isSafeInteger(value) && (value as number) > 0 && (value as number) <= MAX_RANKED_SCORE;
 }
 
+function normalizeLeaderboardName(value: unknown): string | null {
+  if (typeof value !== "string" || value.length > 1024) return null;
+  // Keep names as text; the UI must render them through React text interpolation.
+  // Remove control/directional overrides while preserving normal emoji sequences.
+  const name = value.replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/g, "").trim();
+  return name ? Array.from(name).slice(0, 64).join("") : null;
+}
+
+export function normalizeLeaderboardAvatar(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0 || value.length > 2048) return null;
+  const source = value.trim();
+  if (!source || /[\u0000-\u0020\u007f\\]/.test(source)) return null;
+  if (!/^https?:\/\/[^/]/i.test(source) && !/^\/\/[^/]/.test(source)) return null;
+  try {
+    const url = new URL(source.startsWith("//") ? `https:${source}` : source);
+    if ((url.protocol !== "https:" && url.protocol !== "http:") ||
+      (url.hostname !== "hdslb.com" && !url.hostname.endsWith(".hdslb.com")) ||
+      url.username || url.password || url.port) return null;
+    // Even an empty user-info marker is unnecessary for a public avatar URL.
+    const authority = source.replace(/^https?:\/\//i, "").replace(/^\/\//, "").split(/[/?#]/, 1)[0];
+    if (authority.includes("@")) return null;
+    url.protocol = "https:";
+    url.hash = "";
+    return url.href.length <= 2048 ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
 function entry(value: unknown, isSelf = false): LeaderboardEntry | null {
   if (!value || typeof value !== "object") return null;
   const row = value as Record<string, unknown>;
   if (!Number.isSafeInteger(row.rank) || (row.rank as number) < 1 || !validScore(row.score)) return null;
-  // Deliberately discard all names, avatars and any unexpected profile fields
-  // at the service boundary. They never enter React state, storage or logs.
-  return { rank: row.rank as number, score: row.score, name: null, isSelf };
+  // Toy's personal-rank endpoint has no profile. Do not infer identity by score,
+  // rank, or unrecognized fields even if a malformed response includes a name.
+  return {
+    rank: row.rank as number, score: row.score, isSelf,
+    name: isSelf ? null : normalizeLeaderboardName(row.nickname),
+    avatar: isSelf ? null : normalizeLeaderboardAvatar(row.avatar),
+  };
 }
 
 export function createLeaderboardClient(load: () => Promise<ToySdk | null> = loadToySdk) {
@@ -76,7 +111,7 @@ export function createLeaderboardClient(load: () => Promise<ToySdk | null> = loa
       // Keep the platform's ranks when a malformed row is omitted.
       return { entries, self: mine?.ranked === true ? entry(mine, true) : null };
     },
-    async submit(receipt: RankedRunReceipt): Promise<void> {
+    async submit(receipt: RankedRunReceipt, shouldSubmit: () => boolean = () => true): Promise<void> {
       if (!isRankedRunReceipt(receipt) || !validScore(receipt.score)) throw new LeaderboardError("invalid-run");
       const status = submissions.get(receipt);
       if (status === "submitted") return;
@@ -89,8 +124,13 @@ export function createLeaderboardClient(load: () => Promise<ToySdk | null> = loa
         const sdk = await supported("submitScore");
         // Only a sealed score from this page's completed run is sent. Never use
         // the best score, wallet, cloud save, UI text or a caller-supplied number.
-        dispatched = true;
-        await bounded(() => sdk.submitScore!({ board: LEADERBOARD_BOARD, score: receipt.score }), 60000);
+        await bounded(() => {
+          // A later opt-out can cancel while SDK loading/capability checks wait.
+          // Once dispatched, Toy may accept the score and it cannot be recalled.
+          if (!shouldSubmit()) throw new LeaderboardError("cancelled");
+          dispatched = true;
+          return sdk.submitScore!({ board: LEADERBOARD_BOARD, score: receipt.score });
+        }, 60000);
         // The response is Toy's all-time best; intentionally ignore it.
         submissions.set(receipt, "submitted");
       } catch (error) {
@@ -112,7 +152,7 @@ export function createLeaderboardClient(load: () => Promise<ToySdk | null> = loa
 
 export type AutomaticSubmissionStatus = SubmissionStatus | "declined" | "failed";
 export type LeaderboardPreferenceState = "checking" | "ask" | "enabled" | "disabled" | "unavailable";
-export const LEADERBOARD_CONSENT_KEY = "community-seasons-leaderboard-consent-v1";
+export const LEADERBOARD_CONSENT_KEY = "community-seasons-leaderboard-consent-v2";
 export interface LeaderboardParticipationOptions {
   loadSdk?: () => Promise<ToySdk | null>;
   onPreference?: (state: LeaderboardPreferenceState) => void;
@@ -145,7 +185,7 @@ function decodePreference(values: unknown): "ask" | "enabled" | "disabled" {
   if (!decoded || typeof decoded !== "object" || Array.isArray(decoded))
     throw new LeaderboardError("preference-unavailable");
   const choice = decoded as Record<string, unknown>;
-  if (Object.keys(choice).length !== 2 || choice.version !== 1 || typeof choice.enabled !== "boolean")
+  if (Object.keys(choice).length !== 2 || choice.version !== 2 || typeof choice.enabled !== "boolean")
     throw new LeaderboardError("preference-unavailable");
   return choice.enabled ? "enabled" : "disabled";
 }
@@ -226,7 +266,7 @@ export function createLeaderboardParticipation(
       const request = Promise.resolve().then(() => {
         if (revision !== choiceRevision) return;
         return sdk.setCloudStorage!({
-          [LEADERBOARD_CONSENT_KEY]: JSON.stringify({ version: 1, enabled }),
+          [LEADERBOARD_CONSENT_KEY]: JSON.stringify({ version: 2, enabled }),
         });
       });
       // The settlement barrier absorbs rejection, while the caller still sees
@@ -290,9 +330,13 @@ export function createLeaderboardParticipation(
           if (current !== "enabled" || pendingDisabled || revision !== choiceRevision) return;
           publish(receipt, "pending");
           try {
-            await client.submit(receipt);
+            await client.submit(receipt, () => revision === choiceRevision && !pendingDisabled && preference === "enabled");
             publish(receipt, "submitted");
           } catch (error) {
+            if (error instanceof LeaderboardError && error.code === "cancelled") {
+              publish(receipt, "ready");
+              return;
+            }
             publish(receipt, submissionFailureStatus(error));
             if (error instanceof LeaderboardError && error.code === "user-denied")
               await rejectParticipation();
@@ -313,14 +357,19 @@ export function createLeaderboardParticipation(
       desiredChoice = true;
       const attempt = enqueue(async () => {
         try {
+          if (revision !== choiceRevision || desiredChoice !== true) return;
           if (statuses.get(receipt) !== "submitted") publish(receipt, "pending");
           try {
             // Explicit Join alone may invoke Toy's consent/login prompt. Only
             // the sealed run is posted; preference persistence follows acceptance.
-            await client.submit(receipt);
+            await client.submit(receipt, () => revision === choiceRevision && desiredChoice === true);
             publish(receipt, "submitted");
           } catch (error) {
             const failure = error instanceof LeaderboardError ? error : new LeaderboardError("unavailable");
+            if (failure.code === "cancelled") {
+              publish(receipt, "ready");
+              return;
+            }
             publish(receipt, submissionFailureStatus(failure));
             if (failure.code === "user-denied") await rejectParticipation();
             throw failure;

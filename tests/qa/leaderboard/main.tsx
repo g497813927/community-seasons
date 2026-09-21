@@ -18,11 +18,17 @@ let holdLoads = false;
 let submissionCount = 0;
 let choiceWrites = 0;
 let failChoice = false;
+let choiceGeneration = 0;
 const loadRequests: { id: number; period: LeaderboardPeriod; settled: boolean; resolve: (value: LeaderboardResult) => void; reject: (reason: Error) => void }[] = [];
-const submissions: { run: number; explicit: boolean; resolve?: () => void; reject?: (error: Error) => void }[] = [];
+const submissions: { run: number; explicit: boolean; generation: number; resolve?: () => void; reject?: (error: Error) => void }[] = [];
 const result = (score: number): LeaderboardResult => ({
-  entries: [{ rank: 1, score, name: "PRIVATE-FIXTURE-NAME-DO-NOT-DISPLAY", isSelf: false }],
-  self: { rank: 7, score: 12345, name: "PRIVATE-SELF-NAME", isSelf: true },
+  entries: [
+    { rank: 1, score, name: "Toy Runner", avatar: "https://i0.hdslb.com/bfs/face/leaderboard-qa.png", isSelf: false },
+    { rank: 2, score: 12000, name: '<img src=x onerror="window.profileInjected=true">', avatar: "javascript:alert('unsafe')", isSelf: false },
+    { rank: 3, score: 11999, name: null, avatar: "https://i0.hdslb.com/bfs/face/leaderboard-qa-missing.png", isSelf: false },
+    { rank: 4, score: 11000, name: "LongPlayerNameWithoutBreaks".repeat(2), avatar: null, isSelf: false },
+  ],
+  self: { rank: 7, score: 12345, name: null, avatar: null, isSelf: true },
 });
 function load(period: LeaderboardPeriod): Promise<LeaderboardResult> {
   return new Promise((resolve, reject) => {
@@ -36,7 +42,7 @@ function settleSubmission(value: "success" | "decline" | "uncertain" | "error") 
   if (!pending) throw Error("No pending submission");
   if (pending.run === run) {
     options.eligibility = value === "success" ? "submitted" : value === "decline" ? "declined" : value === "error" ? "failed" : "uncertain";
-    if (value === "success" && pending.explicit) {
+    if (value === "success" && pending.explicit && pending.generation === choiceGeneration) {
       choiceWrites++;
       if (failChoice) {
         options.preference = "unavailable";
@@ -58,7 +64,7 @@ function finishRun() {
   if (!options.consented || options.preference !== "enabled") { options.eligibility = "ready"; render(); return; }
   submissionCount++;
   options.eligibility = "pending";
-  submissions.push({ run, explicit: false });
+  submissions.push({ run, explicit: false, generation: choiceGeneration });
   render();
 }
 function join(): Promise<void> {
@@ -66,12 +72,13 @@ function join(): Promise<void> {
   submissionCount++;
   options.eligibility = "pending";
   return new Promise((resolve, reject) => {
-    submissions.push({ run, explicit: true, resolve, reject });
+    submissions.push({ run, explicit: true, generation: choiceGeneration, resolve, reject });
     render();
   });
 }
 async function saveChoice(enabled: boolean): Promise<void> {
   choiceWrites++;
+  if (!enabled) { choiceGeneration++; options.consented = false; }
   if (failChoice) {
     options.preference = "unavailable";
     options.consented = false;
