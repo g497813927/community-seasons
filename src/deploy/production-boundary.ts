@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { posix } from "node:path";
 
 const testHook =
-  /__communitySeasonsQA|qa-community-seasons-v1:|__phoneQA|__journey(?:Run|Engine)|__qaCloud|qa-iphone-\d+|qa-suite\.js|(?:engine|render)-qa\.[jt]s|mock-toy-sdk/;
+  /__communitySeasonsQA|__leaderboardQA|qa-community-seasons-(?:leaderboard-)?v1:|__phoneQA|__journey(?:Run|Engine)|__qaCloud|qa-iphone-\d+|qa-suite\.js|(?:engine|render)-qa\.[jt]s|mock-toy-sdk/;
 const queryControl =
   /\bURLSearchParams\b|\blocation\s*(?:\.\s*(?:search|hash)\b|\[\s*["'`](?:search|hash)["'`]\s*\])|\.\s*searchParams\b/;
 

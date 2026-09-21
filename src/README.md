@@ -45,6 +45,14 @@ Current runs, run coin counters, distance, temporary boost timers, and skill cha
 
 Toy implementation notes: the SDK stores one versioned JSON value under `community-seasons-save-v1`, within the 1,024-byte value limit. New writes use a version 3 envelope to preserve outfit data when older game clients are still open; reload those pages to read the updated save. Legacy version 1 and 2 cloud saves remain supported, retaining owned skins and starting with no accessories equipped. Local changes are coalesced for about three seconds, and writes are serialized. Unique revisions and a read before each write detect changed cloud saves and request another choice when needed. Toy does not provide an atomic compare-and-swap operation, so truly simultaneous writes on separate devices can still race.
 
+## Leaderboards
+
+On Toy, the leaderboard shows **Today** and **This week** for the current difficulty rules. After an eligible run, choose **Join leaderboard & post this score** and complete any Toy permission request. After the score posts and your participation choice is saved to your Toy account, later eligible runs post once automatically across devices. The game checks that cloud choice before every automatic submission; unavailable or invalid consent keeps the score local. Choose **Not now** or decline permission to save participation as disabled; you can join later.
+
+Participation uses a separate Toy cloud record, never local browser consent storage, and does not replace game balances or progress. If the score posts but saving the choice fails, automatic submission stays off; retrying saves only the choice and does not post the score again. Choosing Not now at that point keeps future automatic submissions off but does not withdraw the accepted score.
+
+Every entry shows **Hidden name**, without a nickname or avatar. Toy still uses your signed-in Bilibili account and may require renewed permission; hiding names in the game does not make submission anonymous to Toy. There is no all-time view, and reloading never uploads a saved best or previous-session run. Editing a local best to **999,999,999,999,999** cannot put it on the leaderboard. Local checks reject inconsistent results and forged scores before submission, but cannot prevent someone from bypassing the game and calling Toy directly. See the [leaderboard implementation notes](../docs/LEADERBOARD.md) for these limits.
+
 ## Controls
 
 - Arrow keys / WASD: change lane, jump, slide. Space also jumps.

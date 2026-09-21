@@ -45,6 +45,18 @@ Passing the best score saved before the run triggers a short celebration banner.
 
 Roadside power-ups are occasional opportunities: the first appears about 10–16 seconds into normal running, then later ones target a randomized 22–38 seconds of normal travel. The next suitable obstacle row can delay an opportunity slightly longer. Distances account for acceleration up to the speed cap, so power-ups do not bunch together as the game gets faster. Missing one does not trigger a replacement nearby. The minimum spacing also leaves a break after a level-three Momentum effect before the next road pickup.
 
+## Leaderboards
+
+On Toy, open the leaderboard to view **Today** or **This week** under the current difficulty rules. After finishing an eligible run, choose **Join leaderboard & post this score** to participate. Before this explicit choice and any required Toy permission, no score is submitted. **Not now** or declining permission keeps the score local; you can join later.
+
+After the first submission is confirmed successful, the game saves your participation choice to a separate Toy cloud record for your account. Once that save is confirmed, later fresh eligible runs submit once automatically across devices, without asking you to post each run. Choosing Not now or declining permission saves participation as disabled; you can join later. Consent is not stored in the browser, and its cloud record does not replace your game progress.
+
+The game checks the cloud choice on loading, when you open the leaderboard, and before each automatic submission. If it cannot confirm consent, it keeps the score local. If a score posts but saving your choice fails, automatic submission stays off; retrying the choice save does not repost the score. Choosing Not now afterward keeps future automatic submissions off but does not withdraw that accepted score. Toy may still request renewed permission. Reloading never uploads a saved best or the previous session's last run. There is no all-time view; your saved personal best remains available separately.
+
+All entries use **Hidden name** and show no account avatar. Toy still records submissions against your signed-in Bilibili account; hiding names in the game does not make Toy's account handling anonymous.
+
+Checks compare the completed run's score, distance, coins and time before submission and prevent duplicate submissions through the game. A local-storage best changed to **999,999,999,999,999** is not an eligible score; a forged submission is rejected before leaderboard SDK access. These checks reduce simple score manipulation, but do not provide trusted server verification or prevent direct SDK calls. [Technical details](../docs/LEADERBOARD.md) explain the limits.
+
 ## Consumable tools
 
 | Tool                       | Key | Price | Level 1 effect                                                                      |

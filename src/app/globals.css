@@ -3083,7 +3083,8 @@ body {
 .home-help-actions .start-store {
   margin: 0;
 }
-.home-help-actions .how-to-play {
+.home-help-actions .how-to-play,
+.home-help-actions .leaderboard-launcher {
   min-height: 36px;
   padding: 0 7px;
   gap: 7px;
@@ -3640,3 +3641,12 @@ body {
     text-align: left;
   }
 }
+
+.run-leaderboard-note,
+.leaderboard-run-status {
+  color: #b5cab4;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.run-leaderboard-note { margin: 16px 0; }

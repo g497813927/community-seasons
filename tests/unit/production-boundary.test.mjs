@@ -93,6 +93,8 @@ test("production build rejects query controls, test globals, and QA workspace al
     "window.__phoneQA = {}",
     "window.__journeyRun = run",
     "window.__communitySeasonsQA = {}",
+    "window.__leaderboardQA = {}",
+    'localStorage.setItem("qa-community-seasons-leaderboard-v1:fixture", "test")',
   ])
     assert.throws(() => boundary.assertProductionCode(code, "main.tsx", true));
   const guard = boundary.productionBoundary(fileURLToPath(root));

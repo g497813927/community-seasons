@@ -15,6 +15,10 @@ import {
 import { nextScene, type SceneKind } from "./scenes";
 import { DEFAULT_SKIN, type SkinId } from "./skins";
 import { createOutfit, type Outfit } from "./cosmetics";
+import {
+  trackRankedRunMutation, recordRankedRunStep, recordRankedRunDistance,
+  recordRankedRunCoins, recordRankedRunScore,
+} from "./ranked-run";
 import { beginRailQuestion, createRailQuestionDeck, createRailRide, currentRailQuestion, type RailQuestionDeck, type RailRide } from "./railway";
 export { currentRailQuestion } from "./railway";
 
@@ -258,6 +262,9 @@ function boostedForkApproach(s: RunState) {
   );
 }
 export function act(s: RunState, action: Action): boolean {
+  return trackRankedRunMutation(s, () => applyAction(s, action));
+}
+function applyAction(s: RunState, action: Action): boolean {
   if (
     s.mode !== "running" ||
     s.sceneTransition > 0 ||
@@ -620,8 +627,11 @@ function stepRail(s: RunState, dt: number) {
   // Keep track scrolling continuous across question/feedback phases. Older
   // hot-reloaded rides may not yet have this visual-only clock.
   ride.elapsed = (ride.elapsed ?? 0) + dt;
-  s.distance += railSpeed(s) * dt;
+  const distance = railSpeed(s) * dt;
+  s.distance += distance;
+  recordRankedRunDistance(s, distance);
   s.score = Math.floor(s.distance * 10) + s.coins * 50;
+  recordRankedRunScore(s);
   stepMilestone(s, dt);
   // Track sections do not offer optional road portals. Advance any passed
   // gate now so it cannot unexpectedly trigger when normal running resumes.
@@ -658,7 +668,9 @@ function stepRail(s: RunState, dt: number) {
     s.reason = `The cart took the wrong track. ${question.options[ride.failure!.optionIndex].why.en} Better choice: ${question.options[question.correctIndex].label.en}`;
   } else {
     s.coins += ride.reward;
+    recordRankedRunCoins(s, ride.reward, "rail");
     s.score = Math.floor(s.distance * 10) + s.coins * 50;
+    recordRankedRunScore(s);
     s.rail = null;
     s.railReturnRemaining = RAIL_RETURN_DURATION;
     s.railPreparedAt = null;
@@ -904,6 +916,7 @@ export function startSceneTravel(s: RunState, destination: SceneKind): boolean {
 }
 function step(s: RunState, dt: number, levels: Record<BoostKind, BoostLevel>) {
   if (s.mode !== "running") return;
+  recordRankedRunStep(s, dt, !s.rail && s.railReturnRemaining <= 0 && s.sceneTransition <= 0);
   if (s.rail) {
     stepRail(s, dt);
     return;
@@ -942,6 +955,7 @@ function step(s: RunState, dt: number, levels: Record<BoostKind, BoostLevel>) {
   }
   const oldDistance = s.distance;
   s.distance += s.speed * dt;
+  recordRankedRunDistance(s, s.speed * dt);
   if (s.fork && s.distance >= s.fork.at) {
     const insideCenter = Math.abs(s.x) < LANE_WIDTH * 0.5;
     const physicalDirection = s.x < 0 ? -1 : 1;
@@ -954,6 +968,7 @@ function step(s: RunState, dt: number, levels: Record<BoostKind, BoostLevel>) {
           ? "The right branch is a dead end. Take the left branch at this fork."
           : "The center route is closed. Choose the left or right branch at a fork.";
       s.score = Math.floor(s.distance * 10) + s.coins * 50;
+      recordRankedRunScore(s);
       return;
     }
     s.lastForkAt = s.fork.at;
@@ -1026,6 +1041,7 @@ function step(s: RunState, dt: number, levels: Record<BoostKind, BoostLevel>) {
       coin.taken = true;
       const value = s.boosts.doubleCoins > 0 ? 2 : 1;
       s.coins += value;
+      recordRankedRunCoins(s, value, "pickup");
       if (s.skillRechargeLocked) s.skillBlockedCoins += value;
       s.collectedAt = s.time;
     }
@@ -1095,6 +1111,7 @@ function step(s: RunState, dt: number, levels: Record<BoostKind, BoostLevel>) {
     }
   }
   s.score = Math.floor(s.distance * 10) + s.coins * 50;
+  recordRankedRunScore(s);
   s.obstacles = s.obstacles.filter((o) => o.at > s.distance - 12);
   s.pickups = s.pickups.filter((o) => o.at > s.distance - 12);
   s.relics = s.relics.filter((o) => o.at > s.distance - 12);
@@ -1104,6 +1121,9 @@ export function update(
   seconds: number,
   levels: Record<BoostKind, BoostLevel> = createBoostLevels(),
 ) {
+  return trackRankedRunMutation(s, () => updateSimulation(s, seconds, levels));
+}
+function updateSimulation(s: RunState, seconds: number, levels: Record<BoostKind, BoostLevel>) {
   // Substeps keep actions and contact detection reliable after a slow frame.
   let remaining = Math.max(0, Math.min(seconds, 0.25));
   while (remaining > 1e-8) {

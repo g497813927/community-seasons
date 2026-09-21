@@ -66,6 +66,9 @@ import { CloudSaveStatus } from "@/components/cloud-save-status";
 import { ShareDialog } from "@/components/share-dialog";
 import { HelpDialog } from "@/components/help-dialog";
 import { LicensesDialog } from "@/components/licenses-dialog";
+import { LeaderboardDialog, type LeaderboardEligibility } from "@/components/leaderboard-dialog";
+import { createLeaderboardParticipation, createLeaderboardClient, LeaderboardError, type LeaderboardPeriod, type LeaderboardPreferenceState } from "@/lib/game/leaderboard";
+import { beginRankedRun, getRankedRunReceipt, type RankedRunReceipt } from "@/lib/game/ranked-run";
 import type { SharePosterSnapshot } from "@/lib/game/share-poster";
 import type { LessonShareSnapshot } from "@/lib/game/lesson-share-poster";
 import {
@@ -220,6 +223,35 @@ export default function Home() {
     chase: 0,
     lastStumble: null as "roots" | "edge" | null,
   });
+  const leaderboardClient = useLazyRef(createLeaderboardClient);
+  const [rankPreference, setRankPreference] = useState<LeaderboardPreferenceState>(onToy ? "checking" : "unavailable");
+  const rankConsented = rankPreference === "enabled";
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const leaderboardOpenRef = useRef(false);
+  const leaderboardButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [rankedReceipt, setRankedReceipt] = useState<RankedRunReceipt | null>(null);
+  const rankedReceiptRef = useRef<RankedRunReceipt | null>(null);
+  const [rankEligibility, setRankEligibility] = useState<LeaderboardEligibility>("unavailable");
+  const observedCompletions = useLazyRef(() => new WeakSet<RunState>());
+  const leaderboardParticipation = useLazyRef(() => createLeaderboardParticipation(
+    leaderboardClient.current,
+    {
+      onPreference: setRankPreference,
+      onStatus: (receipt, status) => {
+        if (rankedReceiptRef.current === receipt) setRankEligibility(status);
+      },
+    },
+  ));
+  const loadLeaderboard = useLazyRef(() => async (period: LeaderboardPeriod) => {
+    const [result] = await Promise.all([
+      leaderboardClient.current.read(period),
+      leaderboardParticipation.current.refresh(),
+    ]);
+    return result;
+  });
+  useEffect(() => {
+    if (onToy) void leaderboardParticipation.current.refresh();
+  }, [onToy, leaderboardParticipation]);
   const [best, setBest] = useState(0);
   const [muted, setMuted] = useState(false);
   const [progress, setProgress] = useState<Progress>(createProgress);
@@ -401,6 +433,7 @@ export default function Home() {
     }
   }
   function sync() {
+    observeCompletedRun();
     syncMusic();
     const s = game.current;
     setHud({
@@ -448,7 +481,7 @@ export default function Home() {
     if (next !== progressRef.current) saveProgress(next);
   }
   function changeStore(open: boolean) {
-    if (open && (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current)) return;
+    if (open && (leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current)) return;
     if (open && startAfterCloudRef.current) return;
     if (open && game.current.mode === "ready" && cloudBlocksEntry()) return;
     if (open && game.current.review) return;
@@ -469,7 +502,7 @@ export default function Home() {
     }
   }
   function changeHelp(open: boolean) {
-    if (open && (shareOpenRef.current || licensesOpenRef.current || storeOpenRef.current ||
+    if (open && (leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || storeOpenRef.current ||
       setupOpenRef.current || guideOpenRef.current || startAfterCloudRef.current ||
       game.current.review || rotateRequiredRef.current)) return;
     swipeRef.current = null;
@@ -500,7 +533,7 @@ export default function Home() {
       : licensesButtonRef.current ?? false;
   }
   function changeLicenses(open: boolean) {
-    if (open && (helpOpenRef.current || shareOpenRef.current || storeOpenRef.current || setupOpenRef.current ||
+    if (open && (leaderboardOpenRef.current || helpOpenRef.current || shareOpenRef.current || storeOpenRef.current || setupOpenRef.current ||
       guideOpenRef.current || startAfterCloudRef.current || game.current.review || rotateRequiredRef.current)) return;
     swipeRef.current = null;
     lastTapRef.current = null;
@@ -523,7 +556,7 @@ export default function Home() {
     setSetupOpen(open);
   }
   function changeGuide(open: boolean) {
-    if (open && (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current)) return;
+    if (open && (leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current)) return;
     if (open && startAfterCloudRef.current) return;
     if (open && startAfterGuideRef.current) helpDetailRef.current = null;
     guideOpenRef.current = open;
@@ -594,7 +627,7 @@ export default function Home() {
     setStoreMessage(result.message);
   }
   function triggerSkill(kind: BoostKind) {
-    if (rotateRequiredRef.current) return;
+    if (leaderboardOpenRef.current || rotateRequiredRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current || startAfterCloudRef.current) return;
     if (game.current.rail) return;
     const result = activatePermanentSkill(game.current, progressRef.current, kind);
@@ -625,7 +658,7 @@ export default function Home() {
     return result;
   }
   function triggerBooster(kind: BoostKind) {
-    if (rotateRequiredRef.current) return;
+    if (leaderboardOpenRef.current || rotateRequiredRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current) return;
     if (game.current.rail) return;
     const result = activateOwnedBooster(game.current, progressRef.current, kind);
@@ -647,12 +680,40 @@ export default function Home() {
     } catch {}
     cloudRef.current?.markDirty();
   }
+  function observeCompletedRun() {
+    const run = game.current;
+    // Home/cloud/localStorage data cannot produce a receipt. Wait until the
+    // fatal lesson is closed so Toy's permission dialog won't obscure it.
+    if (!onToy || run.mode !== "over" || run.review || observedCompletions.current.has(run)) return;
+    observedCompletions.current.add(run);
+    const receipt = getRankedRunReceipt(run);
+    rankedReceiptRef.current = receipt;
+    setRankedReceipt(receipt);
+    setRankEligibility(receipt ? "ready" : "invalid");
+    if (receipt) void leaderboardParticipation.current.observe(receipt);
+  }
+  async function joinLeaderboard() {
+    if (!rankedReceipt || !leaderboardOpenRef.current) throw new LeaderboardError("invalid-run");
+    await leaderboardParticipation.current.join(rankedReceipt);
+  }
+  function changeLeaderboard(open: boolean, trigger?: HTMLButtonElement) {
+    if (open && (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current ||
+      storeOpenRef.current || setupOpenRef.current || guideOpenRef.current ||
+      startAfterCloudRef.current || game.current.review || rotateRequiredRef.current ||
+      !["ready", "over"].includes(game.current.mode))) return;
+    swipeRef.current = null;
+    lastTapRef.current = null;
+    lastRailUpRef.current = null;
+    if (open && trigger) leaderboardButtonRef.current = trigger;
+    leaderboardOpenRef.current = open;
+    setLeaderboardOpen(open);
+  }
   function openShareResult() {
     const run = game.current;
     if (
       run.mode !== "over" ||
       run.review ||
-      shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current ||
+      leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current ||
       storeOpenRef.current ||
       setupOpenRef.current ||
       guideOpenRef.current ||
@@ -685,7 +746,7 @@ export default function Home() {
     copy: Pick<LessonShareSnapshot, "kind" | "title" | "example" | "guidance" | "explanation">,
     trigger: HTMLButtonElement,
   ) {
-    if (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current || storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || rotateRequiredRef.current) return;
+    if (leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current || storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || rotateRequiredRef.current) return;
     swipeRef.current = null;
     lastTapRef.current = null;
     lastRailUpRef.current = null;
@@ -719,7 +780,7 @@ export default function Home() {
     openLessonShare({ title: lesson.title, example: lesson.example, guidance: lesson.response, explanation: lesson.why }, trigger);
   }
   function goHome() {
-    if (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     startAfterCloudRef.current = false;
     bankRewards();
     recordBest();
@@ -737,7 +798,7 @@ export default function Home() {
     void cloudRef.current?.refresh();
   }
   async function start() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (
       storeOpenRef.current ||
       guideOpenRef.current ||
@@ -768,7 +829,7 @@ export default function Home() {
     }
   }
   function openRunSetup() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (storeOpenRef.current || guideOpenRef.current || game.current.review) return;
     bankRewards();
     if (game.current.mode === "running") game.current.mode = "paused";
@@ -784,7 +845,7 @@ export default function Home() {
     sync();
   }
   function beginRun(kind: SkillKind | null) {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (
       storeOpenRef.current ||
       guideOpenRef.current ||
@@ -808,6 +869,7 @@ export default function Home() {
     musicRef.current = null;
     game.current.permanentSkill = kind;
     game.current.mode = "running";
+    beginRankedRun(game.current);
     latestCoins.current = 0;
     setFeedback("");
     sound("start");
@@ -828,7 +890,7 @@ export default function Home() {
     cloudRef.current?.markDirty();
   }
   function control(action: Action) {
-    if (rotateRequiredRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (leaderboardOpenRef.current || rotateRequiredRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current) return;
     lastRailUpRef.current = null;
     const oldStumbles = game.current.stumbles;
@@ -847,7 +909,7 @@ export default function Home() {
     }
   }
   function chooseRailAnswer(lane: -1 | 0 | 1) {
-    if (rotateRequiredRef.current) return;
+    if (leaderboardOpenRef.current || rotateRequiredRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current || startAfterCloudRef.current) return;
     lastRailUpRef.current = null;
     if (selectRailLane(game.current, lane)) {
@@ -856,7 +918,7 @@ export default function Home() {
     }
   }
   function submitRailChoice() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (storeOpenRef.current || setupOpenRef.current || guideOpenRef.current || startAfterCloudRef.current) return;
     if (!submitRailAnswer(game.current)) return;
     swipeRef.current = null;
@@ -962,7 +1024,7 @@ export default function Home() {
     } catch {}
   }
   function pause() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     swipeRef.current = null;
     lastTapRef.current = null;
     lastRailUpRef.current = null;
@@ -977,7 +1039,7 @@ export default function Home() {
     }
   }
   function continueAfterReview() {
-    if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+    if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (!finishReview(game.current)) return;
     swipeRef.current = null;
     lastTapRef.current = null;
@@ -1241,7 +1303,7 @@ export default function Home() {
           !storeOpenRef.current &&
           !setupOpenRef.current &&
           !guideOpenRef.current &&
-          !licensesOpenRef.current && !helpOpenRef.current &&
+          !leaderboardOpenRef.current && !licensesOpenRef.current && !helpOpenRef.current &&
           !cloudStateRef.current.conflict);
       // A paused run is a still image. Keep event/audio bookkeeping alive, but
       // avoid rebuilding thousands of polygons behind pause and lesson dialogs.
@@ -1273,7 +1335,7 @@ export default function Home() {
     }
     raf = requestAnimationFrame(frame);
     function onGameSpace(e: KeyboardEvent) {
-      if (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+      if (leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
       if (
         rotateRequiredRef.current &&
         !e.ctrlKey &&
@@ -1320,7 +1382,7 @@ export default function Home() {
       // modifiers, other keys and events in dialogs discard the first press.
       const lastRailUp = lastRailUpRef.current;
       lastRailUpRef.current = null;
-      if (rotateRequiredRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
+      if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const key = e.key;
       // Physical WASD keys also work while a non-Latin input method is active.
@@ -1699,6 +1761,11 @@ export default function Home() {
               >
                 <CircleHelp size={15} /> {l("How to play", "操作指南")}
               </Button>
+              <Button variant="ghost" className="leaderboard-launcher"
+                onClick={(event) => changeLeaderboard(true, event.currentTarget)}
+                aria-haspopup="dialog" aria-expanded={leaderboardOpen}>
+                <Trophy size={15} aria-hidden="true" /> {l("Leaderboard", "排行榜")}
+              </Button>
               {onToy && (
                 <CloudSaveStatus
                   locale={locale}
@@ -1780,6 +1847,20 @@ export default function Home() {
                   <Button className="run-button" onClick={start} disabled={cloudBusy}>
                     {t("Run again")} <RotateCcw />
                   </Button>
+                  <Button variant="outline" className="run-button leaderboard-result-launcher"
+                    onClick={(event) => changeLeaderboard(true, event.currentTarget)}
+                    aria-haspopup="dialog" aria-expanded={leaderboardOpen}>
+                    {!rankConsented && onToy ? l("Join leaderboard", "参与排行榜") : l("Leaderboard", "排行榜")} <Trophy aria-hidden="true" />
+                  </Button>
+                  {onToy && <p className="leaderboard-run-status" role="status">
+                    {rankEligibility === "submitted" ? l("Score posted · Names hidden", "成绩已提交 · 昵称已隐藏") :
+                      rankEligibility === "pending" ? l("Posting your score…", "正在提交成绩…") :
+                      rankEligibility === "ready" ? l("Your score stays local until you join", "参与排行榜前，成绩不会提交") :
+                      rankEligibility === "declined" ? l("Permission declined · Score kept on this device", "未同意授权 · 成绩仅保存在本机") :
+                      rankEligibility === "uncertain" ? l("Submission unconfirmed · Check the leaderboard", "暂无法确认提交结果 · 可查看排行榜") :
+                      rankEligibility === "invalid" ? l("Run validation failed · Score not submitted", "本局未通过成绩检查 · 未提交") :
+                      l("Leaderboard unavailable · Score kept on this device", "排行榜暂不可用 · 成绩仅保存在本机")}
+                  </p>}
                   <Button
                     ref={shareButtonRef}
                     className="run-button share-result-launcher"
@@ -2034,7 +2115,8 @@ export default function Home() {
             !setupOpen &&
             !guideOpen &&
             !licensesOpen &&
-            !helpOpen
+            !helpOpen &&
+            !leaderboardOpen
           }
           locale={locale}
           localSnapshot={cloudState.conflict.local}
@@ -2053,6 +2135,12 @@ export default function Home() {
         returnFocus={helpDetailRef.current === "guide" ? helpReturnFocus : undefined} />
       <LicensesDialog open={licensesOpen} onOpenChange={changeLicenses} locale={locale}
         returnFocus={helpReturnFocus} />
+      <LeaderboardDialog open={leaderboardOpen} onOpenChange={changeLeaderboard} locale={locale}
+        returnFocus={() => leaderboardButtonRef.current ?? false}
+        available={onToy} load={loadLeaderboard.current}
+        consented={rankConsented} preference={rankPreference} join={joinLeaderboard}
+        decline={() => leaderboardParticipation.current.decline()}
+        score={rankedReceipt?.score ?? null} eligibility={rankEligibility} />
       <PostReviewDialog
         review={hud.review}
         ended={hud.mode === "over"}
@@ -2096,6 +2184,7 @@ export default function Home() {
           selected={selectedSkill}
           onSelectedChange={setSelectedSkill}
           onStart={beginRun}
+          automaticLeaderboard={onToy && rankConsented}
           returnFocus={() => (game.current.mode === "running" ? canvasRef.current : true)}
           onStore={visitStoreFromSetup}
           scene={scene}
