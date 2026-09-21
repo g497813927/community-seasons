@@ -113,6 +113,33 @@ test('odd and single-engine pools keep their limits until all remaining jobs fin
   });
 });
 
+test('case IDs must be unique across distinct job objects and engines', async (t) => {
+  const first = { id: 'chromium__case-0', engine: 'chromium' };
+  for (const [label, second] of [
+    ['repeated object reference', first],
+    ['distinct objects in the same engine', { ...first }],
+    ['distinct objects in different engines', { ...first, engine: 'webkit' }],
+  ]) await t.test(label, () => {
+    assert.throws(() => createMatrixScheduler([first, second], ENGINES, 2), /unique/i);
+  });
+});
+
+test('distinct engine-prefixed case IDs remain schedulable with original job identities', () => {
+  const jobs = makeJobs(1);
+  const scheduler = createMatrixScheduler(jobs, ENGINES, 2);
+  assert.equal(scheduler.take(), jobs[0]);
+  assert.equal(scheduler.take(), jobs[1]);
+  scheduler.release(jobs[0]);
+  scheduler.release(jobs[1]);
+  assert.equal(scheduler.take(), undefined);
+});
+
+test('jobs require nonempty string case IDs', () => {
+  for (const id of [undefined, null, 42, '', '   ']) {
+    assert.throws(() => createMatrixScheduler([{ id, engine: 'chromium' }], ENGINES, 2), /case ID/i);
+  }
+});
+
 test('empty job queues finish immediately and invalid scheduler configurations are rejected', () => {
   assert.equal(createMatrixScheduler([], ENGINES, 16).take(), undefined);
   for (const workers of [0, -1, 1.5, 33, NaN, Infinity]) {

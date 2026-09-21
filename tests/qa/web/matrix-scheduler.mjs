@@ -6,7 +6,8 @@ export function createMatrixScheduler(jobs, engines, workers) {
   assert.ok(Number.isInteger(workers) && workers >= 1 && workers <= 32, 'Workers must be an integer from 1 to 32.');
   assert.ok(engines.length > 0 && new Set(engines).size === engines.length, 'Engines must be nonempty and unique.');
   assert.ok(jobs.every(job => engines.includes(job.engine)), 'Every job must have a configured engine.');
-  assert.equal(new Set(jobs).size, jobs.length, 'Jobs must be unique.');
+  assert.ok(jobs.every(job => typeof job.id === 'string' && job.id.trim().length > 0), 'Every job must have a nonempty string case ID.');
+  assert.equal(new Set(jobs.map(job => job.id)).size, jobs.length, 'Case IDs must be unique.');
   const limits = Object.freeze(Object.fromEntries(engines.map((engine, index) => [engine,
     Math.max(1, Math.floor(workers / engines.length) + (index < workers % engines.length ? 1 : 0)),
   ])));
