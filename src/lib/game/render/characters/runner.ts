@@ -27,7 +27,12 @@ export function runner(
   const stride =
     pose?.stride ??
     (running && s.jump === 0 ? Math.sin(t * (s.mode === "ready" ? 5 : 15)) * (1 - slide) : 0);
-  const y = jumpHeight(s) + Math.abs(stride) * 0.055 + (pose?.elevation ?? 0);
+  const jump = jumpHeight(s);
+  const y = jump + Math.abs(stride) * 0.055 + (pose?.elevation ?? 0);
+  // Running swing stops in the air, so give jumps their own readable arm
+  // motion: lift both hands above the case at the apex, then lower them along
+  // the same arc before landing.
+  const jumpArmLift = Math.max(0, Math.min(1, jump / 2.15));
   const seated = pose?.seated ?? 0;
   const point = (standing: V, sliding: V, sitting: V = standing): V => {
     const base = standing.map((v, i) => mix(v, sliding[i]) * (1 - seated) + sitting[i] * seated);
@@ -118,7 +123,7 @@ export function runner(
     segment(
       attached(side * 0.5, 0.06, 0),
       point(
-        [side * 0.64, 0.66, -swing * 0.22],
+        [side * (0.64 - jumpArmLift * 0.04), 0.66 + jumpArmLift * 0.76, -swing * 0.22],
         [side * 0.67, 0.22, -0.19],
         [side * 0.62, 0.93, 0.2],
       ),
