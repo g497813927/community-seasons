@@ -77,7 +77,7 @@ function harness() {
     let prevented = 0, stopped = 0;
     const event = {
       key: value, code: value === "w" || value === "W" ? "KeyW" : value,
-      timeStamp: at, repeat: false, ctrlKey: false, metaKey: false, altKey: false,
+      timeStamp: at, repeat: false, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false,
       target: target("arena"), preventDefault() { prevented++; }, stopImmediatePropagation() { stopped++; },
       ...overrides,
     };
@@ -90,9 +90,9 @@ function harness() {
 test("the actual keyboard handler submits on two distinct Up or physical W presses, including IME input", () => {
   for (const [key, code] of [["ArrowUp", "ArrowUp"], ["w", "KeyW"], ["W", "KeyW"], ["Process", "KeyW"]]) {
     const h = harness();
-    assert.equal(h.key(key, 100, { code }).prevented, 1);
+    assert.equal(h.key(key, 100, { code, shiftKey: key === "W" }).prevented, 1);
     assert.equal(h.state.rail.phase, "question");
-    h.key(key, 250, { code });
+    h.key(key, 250, { code, shiftKey: key === "W" });
     assert.equal(h.state.rail.phase, "feedback");
     assert.equal(h.state.rail.correctCount, 1);
     assert.equal(h.c.lastRailUpRef.current, null);
@@ -254,10 +254,13 @@ test("startup cover blocks gameplay keys and swipes without consuming browser sh
     ...["Tab", "Shift", "Escape", "F1", "F3", "F5", "F11", "F12", "Home", "End", "PageUp", "PageDown", "x"]
       .map(key => ({ key })),
     { key: "r", metaKey: true }, { key: "r", ctrlKey: true }, { key: "ArrowLeft", altKey: true },
+    ...[" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab", "Enter", "W", "P", "B"]
+      .map(key => ({ key, shiftKey: true })),
   ]) {
     const attempt = h.key(overrides.key, 200, overrides);
     h.c.onGameSpace(attempt.event);
-    assert.equal(attempt.prevented, 0, `${overrides.key} must keep its native browser behavior`);
+    assert.equal(attempt.prevented, 0,
+      `${overrides.shiftKey ? "Shift+" : ""}${JSON.stringify(overrides.key)} must keep its native browser behavior`);
     assert.equal(attempt.stopped, 0);
   }
   for (const key of ["Enter", " "]) {
@@ -267,6 +270,8 @@ test("startup cover blocks gameplay keys and swipes without consuming browser sh
     assert.equal(attempt.stopped, 0);
   }
   assert.deepEqual(h.calls, [], "preparation interaction cannot activate gameplay");
+  assert.equal(h.state.rail.phase, "question");
+  assert.equal(h.c.lastRailUpRef.current, null, "modified keys cannot queue gameplay during loading");
 });
 
 test("calibration alone cannot unlock input; the actual loader completion unlocks once after calibration", () => {
