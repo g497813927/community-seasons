@@ -4,7 +4,7 @@ import fs from "node:fs";
 import ts from "typescript";
 const cache = new URL("./store-economy-fuzz-compiled/", import.meta.url);
 fs.mkdirSync(cache, { recursive: true });
-for (const name of ["scenes", "boosts", "skins", "cosmetics", "railway", "community", "engine", "store", "cloud-save"]) {
+for (const name of ["scenes", "boosts", "skins", "cosmetics", "railway", "community", "ranked-run", "engine", "store", "cloud-save"]) {
   const text = fs.readFileSync(
     new URL(`../../src/lib/game/${name}.ts`, import.meta.url),
     "utf8",

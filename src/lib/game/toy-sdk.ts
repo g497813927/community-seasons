@@ -3,6 +3,13 @@ import type { ToyCloudSdk } from "./cloud-save";
 const SDK_URL = "https://s1.hdslb.com/bfs/seed/toy/app/sdk/toy-sdk.js";
 export interface ToySdk {
   isSupport(ability: string): Promise<boolean>;
+  submitScore?(request: { board: number; score: number }): Promise<{ score: number }>;
+  getRankList?(request: { board: number; period: "day" | "week"; limit: number }): Promise<{
+    rank: number; score: number; nickname: string; avatar: string;
+  }[]>;
+  getMyRank?(request: { board: number; period: "day" | "week" }): Promise<{
+    ranked: boolean; rank: number; score: number;
+  }>;
   getCloudStorage?: ToyCloudSdk["getCloudStorage"];
   setCloudStorage?: ToyCloudSdk["setCloudStorage"];
   getQrCode?(request?: { path?: string; size?: number }): Promise<{ base64: string; url: string }>;

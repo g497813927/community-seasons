@@ -602,6 +602,7 @@ export function RunSetup({
   onSelectedChange,
   onStart,
   returnFocus,
+  automaticLeaderboard = false,
   onStore,
   scene,
 }: {
@@ -613,6 +614,7 @@ export function RunSetup({
   onSelectedChange: (kind: SkillKind | null) => void;
   onStart: (kind: SkillKind | null) => void;
   returnFocus?: () => HTMLElement | boolean | null;
+  automaticLeaderboard?: boolean;
   onStore: () => void;
   scene: SceneKind;
 }) {
@@ -691,6 +693,11 @@ export function RunSetup({
               );
             })}
           </RadioGroup>
+          {automaticLeaderboard && <p className="run-leaderboard-note">
+            {locale === "zh-CN"
+              ? "本局结束后，符合条件的成绩会自动提交至 Toy 排行榜，并公开展示你的哔哩哔哩昵称和头像。可在排行榜中关闭以后的提交；已提交的成绩不会因此移除。存档中的最高分不会提交。"
+              : "Eligible completed runs post automatically to Toy with your Bilibili nickname and avatar. You can stop future submissions in the leaderboard; scores already posted are not removed. Saved best scores are never submitted."}
+          </p>}
           <div className="run-setup-footer">
             <Button type="button" variant="outline" onClick={onStore}>
               <ShoppingBag size={16} />

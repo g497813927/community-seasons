@@ -55,7 +55,7 @@ function harness() {
     ensureAudio() {}, bankRewards() {}, recordBest() {},
   };
   for (const name of [
-    "rotateRequiredRef", "shareOpenRef", "licensesOpenRef", "helpOpenRef", "guideOpenRef",
+    "leaderboardOpenRef", "rotateRequiredRef", "shareOpenRef", "licensesOpenRef", "helpOpenRef", "guideOpenRef",
     "storeOpenRef", "setupOpenRef", "startAfterCloudRef",
   ]) c[name] = { current: false };
   vm.createContext(c);
@@ -160,7 +160,7 @@ test("a first Up cannot carry into a different question or ride", () => {
 
 test("blocked surfaces and non-running modes cannot submit or preserve a stale double-press", () => {
   const blockers = [
-    ...["rotateRequiredRef", "shareOpenRef", "licensesOpenRef", "helpOpenRef", "guideOpenRef", "storeOpenRef", "setupOpenRef", "startAfterCloudRef"]
+    ...["leaderboardOpenRef", "rotateRequiredRef", "shareOpenRef", "licensesOpenRef", "helpOpenRef", "guideOpenRef", "storeOpenRef", "setupOpenRef", "startAfterCloudRef"]
       .map(name => h => { h.c[name].current = true; return () => { h.c[name].current = false; }; }),
     ...["ready", "paused", "over"].map(mode => h => { h.state.mode = mode; return () => { h.state.mode = "running"; }; }),
     h => { h.state.review = { id: 1, kind: "pillar", shielded: false }; return () => { h.state.review = null; }; },

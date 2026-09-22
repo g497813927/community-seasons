@@ -21,6 +21,7 @@
     "qa:ios": "node tests/qa/web/run.mjs --platform ios",
     "qa:all": "node tests/qa/web/run.mjs --platform all",
     "qa:responsive": "node tests/qa/web/responsive.mjs",
+    "qa:leaderboard": "node tests/qa/web/leaderboard.mjs",
     "qa:skins": "node tests/qa/web/skins.mjs",
     "qa:outfit:build": "vite build tests/qa/outfit-matrix --config tests/qa/outfit-matrix/vite.config.ts",
     "qa:outfits": "node tests/qa/web/outfit-matrix.mjs",

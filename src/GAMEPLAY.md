@@ -45,6 +45,18 @@ Passing the best score saved before the run triggers a short celebration banner.
 
 Roadside power-ups are occasional opportunities: the first appears about 10–16 seconds into normal running, then later ones target a randomized 22–38 seconds of normal travel. The next suitable obstacle row can delay an opportunity slightly longer. Distances account for acceleration up to the speed cap, so power-ups do not bunch together as the game gets faster. Missing one does not trigger a replacement nearby. The minimum spacing also leaves a break after a level-three Momentum effect before the next road pickup.
 
+## Leaderboards
+
+On Toy, open the leaderboard to view **Today** or **This week** under the current difficulty rules. Scores appear with the nickname and avatar Toy provides. After finishing an eligible run, choose **Join leaderboard & post this score** to agree to that public display. Before this explicit choice and any required Toy permission, no score is submitted. **Not now** or declining permission keeps the score local; you can join later.
+
+After the first submission is confirmed successful, the game saves your public-profile participation choice to a separate Toy cloud record for your account. Once that save is confirmed, later fresh eligible runs submit once automatically across devices, without asking you to post each run. Consent is not stored in the browser, and its cloud record does not replace your game progress. The old hidden-name board and its consent are not reused: returning players must join the public-profile board explicitly.
+
+The game checks the cloud choice on loading, when you open the leaderboard, and before each automatic submission. If it cannot confirm consent, it keeps the score local. If a score posts but saving your choice fails, automatic submission stays off; retrying the choice save does not repost the score. Toy may still request renewed permission. Reloading never uploads a saved best or the previous session's last run. There is no all-time view; your saved personal best remains available separately.
+
+You can turn off future submissions from the leaderboard at any time, including after joining or before finishing another run. This saves the disabled choice to your Toy account. If the change cannot sync, automatic submission stays off on this page and the game tells you that other devices have not received the change. Opting out does not delete an accepted score or cancel a request already sent: your score, nickname and avatar may remain visible on the current day/week boards. Toy's public SDK has no score-delete method.
+
+Checks compare the completed run's score, distance, coins and time before submission and prevent duplicate submissions through the game. A local-storage best changed to **999,999,999,999,999** is not an eligible score; a forged submission is rejected before leaderboard SDK access. These checks reduce simple score manipulation, but do not provide trusted server verification or prevent direct SDK calls. [Technical details](../docs/LEADERBOARD.md) explain the limits.
+
 ## Consumable tools
 
 | Tool                       | Key | Price | Level 1 effect                                                                      |

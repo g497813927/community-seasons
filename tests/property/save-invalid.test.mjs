@@ -8,7 +8,7 @@ const started = performance.now(),
   folder = new URL("./save-compiled/", import.meta.url),
   sourceHashes = {};
 fs.mkdirSync(folder, { recursive: true });
-for (const name of ["scenes", "boosts", "skins", "cosmetics", "railway", "community", "engine", "store", "cloud-save"]) {
+for (const name of ["scenes", "boosts", "skins", "cosmetics", "railway", "community", "ranked-run", "engine", "store", "cloud-save"]) {
   const source = fs.readFileSync(
     new URL(`../../src/lib/game/${name}.ts`, import.meta.url),
     "utf8",
