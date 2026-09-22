@@ -30,6 +30,8 @@ export class Renderer {
   w = 0;
   h = 0;
   pixelRatio = 0;
+  private resolutionLimit = 2;
+  detail: 0 | 1 | 2 = 0;
   focal = 0;
   center = 0;
   horizon = 0;
@@ -81,14 +83,24 @@ export class Renderer {
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    const width = Math.round(rect.width * ratio);
-    const height = Math.round(rect.height * ratio);
-    const changed = this.w !== rect.width || this.h !== rect.height || this.pixelRatio !== ratio ||
+    return this.resizeBitmap(rect.width, rect.height);
+  }
+  setResolutionLimit(limit: number) {
+    this.resolutionLimit = Number.isFinite(limit) ? Math.max(1, Math.min(2, limit)) : 2;
+    this.detail = this.resolutionLimit >= 2 ? 0 : this.resolutionLimit > 1 ? 1 : 2;
+    // Reuse the observed CSS size; never force layout inside the frame loop.
+    // The caller paints immediately after changing the backing bitmap.
+    return this.resizeBitmap(this.w, this.h);
+  }
+  private resizeBitmap(cssWidth: number, cssHeight: number) {
+    const ratio = Math.min(window.devicePixelRatio || 1, this.resolutionLimit);
+    const width = Math.round(cssWidth * ratio);
+    const height = Math.round(cssHeight * ratio);
+    const changed = this.w !== cssWidth || this.h !== cssHeight || this.pixelRatio !== ratio ||
       this.canvas.width !== width || this.canvas.height !== height;
     if (!changed) return false;
-    this.w = rect.width;
-    this.h = rect.height;
+    this.w = cssWidth;
+    this.h = cssHeight;
     this.pixelRatio = ratio;
     // Assigning even the same canvas dimensions clears its visible bitmap.
     // Mobile viewport/layout notifications must not blank an unchanged frame.

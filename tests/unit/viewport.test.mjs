@@ -118,7 +118,7 @@ test("actual gameplay actions and keyboard capture cannot bypass rotate overlay"
     "triggerBooster",
     "continueAfterReview",
   ]) {
-    const c = { rotateRequiredRef: { current: true }, leaderboardOpenRef: { current: false }, shareOpenRef: { current: false }, helpOpenRef: { current: false }, licensesOpenRef: { current: false } };
+    const c = { graphicsReadyRef: { current: true }, rotateRequiredRef: { current: true }, leaderboardOpenRef: { current: false }, shareOpenRef: { current: false }, helpOpenRef: { current: false }, licensesOpenRef: { current: false } };
     vm.createContext(c);
     await vm.runInContext(compile(functions.get(name)) + `;${name}()`, c);
   }
@@ -126,6 +126,7 @@ test("actual gameplay actions and keyboard capture cannot bypass rotate overlay"
     let prevented = 0,
       stopped = 0;
     const c = {
+      graphicsReadyRef: { current: true },
       rotateRequiredRef: { current: true },
       leaderboardOpenRef: { current: false }, shareOpenRef: { current: false },
       helpOpenRef: { current: false }, licensesOpenRef: { current: false },

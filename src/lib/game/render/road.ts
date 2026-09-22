@@ -8,6 +8,10 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
     p = world.palette;
   const junction =
     renderer.forkDepth ?? (renderer.curveStrength > 0 || renderer.curveTail ? -renderer.curveAlong : null);
+  // Coarser decorative paving saves projection and painting work without
+  // shortening the visible course. Keep curved sections fine enough to
+  // follow the connector, and still split each slab at the exact junction.
+  const segmentLength = renderer.detail === 0 ? 3 : renderer.detail === 1 || junction !== null ? 6 : 9;
   const blocked = renderer.forkBlockedDirection;
   const paint = (points: V[], color: string) => {
     if (points.every((point) => point[2] < -9)) return;
@@ -40,8 +44,8 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
         world.road[Math.abs(row + lane) % 3],
       );
       if (s.scene === "summer") {
-        const start = Math.max(near, row * 3 - travel - 0.5);
-        const end = Math.min(far, row * 3 - travel - 0.46);
+        const start = Math.max(near, row * segmentLength - travel - 0.5);
+        const end = Math.min(far, row * segmentLength - travel - 0.46);
         if (end > start)
           paint(
             [
@@ -53,7 +57,7 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
             "#8b775b",
           );
       } else if (s.scene === "autumn") {
-        const start = Math.max(near, row * 3 - travel - 0.3);
+        const start = Math.max(near, row * segmentLength - travel - 0.3);
         if (far > start)
           paint(
             [
@@ -79,12 +83,15 @@ export function road(renderer: Renderer, s: RunState, travel: number) {
       );
     }
   };
-  const first = Math.floor(travel / 3);
-  for (let i = 50; i >= -2; i--) {
+  const first = Math.floor(travel / segmentLength);
+  const halfLength = segmentLength / 2 - 0.01;
+  const last = renderer.detail === 0 ? 50
+    : Math.ceil((150 + travel - first * segmentLength - halfLength) / segmentLength);
+  for (let i = last; i >= -2; i--) {
     const row = first + i,
-      z = row * 3 - travel;
-    const near = z - 1.49,
-      far = z + 1.49;
+      z = row * segmentLength - travel;
+    const near = z - halfLength,
+      far = z + halfLength;
     if (junction === null) strip(0, row, near, far);
     else {
       // Split a slab at the exact junction instead of overlaying two full

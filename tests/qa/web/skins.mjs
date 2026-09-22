@@ -117,11 +117,17 @@ try {
           await page.clock.runFor(250);
           await page.locator('.store-dialog').waitFor({ state: 'detached' });
         };
+        const finishWarmup = async () => {
+          await page.locator('.render-warmup-screen').waitFor({ state: 'detached', timeout: 45000 });
+          assert.equal(await page.locator('main.game-shell').evaluate(main => main.inert), false,
+            'The completed loading screen must unlock the game before time freezes');
+        };
         try {
           await page.goto(origin + previewPath);
           await page.waitForFunction(expected => document.documentElement.lang === expected, locale);
           await page.locator('.start-store').waitFor();
           assert.equal(await page.evaluate(() => window.__communitySeasonsQA.cloud), 'disabled');
+          await finishWarmup();
           await freezeClockAtCurrentTime(page);
           await page.clock.runFor(100);
           assert.equal((await live()).skin, 'classic', 'legacy saves start with classic TV');
@@ -216,8 +222,13 @@ try {
             await summary.screenshot({ path: path.join(reportDir, `${profile.name}-${locale}-outfit-large-text.png`) });
           }
           await closeStore();
+          // Reload starts a fresh calibration; the installed clock remains
+          // paused across navigation unless explicitly resumed first.
+          await page.clock.resume();
           await page.reload();
           await page.locator('.start-store').waitFor();
+          await finishWarmup();
+          await freezeClockAtCurrentTime(page);
           await page.clock.runFor(200);
           assert.equal((await live()).skin, 'blossom', 'saved skin is restored on reload');
           assert.deepEqual((await saved()).ownedSkins, ['classic', 'blossom', 'ocean']);

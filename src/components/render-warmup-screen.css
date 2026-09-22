@@ -1,0 +1,96 @@
+.render-warmup-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  overflow: auto;
+  padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  background: #071e1c;
+  color: #eeeede;
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+.render-warmup-screen[data-ready="true"] { opacity: 0; }
+
+.render-warmup-content {
+  flex: 0 0 auto;
+  width: min(100%, 22rem);
+  min-width: 0;
+  margin: auto;
+  text-align: center;
+}
+
+.render-warmup-title {
+  margin: 0 0 1.5rem;
+  font-family: Georgia, "Songti SC", "STSong", serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: normal;
+  text-shadow: none;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.render-warmup-scene {
+  display: block;
+  width: 100%;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #eeeede;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The wheel and walking strip each animate a cached HTML layer. */
+.render-warmup-wheel { display: block; will-change: transform; transform-origin: 50% 50%; }
+.render-warmup-scene:focus-visible { outline: none; }
+.render-warmup-scene:focus-visible .render-warmup-wheel-window { outline: 3px solid #edb95d; outline-offset: 5px; }
+.render-warmup-scene:disabled { opacity: 1; cursor: default; }
+.render-warmup-picture { position: relative; display: block; padding-top: 37.272727%; }
+/* Hide the far half of the connected wheel; the TV stays outside this mask. */
+.render-warmup-wheel-window {
+  display: block;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+.render-warmup-landscape { display: block; width: 100%; height: auto; }
+
+.render-warmup-hint {
+  margin: 1rem 0 0;
+  color: #b8c8b4;
+  font-size: .875rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.render-warmup-runner {
+  position: absolute;
+  z-index: 1;
+  left: 13.636364%;
+  top: 0;
+  width: 72.727273%;
+  overflow: hidden;
+}
+.render-warmup-walk {
+  display: block;
+  will-change: transform;
+  animation: render-warmup-walk 960ms steps(var(--warmup-walk-steps), end) infinite;
+}
+.render-warmup-runner svg { display: block; width: 100%; height: auto; }
+@keyframes render-warmup-walk {
+  from { transform: translate3d(var(--warmup-walk-start), 0, 0); }
+  to { transform: translate3d(-100%, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .render-warmup-screen { transition: none; }
+  .render-warmup-wheel { will-change: auto; }
+  .render-warmup-walk { animation: none; transform: none; will-change: auto; }
+}

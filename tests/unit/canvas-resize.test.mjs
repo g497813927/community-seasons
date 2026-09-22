@@ -35,6 +35,35 @@ test("repeated viewport notifications preserve an unchanged canvas bitmap", () =
   assert.deepEqual(transforms, []);
 });
 
+test("adaptive detail changes only the backing bitmap without reading layout", () => {
+  const { renderer, canvas, resets, transforms } = setup(360, 780, 3);
+  renderer.resize();
+  canvas.getBoundingClientRect = () => { throw new Error("frame loop forced layout"); };
+  for (const ratio of [1.5, 1, 2]) {
+    resets.length = 0;
+    assert.equal(renderer.setResolutionLimit(ratio), true);
+    assert.equal(renderer.w, 360);
+    assert.equal(renderer.h, 780);
+    assert.equal(canvas.width, 360 * ratio);
+    assert.equal(canvas.height, 780 * ratio);
+    assert.deepEqual(transforms.at(-1), [ratio, 0, 0, ratio, 0, 0]);
+    assert.deepEqual(resets, ["width", "height"]);
+    resets.length = 0;
+    assert.equal(renderer.setResolutionLimit(ratio), false);
+    assert.deepEqual(resets, [], "steady detail erased the visible frame");
+  }
+});
+
+test("adaptive detail never supersamples a low-DPR display", () => {
+  const { renderer, canvas, resets } = setup(360, 780, 1);
+  renderer.resize();
+  resets.length = 0;
+  for (const ratio of [1.5, 1, 2]) assert.equal(renderer.setResolutionLimit(ratio), false);
+  assert.deepEqual(resets, []);
+  assert.equal(canvas.width, 360);
+  assert.equal(canvas.height, 780);
+});
+
 test("a real layout resize reports an immediate repaint and only resets changed dimensions", () => {
   const { renderer, rect, resets, transforms, canvas } = setup();
   renderer.resize();
