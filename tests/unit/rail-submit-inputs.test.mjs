@@ -235,20 +235,29 @@ test("touch double taps retain their existing skill action and never submit a ra
 test("startup cover blocks gameplay keys and swipes without consuming browser shortcuts", () => {
   const h = harness();
   h.c.graphicsReadyRef.current = false;
-  for (const key of ["Enter", "ArrowUp", "w", "p", "b"]) {
-    const attempt = h.key(key, 100);
+  for (const key of [
+    "Enter", " ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight",
+    "w", "W", "a", "A", "s", "S", "d", "D", "p", "P", "b", "B",
+    "r", "R", "m", "M", "e", "E", "1", "2", "3", "4",
+    "Process",
+  ]) {
+    const attempt = h.key(key, 100, key === "Process" ? { code: "KeyW" } : {});
     h.c.onGameSpace(attempt.event);
-    assert.equal(attempt.prevented, 1);
+    assert.equal(attempt.prevented, 1, `${key} must not activate gameplay during loading`);
     assert.equal(attempt.stopped, 1);
   }
   h.c.beginSwipe({ pointerType: "touch" });
   assert.equal(h.c.swipeRef.current, null);
   assert.deepEqual(h.calls, []);
   assert.equal(h.state.rail.phase, "question");
-  for (const overrides of [{ key: "Tab" }, { key: "r", metaKey: true }, { key: "r", ctrlKey: true }]) {
+  for (const overrides of [
+    ...["Tab", "Shift", "Escape", "F1", "F3", "F5", "F11", "F12", "Home", "End", "PageUp", "PageDown", "x"]
+      .map(key => ({ key })),
+    { key: "r", metaKey: true }, { key: "r", ctrlKey: true }, { key: "ArrowLeft", altKey: true },
+  ]) {
     const attempt = h.key(overrides.key, 200, overrides);
     h.c.onGameSpace(attempt.event);
-    assert.equal(attempt.prevented, 0);
+    assert.equal(attempt.prevented, 0, `${overrides.key} must keep its native browser behavior`);
     assert.equal(attempt.stopped, 0);
   }
   for (const key of ["Enter", " "]) {

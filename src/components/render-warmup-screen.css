@@ -12,7 +12,7 @@
   transition: opacity 200ms ease;
 }
 
-.render-warmup-screen[data-ready="true"] { opacity: 0; pointer-events: none; }
+.render-warmup-screen[data-ready="true"] { opacity: 0; }
 
 .render-warmup-content {
   flex: 0 0 auto;

@@ -1384,7 +1384,11 @@ export default function Home() {
     function onGameSpace(e: KeyboardEvent) {
       if (!graphicsReadyRef.current) {
         if (e.target instanceof Element && e.target.closest(".render-warmup-screen")) return;
-        if (!e.ctrlKey && !e.metaKey && !e.altKey && !["Tab", "Shift"].includes(e.key)) {
+        // Only capture gameplay bindings. Escape retains its browser action
+        // while loading because there is no active run to pause yet.
+        const gameplayKey = keyMap[e.key] ?? keyMap[e.code] ??
+          ["Enter", "p", "P", "r", "R", "m", "M", "b", "B", "1", "2", "3", "4", "e", "E"].includes(e.key);
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && gameplayKey) {
           e.preventDefault();
           e.stopImmediatePropagation();
         }
