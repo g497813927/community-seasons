@@ -13,9 +13,11 @@ const source = fs.readFileSync(new URL("../../src/app/page.tsx", import.meta.url
 const ast = ts.createSourceFile("page.tsx", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const functions = new Map();
 let keyMap;
+let finishLoadingInitializer;
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && node.name) functions.set(node.name.text, node.getText(ast));
   if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "keyMap") keyMap = node.initializer.getText(ast);
+  if (ts.isVariableDeclaration(node) && node.name.getText(ast) === "finishLoading") finishLoadingInitializer = node.initializer.getText(ast);
   ts.forEachChild(node, visit);
 }
 visit(ast);
@@ -23,14 +25,20 @@ const compile = text => ts.transpileModule(text, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 
-function target(kind) {
-  return { closest(selector) {
+class ElementTarget {
+  constructor(kind) { this.kind = kind; }
+  closest(selector) {
+    const kind = this.kind;
+    if (kind === "warmup" && selector === ".render-warmup-screen") return this;
     if (kind === "input" && selector.includes("input")) return this;
     if (kind === "dialog" && selector.includes('data-slot="dialog-content"')) return this;
     if (kind === "result" && selector.includes(".result-panel")) return this;
     if (kind === "go" && (selector === "button,a" || selector.includes(".rail-submit") || selector.includes(".rail-answers button"))) return this;
     return null;
-  } };
+  }
+}
+function target(kind) {
+  return new ElementTarget(kind);
 }
 
 function harness() {
@@ -40,6 +48,8 @@ function harness() {
   state.lane = state.rail.optionOrder.indexOf(currentRailQuestion(state).correctIndex) - 1;
   const calls = [];
   const c = {
+    Element: ElementTarget,
+    graphicsReadyRef: { current: true },
     game: { current: state }, BOOSTERS, act, submitRailAnswer, togglePause,
     swipeRef: { current: null }, lastTapRef: { current: null }, lastRailUpRef: { current: null },
     canvasRef: { current: { focus(options) { calls.push(["focus", options.preventScroll]); } } },
@@ -220,4 +230,69 @@ test("touch double taps retain their existing skill action and never submit a ra
   }
   assert.equal(h.state.rail.phase, "question");
   assert.equal(h.calls.filter(call => call[0] === "notice").length, 1);
+});
+
+test("startup cover blocks gameplay keys and swipes without consuming browser shortcuts", () => {
+  const h = harness();
+  h.c.graphicsReadyRef.current = false;
+  for (const key of ["Enter", "ArrowUp", "w", "p", "b"]) {
+    const attempt = h.key(key, 100);
+    h.c.onGameSpace(attempt.event);
+    assert.equal(attempt.prevented, 1);
+    assert.equal(attempt.stopped, 1);
+  }
+  h.c.beginSwipe({ pointerType: "touch" });
+  assert.equal(h.c.swipeRef.current, null);
+  assert.deepEqual(h.calls, []);
+  assert.equal(h.state.rail.phase, "question");
+  for (const overrides of [{ key: "Tab" }, { key: "r", metaKey: true }, { key: "r", ctrlKey: true }]) {
+    const attempt = h.key(overrides.key, 200, overrides);
+    h.c.onGameSpace(attempt.event);
+    assert.equal(attempt.prevented, 0);
+    assert.equal(attempt.stopped, 0);
+  }
+  for (const key of ["Enter", " "]) {
+    const attempt = h.key(key, 300, { target: target("warmup") });
+    h.c.onGameSpace(attempt.event);
+    assert.equal(attempt.prevented, 0, "the preparation button remains keyboard accessible");
+    assert.equal(attempt.stopped, 0);
+  }
+  assert.deepEqual(h.calls, [], "preparation interaction cannot activate gameplay");
+});
+
+test("calibration alone cannot unlock input; the actual loader completion unlocks once after calibration", () => {
+  const h = harness(), readyUpdates = [];
+  h.c.graphicsReadyRef.current = false;
+  h.c.calibrationReadyRef = { current: false };
+  h.c.setGraphicsReady = value => readyUpdates.push(value);
+  h.c.useCallback = callback => callback;
+  assert.ok(finishLoadingInitializer, "the app's completion callback must be exercised");
+  vm.runInContext(compile(`globalThis.finishLoading = ${finishLoadingInitializer};`), h.c);
+
+  h.c.finishLoading();
+  assert.equal(h.c.graphicsReadyRef.current, false, "premature animation completion must not bypass calibration");
+  assert.deepEqual(readyUpdates, []);
+
+  h.c.calibrationReadyRef.current = true;
+  for (const at of [100, 200]) {
+    const attempt = h.key("ArrowUp", at);
+    h.c.onGameSpace(attempt.event);
+    assert.equal(attempt.prevented, 1, "input stays blocked during the final alignment and fade");
+    assert.equal(attempt.stopped, 1);
+  }
+  h.c.beginSwipe({ pointerType: "touch" });
+  assert.equal(h.c.swipeRef.current, null);
+  assert.equal(h.state.rail.phase, "question");
+  assert.equal(h.c.lastRailUpRef.current, null, "blocked keys cannot leak into the first playable input");
+  assert.deepEqual(h.calls, []);
+
+  h.c.finishLoading();
+  h.c.finishLoading();
+  assert.equal(h.c.graphicsReadyRef.current, true);
+  assert.deepEqual(readyUpdates, [true], "repeated completion must not dispatch another unlock");
+  h.key("ArrowUp", 400);
+  assert.equal(h.state.rail.phase, "question");
+  h.key("ArrowUp", 500);
+  assert.equal(h.state.rail.phase, "feedback", "actual gameplay input must work once the loader has finished");
+  assert.equal(h.state.rail.correctCount, 1);
 });

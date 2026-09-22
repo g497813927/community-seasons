@@ -21,6 +21,15 @@ const backdropComponents = {
   winter: winterBackdrop,
 } satisfies Record<SceneKind, (renderer: Renderer) => void>;
 
+export function sceneryRowVisible(row: number, detail: 0 | 1 | 2) {
+  if (detail === 0) return true;
+  // A five-row pattern is independent of the six authored variants. Every
+  // kind of landmark remains represented, and a retained row stays on both
+  // branches throughout a turn instead of changing with camera distance.
+  const slot = ((row % 5) + 5) % 5;
+  return slot === 0 || slot === 2 || (detail === 1 && slot === 4);
+}
+
 export function shouldOmitInnerCurveBuilding(
   junction: number | null,
   side: number,
@@ -38,6 +47,7 @@ export function shouldOmitInnerCurveBuilding(
 }
 
 export function scenery(renderer: Renderer, scene: SceneKind, row: number, z: number) {
+  if (!sceneryRowVisible(row, renderer.detail)) return;
   const variant = ((row % 6) + 6) % 6;
   for (const side of [-1, 1]) {
     const key = `${scene}:${variant}:${side}`;

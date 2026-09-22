@@ -8,6 +8,8 @@ const { createRailRide } = await import("../helpers/compiled/railway.mjs");
 const { SKINS, skinDefinition } = await import("../helpers/compiled/skins.mjs");
 const { drawHat } = await import("../helpers/compiled/render/characters/cosmetics.mjs");
 const { paintFaces } = await import("../helpers/compiled/render/paint.mjs");
+const { getWalkingSkinPreview } = await import("../helpers/compiled/render/skin-preview.mjs");
+const { runner } = await import("../helpers/compiled/render/characters/runner.mjs");
 
 globalThis.window = { devicePixelRatio: 1 };
 const noop = () => {};
@@ -218,4 +220,114 @@ test("every store outfit fits the shared frame, preserves source data and uses a
   }
   assert.notEqual(first, getSkinPreview("classic", outfits[0]), "preview cache retains every combination indefinitely");
   assert.deepEqual(first, getSkinPreview("classic", outfits[0]), "regenerating an evicted preview changes its appearance");
+});
+
+test("loading screens keep every outfit's case and limbs while isolating their front-facing preview cache", () => {
+  for (const skin of SKINS) for (const outfit of outfits) {
+    const back = getSkinPreview(skin.id, outfit);
+    assert.equal(back, getSkinPreview(skin.id, outfit, "back"));
+    const front = getSkinPreview(skin.id, outfit, "front");
+    assert.notEqual(front, back);
+    assert.equal(front, getSkinPreview(skin.id, { ...outfit }, "front"));
+    assert.equal(back, getSkinPreview(skin.id, outfit), "loading preview replaces the store's cached appearance");
+    // Only the six rear-panel details are replaced. Case, leg placement,
+    // antennae and every accessory retain their exact gameplay polygons.
+    const frontFaces = new Set(front.map((face) => JSON.stringify(face)));
+    assert.equal(back.filter((face) => !frontFaces.has(JSON.stringify(face))).length, 6);
+    assert.equal(front.length, back.length - 1);
+    assert.equal(front.filter((face) => face.fill === "#d9f4ed").length, 3);
+    const backFaces = new Set(back.map((face) => JSON.stringify(face)));
+    const screenIndex = front.findIndex((face) => !backFaces.has(JSON.stringify(face)) && face.fill === skin.palette.trim[0]);
+    assert.ok(screenIndex >= 0);
+    assert.ok(front.every((face, index) => face.fill !== "#d9f4ed" || index > screenIndex), "a screen covers its own eyes or smile after projection");
+    for (const face of front) for (const coordinate of face.points.split(/[ ,]/).map(Number)) {
+      assert.ok(Number.isFinite(coordinate) && coordinate >= 12 && coordinate <= 148, `loading outfit is clipped at ${coordinate}`);
+    }
+  }
+});
+
+test("both loading TV antenna bases paint above the roof", () => {
+  for (const skin of SKINS) {
+    const preview = getSkinPreview(skin.id, createOutfit(), "front");
+    const roofIndex = preview.findIndex((face) => face.fill === skin.palette.shell[2]);
+    assert.ok(roofIndex >= 0);
+    // In this fixed preview framing only antennae extend above y=40.
+    const antennaIndices = preview.flatMap((face, index) => face.points.split(" ").some((point) => Number(point.split(",")[1]) < 40) ? [index] : []);
+    assert.equal(antennaIndices.length, 6);
+    assert.ok(antennaIndices.every((index) => index > roofIndex), "the roof hides an antenna base");
+  }
+});
+
+test("loading walk alternates lifted feet without raising the planted foot or body", () => {
+  const lifted = [];
+  for (let frame = 0; frame < 8; frame++) {
+    const boxes = [], faces = [];
+    runner({ faces, face(points, color) { faces.push({ points, color, z: 0 }); }, box(...args) { boxes.push(args); } }, createRun(), 0,
+      { previewScreen: true, walkingPhase: frame * Math.PI / 4 });
+    assert.equal(boxes[0][1], 0.94, "the body floats during a step");
+    const feet = boxes.filter((box) => box[3] === 0.25 && box[4] === 0.2 && box[5] === 0.32);
+    assert.equal(feet.length, 2);
+    assert.ok(Math.abs(Math.min(...feet.map((foot) => foot[1])) - 0.13) < 1e-10, "neither foot is planted");
+    lifted.push(feet.map((foot) => foot[1] > 0.14));
+  }
+  assert.deepEqual(lifted[0], [false, true]);
+  assert.deepEqual(lifted[4], [true, false]);
+});
+
+test("cached walking strips keep a neutral reduced-motion pose and fit every outfit", () => {
+  const first = getWalkingSkinPreview("classic", outfits[0]);
+  for (const skin of SKINS) for (const outfit of outfits) {
+    const frames = getWalkingSkinPreview(skin.id, outfit);
+    assert.equal(frames.length, 9);
+    assert.equal(frames, getWalkingSkinPreview(skin.id, { ...outfit }));
+    assert.notDeepEqual(frames[0].faces, getSkinPreview(skin.id, outfit, "front"), "loading still uses the frontal store-style camera");
+    assert.notDeepEqual(frames[1].faces, frames[5].faces, "opposing steps look identical");
+    for (const frame of frames) for (const face of [...frame.shadows, ...frame.faces]) for (const coordinate of face.points.split(/[ ,]/).map(Number)) {
+      assert.ok(Number.isFinite(coordinate) && coordinate >= 8 && coordinate <= 152, `walking outfit is clipped at ${coordinate}`);
+    }
+  }
+  assert.notEqual(first, getWalkingSkinPreview("classic", outfits[0]), "walking cache grows without evicting old outfits");
+  assert.deepEqual(first, getWalkingSkinPreview("classic", outfits[0]));
+});
+
+test("walking contact shadows follow the feet and soften only under the lifted foot", () => {
+  for (const shoes of [null, "sneakers", "boots", "skates"]) {
+    const frames = getWalkingSkinPreview("classic", { hat: null, shoes, effect: null });
+    assert.ok(frames.every((frame) => frame.shadows.length === 2));
+    assert.deepEqual(frames[0].shadows.map((shadow) => shadow.fill), ["rgba(0,26,34,0.220)", "rgba(0,26,34,0.220)"]);
+    assert.deepEqual(frames[1].shadows.map((shadow) => shadow.fill), ["rgba(0,26,34,0.220)", "rgba(0,26,34,0.090)"]);
+    assert.deepEqual(frames[5].shadows.map((shadow) => shadow.fill), ["rgba(0,26,34,0.090)", "rgba(0,26,34,0.220)"]);
+    for (const side of [0, 1]) {
+      assert.notEqual(frames[3].shadows[side].points, frames[7].shadows[side].points, "footprint does not follow the foot's forward/back step");
+    }
+  }
+});
+
+test("the loading TV faces right and its planted feet track the left-moving ground", () => {
+  const centerX = (faces) => {
+    const xs = faces.flatMap((face) => face.points.split(" ").map((point) => Number(point.split(",")[0])));
+    return xs.reduce((sum, x) => sum + x, 0) / xs.length;
+  };
+  const bare = getWalkingSkinPreview("classic", createOutfit());
+  for (const shoes of [null, "sneakers", "boots", "skates"]) {
+    const frames = getWalkingSkinPreview("classic", { hat: null, shoes, effect: null });
+    const face = frames[0].faces.filter((polygon) => polygon.fill === "#d9f4ed");
+    assert.equal(face.length, 3, "the turned TV must retain both eyes and its smile");
+    assert.ok(centerX(face) > 85, "the face remains centered or points left");
+    for (const [side, from, to] of [[0, 1, 3], [1, 5, 7]]) {
+      assert.equal(frames[from].shadows[side].fill, "rgba(0,26,34,0.220)");
+      assert.equal(frames[to].shadows[side].fill, "rgba(0,26,34,0.220)");
+      assert.ok(centerX([frames[to].shadows[side]]) < centerX([frames[from].shadows[side]]) - 5,
+        "a planted foot slips right against the left-moving path");
+    }
+    if (shoes) for (const side of [0, 1]) {
+      assert.ok(centerX([frames[0].shadows[side]]) > centerX([bare[0].shadows[side]]),
+        "the toe extension projects behind the right-facing TV");
+    }
+  }
+  const state = Object.assign(createRun(), { outfit: { hat: "cap", shoes: "sneakers", effect: "sparkles" } });
+  const usual = renderer(), previewFlagOnly = renderer();
+  runner(usual, state, 0, { stride: 0 });
+  runner(previewFlagOnly, state, 0, { stride: 0, previewForward: true });
+  assert.deepEqual(previewFlagOnly.faces, usual.faces, "loading orientation leaks into gameplay without a preview screen");
 });

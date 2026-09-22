@@ -140,6 +140,13 @@ async function runFlow(page, platform, locale, row, reportDirectory, sourceHashe
   assert.equal(row.qa?.cloud, 'disabled');
   assert.deepEqual(row.qa?.build, { version: 1, sourceHashes }, 'Loaded preview must identify the validated build');
   assert.equal(await page.evaluate(() => Object.isFrozen(window.__communitySeasonsQA.build) && Object.isFrozen(window.__communitySeasonsQA.build.sourceHashes)), true);
+  // Home controls mount behind calibration. Wait for the real startup handoff
+  // before capturing or using them; a normal click timeout is not its budget.
+  await action('finish-render-warmup', async () => {
+    await page.locator('.render-warmup-screen').waitFor({ state: 'detached', timeout: 45000 });
+    assert.equal(await page.locator('main.game-shell').evaluate(main => main.inert), false,
+      'The completed loading screen must unlock the game');
+  });
   await checkOverflow('home');
   await capture('home');
 

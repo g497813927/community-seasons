@@ -1,5 +1,6 @@
 import type { Renderer } from "../render";
 import type { SceneKind } from "../scenes";
+import type { Face, V } from "./types";
 import { WORLD_STYLES } from "./styles";
 
 export function paintFaces(renderer: Renderer, scene: SceneKind) {
@@ -7,11 +8,16 @@ export function paintFaces(renderer: Renderer, scene: SceneKind) {
     w = renderer.w,
     h = renderer.h;
   const world = WORLD_STYLES[scene] ?? WORLD_STYLES.spring;
+  // Sorting and painting share the same camera for this frame. Keep the
+  // transformed vertices here so each face is transformed only once, without
+  // retaining camera coordinates in reusable scenery or across frames.
+  const views = new Map<Face, V[]>();
   // Road slabs cross the runner's depth. Sorting their average z with body
   // parts can paint a slab over grounded feet despite positive foot height.
   // Draw the ground first, then depth-sort every above-ground object.
   for (const face of renderer.faces) {
     const view = renderer.faceView(face);
+    views.set(face, view);
     // Keep authored overlay offsets (TV vents, printed panels) while
     // changing the scene sort from road-distance to camera-distance.
     const bias =
@@ -20,7 +26,7 @@ export function paintFaces(renderer: Renderer, scene: SceneKind) {
   }
   renderer.faces.sort((a, b) => a.layer - b.layer || b.z - a.z);
   for (const face of renderer.faces) {
-    const view = renderer.faceView(face);
+    const view = views.get(face)!;
     if (face.cull && !renderer.frontFacing(view)) continue;
     const clipped = renderer.clipNear(view);
     if (clipped.length < 3) continue;

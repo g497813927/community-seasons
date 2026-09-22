@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -44,6 +44,11 @@ import {
   type RunState,
 } from "@/lib/game/engine";
 import { Renderer } from "@/lib/game/render";
+import { RenderResolution } from "@/lib/game/render/resolution";
+import { FramePacer } from "@/lib/game/render/frame-pacing";
+import { DisplayRefresh } from "@/lib/game/render/display-refresh";
+import { RenderWarmup } from "@/lib/game/render/warmup";
+import { RenderWarmupScreen } from "@/components/render-warmup-screen";
 import { listenToMediaQuery } from "@/lib/game/media-query";
 import { BackgroundMusic } from "@/lib/game/music";
 import { createRecordProgress, updateRecordProgress } from "@/lib/game/records";
@@ -146,6 +151,15 @@ function readInitialLocale(): Locale {
 }
 
 export default function Home() {
+  const [graphicsReady, setGraphicsReady] = useState(false);
+  const graphicsReadyRef = useRef(false);
+  const [calibrationReady, setCalibrationReady] = useState(false);
+  const calibrationReadyRef = useRef(false);
+  const finishLoading = useCallback(() => {
+    if (!calibrationReadyRef.current || graphicsReadyRef.current) return;
+    graphicsReadyRef.current = true;
+    setGraphicsReady(true);
+  }, []);
   const onToy = isToyPage(window.location);
   const [cloudState, setCloudState] = useState<CloudSaveState>({
     status: onToy ? "checking" : "unsupported",
@@ -798,6 +812,7 @@ export default function Home() {
     void cloudRef.current?.refresh();
   }
   async function start() {
+    if (!graphicsReadyRef.current) return;
     if (rotateRequiredRef.current || leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
     if (
       storeOpenRef.current ||
@@ -929,6 +944,7 @@ export default function Home() {
     sync();
   }
   function beginSwipe(e: PointerEvent<HTMLElement>) {
+    if (!graphicsReadyRef.current) return;
     if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
     // A second finger cancels the stroke so a pinch cannot become a move.
     swipeRef.current = null;
@@ -1200,6 +1216,10 @@ export default function Home() {
       });
     }
     const renderer = new Renderer(canvasRef.current!);
+    const renderResolution = new RenderResolution();
+    const framePacer = new FramePacer();
+    const displayRefresh = new DisplayRefresh();
+    const renderWarmup = new RenderWarmup();
     rendererRef.current = renderer;
     renderer.resize();
     let needsRedraw = true;
@@ -1234,6 +1254,7 @@ export default function Home() {
       previous = 0,
       lastHud = 0;
     function frame(now: number) {
+      const frameStarted = performance.now();
       if (!previous) {
         setLocale(localeRef.current);
         setScene(sceneRef.current);
@@ -1307,8 +1328,16 @@ export default function Home() {
           !cloudStateRef.current.conflict);
       // A paused run is a still image. Keep event/audio bookkeeping alive, but
       // avoid rebuilding thousands of polygons behind pause and lesson dialogs.
+      displayRefresh.observe(now, animated && !document.hidden);
+      renderResolution.setDisplayRate(displayRefresh.fps);
+      if (!animated || document.hidden) framePacer.reset();
+      // Under heavy load RAF's queued timestamp can precede actual painting.
+      // Pace presentation from the live clock; keep simulation on RAF time.
+      const paintAt = performance.now();
+      const pacedFrame = animated && framePacer.shouldRender(paintAt, renderResolution.fps);
+      let rendered = false;
       if (
-        animated ||
+        pacedFrame ||
         needsRedraw ||
         drawnRun !== s ||
         drawnMode !== s.mode ||
@@ -1319,7 +1348,9 @@ export default function Home() {
         drawnFlash > 0
       ) {
         drawnFlash = s.flash;
+        if (animated && !document.hidden) renderer.setResolutionLimit(renderResolution.limit);
         renderer.render(s, now / 1000, false, localeRef.current);
+        rendered = true;
         needsRedraw = false;
         drawnRun = s;
         drawnMode = s.mode;
@@ -1331,10 +1362,34 @@ export default function Home() {
         sync();
         lastHud = now;
       }
+      // An embedded preview may cap callbacks before its first interaction.
+      // That host cap is not evidence of expensive rendering. CPU work still
+      // counts, and normal cadence pressure resumes after real activation.
+      const allowGapPressure = window.top === window ||
+        navigator.userActivation?.hasBeenActive !== false;
+      renderResolution.observe(
+        paintAt, performance.now() - frameStarted, animated && !document.hidden,
+        rendered, allowGapPressure, !calibrationReadyRef.current,
+      );
+      if (!calibrationReadyRef.current && renderWarmup.observe(
+        performance.now(), !document.hidden, rendered, renderResolution.fps, renderResolution.limit,
+        renderResolution.settled && displayRefresh.hasSample, animated,
+      )) {
+        calibrationReadyRef.current = true;
+        setCalibrationReady(true);
+      }
       raf = requestAnimationFrame(frame);
     }
     raf = requestAnimationFrame(frame);
     function onGameSpace(e: KeyboardEvent) {
+      if (!graphicsReadyRef.current) {
+        if (e.target instanceof Element && e.target.closest(".render-warmup-screen")) return;
+        if (!e.ctrlKey && !e.metaKey && !e.altKey && !["Tab", "Shift"].includes(e.key)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+        return;
+      }
       if (leaderboardOpenRef.current || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current) return;
       if (
         rotateRequiredRef.current &&
@@ -1378,6 +1433,7 @@ export default function Home() {
       control("jump");
     }
     function onKey(e: KeyboardEvent) {
+      if (!graphicsReadyRef.current) return;
       // A double press must be consecutive accepted keydowns. Repeats,
       // modifiers, other keys and events in dialogs discard the first press.
       const lastRailUp = lastRailUpRef.current;
@@ -1490,7 +1546,10 @@ export default function Home() {
       void cloudRef.current?.flush();
     }
     function visibility() {
-      if (document.hidden) blur();
+      if (document.hidden) {
+        renderWarmup.pause();
+        blur();
+      }
     }
     window.addEventListener("keydown", onGameSpace, true);
     window.addEventListener("keydown", onKey);
@@ -1576,9 +1635,13 @@ export default function Home() {
             )
         : undefined;
   return (
+    <>
+    <RenderWarmupScreen ready={calibrationReady} locale={locale} skin={progress.equippedSkin} outfit={progress.outfit} scene={scene} onComplete={finishLoading} />
     <main
       className={`game-shell scene-${hud.mode === "ready" ? scene : game.current.scene} ${viewport.height <= 780 ? "compact-viewport" : ""}`}
       lang={locale}
+      inert={!graphicsReady}
+      aria-hidden={!graphicsReady || undefined}
     >
       <header className="topbar">
         <div className="brand">
@@ -2112,6 +2175,7 @@ export default function Home() {
       {cloudState.conflict && (
         <CloudSaveDialog
           open={
+            graphicsReady &&
             (hud.mode === "ready" || startAfterCloudRef.current) &&
             !storeOpen &&
             !setupOpen &&
@@ -2193,7 +2257,7 @@ export default function Home() {
         />
       )}
       <RotateDevice
-        open={rotateRequired}
+        open={graphicsReady && rotateRequired}
         locale={locale}
         height={portraitPromptHeight(viewport)}
         paused={hud.mode === "paused"}
@@ -2262,5 +2326,6 @@ export default function Home() {
         </button>
       </footer>
     </main>
+    </>
   );
 }
