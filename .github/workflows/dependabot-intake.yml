@@ -1,0 +1,21 @@
+name: Dependabot license refresh intake
+
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  intake:
+    if: >-
+      github.actor == 'dependabot[bot]' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == 'main' &&
+      startsWith(github.head_ref, 'dependabot/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 1
+    steps:
+      # No checkout, dependencies, artifacts, or credentials cross this boundary.
+      - name: Request trusted license refresh before full CI
+        run: echo 'Dependabot update is ready for trusted license refresh'
