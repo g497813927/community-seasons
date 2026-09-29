@@ -1,0 +1,88 @@
+name: Refresh Dependabot license notices
+
+on:
+  workflow_run:
+    workflows: [Build and QA]
+    types: [completed]
+    branches: ['dependabot/**']
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: dependabot-notices-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      ready: ${{ steps.prepare.outputs.ready }}
+    steps:
+      - name: Check out trusted default-branch tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.14.1
+
+      - name: Select current Dependabot dependency update
+        id: prepare
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: python3 scripts/dependabot_notices.py prepare --directory "$RUNNER_TEMP/dependabot-notices"
+
+      - name: Generate notices without credentials or dependency scripts
+        if: steps.prepare.outputs.ready == 'true'
+        run: python3 scripts/dependabot_notices.py generate --directory "$RUNNER_TEMP/dependabot-notices"
+
+      - name: Preserve generated notices for the isolated publisher
+        if: steps.prepare.outputs.ready == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependabot-notices-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+          path: ${{ runner.temp }}/dependabot-notices/bundle/
+          if-no-files-found: error
+          retention-days: 7
+          overwrite: true
+
+  publish:
+    needs: generate
+    if: needs.generate.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Check out trusted notice publisher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.14.1
+
+      - name: Commit both notices and trigger CI for the updated branch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: python3 scripts/dependabot_notices.py publish --directory "$RUNNER_TEMP/dependabot-notices"
