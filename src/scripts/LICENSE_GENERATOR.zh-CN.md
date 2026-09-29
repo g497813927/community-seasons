@@ -19,6 +19,14 @@ npm run licenses:check
 
 `npm run build` 会自动重新生成声明，并在打包前进行校验。游戏内面板不包含超链接。分发时应将生成的文件与其余静态构建文件一起保留。
 
+CI 会在构建前检查已提交的声明是否与锁文件一致。Dependabot 拉取请求的 CI 运行结束后，`Refresh Dependabot license notices` 工作流会刷新过期声明，并以 `github-actions[bot]` 身份将两个 public 文件提交到该拉取请求的分支，然后显式启动该分支的 `Build and QA`。首次 CI 可能因声明过期而失败；后续运行会校验机器人的提交。
+
+自动刷新仅由 `dependabot/**` 分支触发，且只有原始 CI 发起者为 `dependabot[bot]` 时才启动作业。它还会验证拉取请求的作者是 Dependabot、请求在本仓库中仍然开放且以 `main` 为目标、游戏锁文件发生变化，以及差异只包含支持的依赖清单、锁文件和声明文件。其他拉取请求仍运行正常 CI，不运行自动刷新。工作流使用默认分支上的可信工具，禁用依赖脚本后安装锁定的软件包，只向独立的发布任务授予写入权限。发布任务会再次核实拉取请求的最新提交，以原子操作仅提交两个声明文件，不会强制推送或合并。缺失许可证原文或元数据无效时，需要手动修正。在本地更新依赖时，仍应重新生成并提交两个 public 声明文件。
+
+工作流使用内置 `GITHUB_TOKEN`，无需个人令牌或额外密钥。GitHub 可能要求手动批准由此令牌触发的拉取请求运行，因此自动刷新会显式调度更新后分支的工作流，不依赖推送事件。详见 [GitHub 的工作流触发规则](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow)。该工作流需要先合入 `main`；对现有 Dependabot 拉取请求，重新运行其 `Build and QA` 即可应用。仓库规则必须允许 GitHub Actions 机器人更新对应的 Dependabot 分支。
+
+自动生成的提交包含 `[dependabot skip]`，以便 [Dependabot 在变基时替换这些提交](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/manage-dependabot-prs)；下一次依赖 CI 运行会再次刷新声明。该标记不会跳过 CI。如果提交已创建但 CI 调度失败，请在刷新工作流中选择 **Re-run failed jobs（重新运行失败的作业）**：工作流会验证并复用该提交，不会重复创建提交。
+
 ## 在其他 npm 项目中使用
 
 需要 Node.js 22.13 或更高版本，并已安装项目依赖，包括开发依赖（`npm ci --include=dev`）。运行现有脚本时，显式指定项目根目录：

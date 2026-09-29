@@ -19,6 +19,14 @@ npm run licenses:check
 
 `npm run build` regenerates notices automatically, then checks them before bundling. The panel has no hyperlinks. Keep the generated files with the rest of the static build when distributing it.
 
+CI checks the committed notices against the lockfile before building. After a Dependabot PR's CI run completes, the `Refresh Dependabot license notices` workflow refreshes stale notices and commits both public files to that PR's branch as `github-actions[bot]`. It then explicitly starts `Build and QA` on the updated branch. The first CI run can fail the stale-notice check; the follow-up run validates the bot's commit.
+
+The refresher is triggered only for `dependabot/**` branches and starts jobs only when the original CI actor is `dependabot[bot]`. It also verifies that the PR author is Dependabot, the PR is open in this repository and targets `main`, the game lockfile changed, and the diff contains only supported dependency manifests, lockfiles and notice files. Other PRs retain their normal CI without running the refresher. It uses trusted default-branch tools, installs the exact locked packages with dependency scripts disabled, and gives write access only to a separate publisher. The publisher verifies the PR's head again and atomically commits only the two notice files; it never force-pushes or merges. Missing original license text or invalid metadata requires manual correction. When updating dependencies locally, regenerate and commit both public notice files as usual.
+
+The workflow uses the built-in `GITHUB_TOKEN`; no personal token or extra secret is needed. GitHub can require approval for PR runs triggered by this token, so the refresher uses an explicit workflow dispatch for the updated branch instead of relying on the push event. See [GitHub's workflow trigger rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow). The workflow must first be merged into `main`; rerun an existing Dependabot PR's `Build and QA` run to apply it there. Repository rules must allow the GitHub Actions bot to update that Dependabot branch.
+
+Generated commits include `[dependabot skip]` so [Dependabot can replace them during rebases](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/manage-your-dependency-security/manage-dependabot-prs); the next dependency CI run refreshes notices again. This marker does not skip CI. If publication creates the commit but CI dispatch fails, use **Re-run failed jobs** on the refresh workflow: it verifies and reuses that commit without creating a duplicate.
+
 ## In another npm project
 
 Requires Node.js 22.13+ and installed dependencies, including development dependencies (`npm ci --include=dev`). Run the existing script with an explicit project root:
