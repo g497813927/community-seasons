@@ -2,7 +2,7 @@ name: Refresh Dependabot license notices
 
 on:
   workflow_run:
-    workflows: [Build and QA]
+    workflows: [Dependabot license refresh intake]
     types: [completed]
     branches: ['dependabot/**']
 
@@ -20,7 +20,8 @@ jobs:
     if: >-
       github.ref == 'refs/heads/main' &&
       github.event.workflow_run.event == 'pull_request' &&
-      github.event.workflow_run.actor.login == 'dependabot[bot]'
+      github.event.workflow_run.actor.login == 'dependabot[bot]' &&
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
@@ -66,7 +67,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: write
-      actions: write
+      actions: read
       pull-requests: read
     steps:
       - name: Check out trusted notice publisher
@@ -80,9 +81,38 @@ jobs:
         with:
           node-version: 24.14.1
 
-      - name: Commit both notices and trigger CI for the updated branch
+      - name: Commit both notices atomically to the current dependency update
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
           SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
         run: python3 scripts/dependabot_notices.py publish --directory "$RUNNER_TEMP/dependabot-notices"
+
+  dispatch:
+    needs: [generate, publish]
+    # No-op, unsupported regeneration, and failed generation still need full CI.
+    if: ${{ always() && !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Check out trusted CI dispatcher
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.14.1
+
+      - name: Run full CI on the validated current Dependabot branch
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ github.event.workflow_run.id }}
+          SOURCE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: python3 scripts/dependabot_notices.py dispatch

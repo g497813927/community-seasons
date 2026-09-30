@@ -11,7 +11,7 @@ import warnings
 import zipfile
 
 from dependabot_notices import (
-    ARCHIVE_LIMIT, BUNDLE_NAMES, FILE_LIMIT, GitHub, eligible_context, generate, publish,
+    ARCHIVE_LIMIT, BUNDLE_NAMES, FILE_LIMIT, GitHub, dispatch_ci, eligible_context, generate, prepare, publish,
     unpack_bundle, validate_notices,
 )
 
@@ -24,6 +24,8 @@ BRANCH = "dependabot/npm_and_yarn/example-2"
 PR_PATH = PREFIX + "/pulls/7"
 FILES_PATH = PR_PATH + "/files?per_page=100"
 ARTIFACTS_PATH = PREFIX + "/actions/runs/52/artifacts?per_page=100"
+REF_PATH = PREFIX + "/git/ref/heads/" + BRANCH
+DISPATCH_PATH = PREFIX + "/actions/workflows/ci.yml/dispatches"
 NOTICE_NAMES = ("open-source-licenses.json", "THIRD-PARTY-NOTICES.txt")
 
 
@@ -71,6 +73,7 @@ class FakeAPI:
             if payload["expectedHeadOid"] != self.responses[PR_PATH]["head"]["sha"]:
                 return {"errors": [{"message": "Expected head no longer matches"}]}
             self.responses[PR_PATH]["head"]["sha"] = NEW_HEAD
+            self.responses[REF_PATH]["object"]["sha"] = NEW_HEAD
             additions = payload["fileChanges"]["additions"]
             self.responses[PREFIX + "/commits/" + NEW_HEAD] = {
                 "sha": NEW_HEAD, "author": {"login": "github-actions[bot]", "type": "Bot"},
@@ -104,12 +107,14 @@ def api_fixture(aligned=False):
     responses = {
         PREFIX + "/actions/runs/42/attempts/1": {
             "id": 42, "run_attempt": 1, "head_sha": HEAD, "head_branch": BRANCH,
-            "path": ".github/workflows/ci.yml", "workflow_id": 11,
+            "path": ".github/workflows/dependabot-intake.yml", "workflow_id": 11,
             "repository": repository, "head_repository": repository,
-            "event": "pull_request", "status": "completed", "conclusion": "failure",
+            "event": "pull_request", "status": "completed", "conclusion": "success",
+            "actor": {"login": "dependabot[bot]", "type": "Bot"},
             "pull_requests": [{"number": 7}],
         },
-        PREFIX + "/actions/workflows/ci.yml": {"id": 11},
+        PREFIX + "/actions/workflows/dependabot-intake.yml": {"id": 11},
+        REF_PATH: {"ref": "refs/heads/" + BRANCH, "object": {"type": "commit", "sha": HEAD}},
         PR_PATH: {"number": 7, "state": "open", "changed_files": 2,
                   "user": {"login": "dependabot[bot]", "type": "Bot"},
                   "base": {"repo": repository, "ref": "main"},
@@ -271,11 +276,11 @@ class DependabotNoticesTests(unittest.TestCase):
             self.publish(api, data, validator=validate_notices)
         self.assertEqual(api.mutations(), [])
 
-    def test_publisher_commits_only_notices_atomically_then_dispatches_ci(self):
+    def test_publisher_commits_only_notices_atomically_and_dispatch_is_isolated(self):
         api = api_fixture()
         self.publish(api)
         mutations = api.mutations()
-        self.assertEqual([path for path, _ in mutations], ["/graphql", PREFIX + "/actions/workflows/ci.yml/dispatches"])
+        self.assertEqual([path for path, _ in mutations], ["/graphql"])
         payload = mutations[0][1]["variables"]["input"]
         self.assertEqual(payload["expectedHeadOid"], HEAD)
         self.assertEqual(payload["branch"], {"repositoryNameWithOwner": REPO, "branchName": BRANCH})
@@ -285,12 +290,17 @@ class DependabotNoticesTests(unittest.TestCase):
         self.assertFalse(payload["fileChanges"].get("deletions"))
         for item in additions:
             self.assertEqual(base64.b64decode(item["contents"]), files()[item["path"].split("/")[-1]])
-        self.assertEqual(mutations[1][1], {"ref": BRANCH})
+        dispatch_ci(api, REPO, 42, 1)
+        self.assertEqual(api.mutations()[1], (DISPATCH_PATH, {"ref": BRANCH}))
 
-    def test_aligned_notices_do_not_create_commit_or_dispatch(self):
+    def test_aligned_notices_skip_generation_and_commit_but_still_dispatch(self):
         api = api_fixture(aligned=True)
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertFalse(prepare(api, REPO, 42, 1, Path(directory)))
         self.publish(api)
         self.assertEqual(api.mutations(), [])
+        dispatch_ci(api, REPO, 42, 1)
+        self.assertEqual(api.mutations(), [(DISPATCH_PATH, {"ref": BRANCH})])
 
     def test_head_moving_during_download_is_not_overwritten_or_dispatched(self):
         api = api_fixture()
@@ -321,20 +331,20 @@ class DependabotNoticesTests(unittest.TestCase):
 
     def test_dispatch_failure_can_retry_without_duplicate_commit(self):
         api = api_fixture()
+        self.publish(api)
         api.dispatch_failures = 1
         with self.assertRaisesRegex(ValueError, "503"):
-            self.publish(api)
+            dispatch_ci(api, REPO, 42, 1)
         self.assertEqual(api.responses[PR_PATH]["head"]["sha"], NEW_HEAD)
         api.calls.clear()
         self.publish(api)
-        self.assertEqual(api.mutations(), [(PREFIX + "/actions/workflows/ci.yml/dispatches", {"ref": BRANCH})])
+        dispatch_ci(api, REPO, 42, 1)
+        self.assertEqual(api.mutations(), [(DISPATCH_PATH, {"ref": BRANCH})])
 
     def test_retry_rejects_a_commit_with_unrelated_changes_or_different_notice_bytes(self):
         for tamper in ("source", "notice"):
             api = api_fixture()
-            api.dispatch_failures = 1
-            with self.assertRaises(ValueError):
-                self.publish(api)
+            self.publish(api)
             if tamper == "source":
                 api.responses[PREFIX + "/commits/" + NEW_HEAD]["files"].append({
                     "filename": "src/lib/game/engine.ts", "status": "modified",
@@ -345,6 +355,135 @@ class DependabotNoticesTests(unittest.TestCase):
             api.calls.clear()
             with self.subTest(tamper=tamper):
                 self.publish(api)
+                self.assertEqual(api.mutations(), [])
+
+    def test_dispatch_rejects_other_workflows_and_unsuccessful_intakes(self):
+        for key, value in (("path", ".github/workflows/ci.yml"), ("workflow_id", 99)):
+            api = api_fixture()
+            api.responses[PREFIX + "/actions/runs/42/attempts/1"][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                dispatch_ci(api, REPO, 42, 1)
+            self.assertEqual(api.mutations(), [])
+        for conclusion in ("failure", "cancelled", "skipped", None):
+            api = api_fixture()
+            api.responses[PREFIX + "/actions/runs/42/attempts/1"]["conclusion"] = conclusion
+            with self.subTest(conclusion=conclusion):
+                self.assertIn("Skipped", dispatch_ci(api, REPO, 42, 1))
+                self.assertEqual(api.mutations(), [])
+
+    def test_only_dependabot_originated_pull_request_intakes_are_accepted(self):
+        for event, actor in (("workflow_dispatch", "dependabot[bot]"),
+                             ("pull_request", "github-actions[bot]"),
+                             ("pull_request", "contributor")):
+            api = api_fixture()
+            run = api.responses[PREFIX + "/actions/runs/42/attempts/1"]
+            run.update(event=event)
+            run["actor"]["login"] = actor
+            with self.subTest(event=event, actor=actor):
+                self.assertIsNone(eligible_context(api, REPO, 42, 1))
+                self.assertIn("Skipped", dispatch_ci(api, REPO, 42, 1))
+                self.assertEqual(api.mutations(), [])
+
+    def test_non_game_and_disallowed_notice_diffs_still_receive_normal_ci(self):
+        for path in ("package-lock.json", "tests/qa/archive/phone-cart-fix-qa/package-lock.json",
+                     ".github/workflows/ci.yml", "src/lib/game/engine.ts"):
+            api = api_fixture()
+            api.responses[FILES_PATH] = [{"filename": path, "status": "modified"}]
+            api.responses[PR_PATH]["changed_files"] = 1
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                self.assertFalse(prepare(api, REPO, 42, 1, Path(directory)))
+                dispatch_ci(api, REPO, 42, 1)
+                self.assertEqual(api.mutations(), [(DISPATCH_PATH, {"ref": BRANCH})])
+                self.assertFalse(any("artifacts" in name for name, _, _ in api.calls))
+
+    def test_generation_failure_can_still_dispatch_the_original_head(self):
+        api = api_fixture()
+        with tempfile.TemporaryDirectory() as directory:
+            self.assertTrue(prepare(api, REPO, 42, 1, Path(directory)))
+        # No bundle or commit was produced; full CI can explain the failure.
+        dispatch_ci(api, REPO, 42, 1)
+        self.assertEqual(api.mutations(), [(DISPATCH_PATH, {"ref": BRANCH})])
+
+    def test_dispatch_uses_git_ref_when_pr_rest_head_lags_the_notice_commit(self):
+        api = api_fixture()
+        self.publish(api)
+        api.responses[PR_PATH]["head"]["sha"] = HEAD
+        api.calls.clear()
+        dispatch_ci(api, REPO, 42, 1)
+        self.assertEqual(api.mutations(), [(DISPATCH_PATH, {"ref": BRANCH})])
+        self.assertEqual(len([path for path, _, _ in api.calls if path == REF_PATH]), 2)
+
+    def test_dispatch_rejects_unrelated_advanced_heads_even_when_pr_view_lags(self):
+        for stale_pr in (True, False):
+            api = api_fixture()
+            api.responses[REF_PATH]["object"]["sha"] = NEW_HEAD
+            if not stale_pr:
+                api.responses[PR_PATH]["head"]["sha"] = NEW_HEAD
+            api.responses[PREFIX + "/commits/" + NEW_HEAD] = {
+                "sha": NEW_HEAD, "author": {"login": "contributor", "type": "User"},
+            }
+            with self.subTest(stale_pr=stale_pr):
+                self.assertIn("Skipped", dispatch_ci(api, REPO, 42, 1))
+                self.assertEqual(api.mutations(), [])
+
+    def test_dispatch_rechecks_branch_ref_and_open_pr_before_dispatch(self):
+        for change in ("ref", "closed", "author", "repository"):
+            api = api_fixture()
+            request = api.request
+            def changed_request(path, method="GET", body=None, redirect=False):
+                result = request(path, method, body, redirect)
+                if path == REF_PATH:
+                    if change == "ref":
+                        api.responses[REF_PATH]["object"]["sha"] = NEW_HEAD
+                    elif change == "closed":
+                        api.responses[PR_PATH]["state"] = "closed"
+                    elif change == "author":
+                        api.responses[PR_PATH]["user"]["login"] = "contributor"
+                    else:
+                        api.responses[PR_PATH]["head"]["repo"] = {"id": 2, "full_name": "other/game"}
+                return result
+            api.request = changed_request
+            with self.subTest(change=change):
+                self.assertIn("Skipped", dispatch_ci(api, REPO, 42, 1))
+                self.assertEqual(api.mutations(), [])
+
+    def test_dispatch_rejects_unverified_generated_successors(self):
+        for change in ("author", "parent", "message", "source", "manifest", "notice"):
+            api = api_fixture()
+            self.publish(api)
+            commit = api.responses[PREFIX + "/commits/" + NEW_HEAD]
+            if change == "author":
+                commit["author"]["login"] = "contributor"
+            elif change == "parent":
+                commit["parents"][0]["sha"] = "c" * 40
+            elif change == "message":
+                commit["commit"]["message"] += " changed"
+            elif change == "source":
+                commit["files"].append({"filename": "src/lib/game/engine.ts", "status": "modified"})
+            else:
+                name = "package-lock.json" if change == "manifest" else "public/THIRD-PARTY-NOTICES.txt"
+                content = api.responses[PREFIX + "/contents/src/" + name + "?ref=" + NEW_HEAD]
+                content.update(size=7, content=base64.b64encode(b"changed").decode())
+            api.calls.clear()
+            with self.subTest(change=change):
+                if change in ("manifest", "notice"):
+                    with self.assertRaises(ValueError):
+                        dispatch_ci(api, REPO, 42, 1)
+                else:
+                    self.assertIn("Skipped", dispatch_ci(api, REPO, 42, 1))
+                self.assertEqual(api.mutations(), [])
+
+    def test_dispatch_does_not_accept_closed_human_or_foreign_prs(self):
+        for change in ("closed", "human", "fork"):
+            api = api_fixture()
+            if change == "closed":
+                api.responses[PR_PATH]["state"] = "closed"
+            elif change == "human":
+                api.responses[PR_PATH]["user"]["login"] = "contributor"
+            else:
+                api.responses[PR_PATH]["head"]["repo"] = {"id": 2, "full_name": "other/game"}
+            with self.subTest(change=change):
+                self.assertIn("Skipped", dispatch_ci(api, REPO, 42, 1))
                 self.assertEqual(api.mutations(), [])
 
     def test_api_failure_never_includes_credential_or_response_body(self):

@@ -38,6 +38,7 @@ ALLOWED_PATHS = frozenset(
 ) | frozenset(f"src/public/{name}" for name in NOTICE_NAMES)
 CONTEXT_KEYS = frozenset(("version", "repo", "pr", "head", "branch", "runId", "runAttempt", "repositoryId"))
 COMMIT_SUBJECT = "chore: refresh dependency license notices"
+INTAKE_WORKFLOW = "dependabot-intake.yml"
 
 
 class NoticeError(ValueError):
@@ -114,19 +115,21 @@ class GitHub:
             raise NoticeError("GitHub API connection failed") from None
 
 
-def eligible_context(api, repo, run_id, attempt, allow_advanced=False):
-    """Resolve a unique live Dependabot PR and a complete, narrowly allowed diff."""
+def source_context(api, repo, run_id, attempt, allow_advanced=False):
+    """Resolve a unique live Dependabot PR, independently of notice eligibility."""
     text(repo, r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+")
     integer(run_id)
     integer(attempt)
     prefix = "/repos/" + repo
     run = api.request(f"{prefix}/actions/runs/{run_id}/attempts/{attempt}")
     require(run["id"] == run_id and run["run_attempt"] == attempt)
-    require(run["repository"]["full_name"] == repo and run["path"] == ".github/workflows/ci.yml")
-    workflow = api.request(prefix + "/actions/workflows/ci.yml")
+    require(run["repository"]["full_name"] == repo and run["path"] == ".github/workflows/" + INTAKE_WORKFLOW)
+    workflow = api.request(prefix + "/actions/workflows/" + INTAKE_WORKFLOW)
     require(run["workflow_id"] == workflow["id"], "Source workflow does not match")
     if (run["event"] != "pull_request" or run["status"] != "completed"
-            or run["conclusion"] not in ("success", "failure")):
+            or run["conclusion"] != "success"
+            or run.get("actor", {}).get("login") != "dependabot[bot]"
+            or run["actor"].get("type") != "Bot"):
         return None
     repository_id = integer(run["repository"]["id"])
     if (run["head_repository"]["id"] != repository_id or run["head_repository"]["full_name"] != repo):
@@ -151,6 +154,22 @@ def eligible_context(api, repo, run_id, attempt, allow_advanced=False):
     if len(matches) != 1:
         return None
     pr = matches[0]
+    return validate_context({
+        "version": 1, "repo": repo, "pr": pr["number"], "head": head,
+        "branch": pr["head"]["ref"], "runId": run_id, "runAttempt": attempt,
+        "repositoryId": repository_id,
+    })
+
+
+def eligible_context(api, repo, run_id, attempt, allow_advanced=False):
+    """Only narrowly allowed, complete dependency diffs may generate or publish."""
+    context = source_context(api, repo, run_id, attempt, allow_advanced)
+    if context is None:
+        return None
+    prefix = "/repos/" + repo
+    pr = api.request(f"{prefix}/pulls/{context['pr']}")
+    if not matching_live_pr(pr, context, pr.get("head", {}).get("sha") if allow_advanced else context["head"]):
+        return None
     count = integer(pr["changed_files"], 100)
     files = api.request(f"{prefix}/pulls/{pr['number']}/files?per_page=100")
     require(isinstance(files, list) and len(files) == count, "PR file list is incomplete")
@@ -158,11 +177,7 @@ def eligible_context(api, repo, run_id, attempt, allow_advanced=False):
     if (not any(row["filename"] == "src/package-lock.json" for row in files)
             or any(row["filename"] not in ALLOWED_PATHS or row["status"] != "modified" for row in files)):
         return None
-    return validate_context({
-        "version": 1, "repo": repo, "pr": pr["number"], "head": head,
-        "branch": pr["head"]["ref"], "runId": run_id, "runAttempt": attempt,
-        "repositoryId": repository_id,
-    })
+    return context
 
 
 def read_head_files(api, context):
@@ -326,8 +341,8 @@ def matching_live_pr(pr, context, head):
                     and pr[side]["repo"].get("full_name") == context["repo"] for side in ("head", "base")))
 
 
-def is_generated_successor(api, context, head, files):
-    """A failed dispatch may be retried only for this exact bot-generated commit."""
+def is_generated_successor(api, context, head, files=None):
+    """Only this source's exact bot-generated, notice-only child may be reused."""
     text(head, r"[0-9a-f]{40}")
     commit = api.request(f"/repos/{context['repo']}/commits/{head}")
     if (commit.get("sha") != head or commit.get("author", {}).get("login") != "github-actions[bot]"
@@ -340,23 +355,46 @@ def is_generated_successor(api, context, head, files):
             or not {row.get("filename") for row in changed} <= {"src/public/" + name for name in NOTICE_NAMES}
             or any(row.get("status") != "modified" for row in changed)):
         return False
-    successor = read_head_files(api, dict(context, head=head))
-    return all(successor[name] == files[name] for name in FILE_NAMES)
+    if files is not None:
+        successor = read_head_files(api, dict(context, head=head))
+        return all(successor[name] == files[name] for name in FILE_NAMES)
+    return True
 
 
-def dispatch_ci(api, context, head):
+def branch_head(api, context):
+    """Read the actual Git ref; the pull-request REST view can lag a new commit."""
+    ref = api.request(f"/repos/{context['repo']}/git/ref/heads/{context['branch']}")
+    require(ref.get("ref") == "refs/heads/" + context["branch"] and ref.get("object", {}).get("type") == "commit",
+            "Unexpected Dependabot branch ref")
+    return text(ref["object"]["sha"], r"[0-9a-f]{40}")
+
+
+def dispatch_ci(api, repo, run_id, attempt, validator=validate_notices):
+    """Dispatch independently of regeneration, only at the source or its verified successor."""
+    context = source_context(api, repo, run_id, attempt, allow_advanced=True)
+    if context is None:
+        return "Skipped CI dispatch: the intake no longer identifies a current Dependabot PR"
     prefix = "/repos/" + context["repo"]
+    head = branch_head(api, context)
+    if head != context["head"]:
+        if not is_generated_successor(api, context, head):
+            return "Skipped CI dispatch: the branch advanced beyond this dependency update"
+        files = read_head_files(api, dict(context, head=head))
+        original = read_head_files(api, context)
+        require(all(files[name] == original[name] for name in MANIFEST_NAMES), "Successor changed the dependency manifests")
+        validator(files)
     pr = api.request(f"{prefix}/pulls/{context['pr']}")
-    if not matching_live_pr(pr, context, head):
-        return "Committed notice files; skipped CI dispatch because the PR head moved or closed"
+    # Validate PR identity/open state without relying on its eventually consistent SHA.
+    if not matching_live_pr(pr, context, pr.get("head", {}).get("sha")) or branch_head(api, context) != head:
+        return "Skipped CI dispatch: the PR changed or closed"
     # GITHUB_TOKEN PR updates can require workflow approval. An explicit
     # workflow_dispatch runs automatically and supports older PR branches.
     api.request(f"{prefix}/actions/workflows/ci.yml/dispatches", "POST", {"ref": context["branch"]})
-    return "Committed both notice files as github-actions[bot] and dispatched Build and QA"
+    return "Dispatched Build and QA for the validated current Dependabot branch"
 
 
 def publish(api, repo, run_id, attempt, publisher_run_id, directory, downloader=download_bundle, validator=validate_notices):
-    """Validate an artifact again, compare-and-swap two files, then explicitly run CI."""
+    """Validate an artifact again and compare-and-swap only the two notice files."""
     context = eligible_context(api, repo, run_id, attempt, allow_advanced=True)
     if context is None:
         return "Skipped: the source run no longer identifies an eligible current PR head"
@@ -386,7 +424,7 @@ def publish(api, repo, run_id, attempt, publisher_run_id, directory, downloader=
         return "Skipped: the PR is no longer eligible"
     if live_head != context["head"]:
         if is_generated_successor(api, context, live_head, files):
-            return dispatch_ci(api, context, live_head)
+            return "Reused the verified notice commit; the isolated dispatcher will run CI"
         return "Skipped: the PR head advanced beyond the prepared dependency update"
     if all(files[name] == current[name] for name in NOTICE_NAMES):
         return "Skipped: both committed notice files are already current"
@@ -406,14 +444,16 @@ def publish(api, repo, run_id, attempt, publisher_run_id, directory, downloader=
     })
     require(isinstance(response, dict) and not response.get("errors"), "Atomic notice commit was rejected")
     oid = text(response["data"]["createCommitOnBranch"]["commit"]["oid"], r"[0-9a-f]{40}")
-    return dispatch_ci(api, context, oid)
+    return "Committed both notice files as github-actions[bot] at " + oid
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("prepare", "generate", "publish"))
-    parser.add_argument("--directory", required=True, type=Path)
+    parser.add_argument("action", choices=("prepare", "generate", "publish", "dispatch"))
+    parser.add_argument("--directory", type=Path)
     args = parser.parse_args()
+    if args.action != "dispatch" and args.directory is None:
+        parser.error("--directory is required for preparation, generation and publication")
     if args.action == "generate":
         generate(args.directory)
         print("Generated and validated the two license notice files")
@@ -425,8 +465,10 @@ def main():
         with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
             output.write("ready=" + str(ready).lower() + "\n")
         print("Prepared an eligible Dependabot dependency update" if ready else "Skipped: no eligible current PR needs notice regeneration")
-    else:
+    elif args.action == "publish":
         print(publish(*common, int(os.environ["GITHUB_RUN_ID"]), args.directory))
+    else:
+        print(dispatch_ci(*common))
 
 
 if __name__ == "__main__":

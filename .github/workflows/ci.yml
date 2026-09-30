@@ -16,6 +16,14 @@ concurrency:
 jobs:
   build-and-qa:
     name: Compile and test
+    # The trusted refresher dispatches CI after notices are ready, including no-op updates.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.actor != 'dependabot[bot]' ||
+      github.event.pull_request.user.login != 'dependabot[bot]' ||
+      github.event.pull_request.head.repo.full_name != github.repository ||
+      github.event.pull_request.base.ref != 'main' ||
+      !startsWith(github.head_ref, 'dependabot/')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
