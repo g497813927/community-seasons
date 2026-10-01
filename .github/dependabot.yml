@@ -4,7 +4,6 @@ updates:
     directories:
       - "/"
       - "/src"
-      - "/tests/qa/archive/phone-cart-fix-qa"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -18,6 +17,22 @@ updates:
         versions: [">=7"]
     groups:
       # Group each dependency across directories without mixing unrelated updates.
+      per-dependency:
+        applies-to: "version-updates"
+        group-by: "dependency-name"
+        patterns:
+          - "*"
+  - package-ecosystem: "npm"
+    # Archived QA fixture already runs TypeScript 7 and has no compiler-API tests.
+    directory: "/tests/qa/archive/phone-cart-fix-qa"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    versioning-strategy: "increase"
+    open-pull-requests-limit: 5
+    groups:
       per-dependency:
         applies-to: "version-updates"
         group-by: "dependency-name"
