@@ -12,6 +12,10 @@ updates:
       timezone: "America/New_York"
     versioning-strategy: "increase"
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7 drops the compiler JS API that the test harness uses; migrate before allowing 7.x.
+      - dependency-name: "typescript"
+        versions: [">=7"]
     groups:
       # Group each dependency across directories without mixing unrelated updates.
       per-dependency:
