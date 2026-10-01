@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedFromLockfile": "sha256:e2c7a7b7543614ac4621e073b3c349be40d6ac9e081ded9fbc533db2320e1c7b",
+  "generatedFromLockfile": "sha256:0f181a2c04e43153a7f72cd282d1aead05d9a0e1a19932699e8b472a3eca73fc",
   "description": "Installed, locked project dependencies and their original license notices, including transitive and build dependencies. Production/development are npm dependency classifications, not a list of packages shipped to the browser. Optional packages not installed on this build platform are listed separately. External platform services and test tools outside this project are not included.",
   "packages": [
     {
@@ -879,7 +879,7 @@
     },
     {
       "name": "@vitejs/plugin-react",
-      "version": "6.0.2",
+      "version": "6.1.1",
       "license": "MIT",
       "repository": "https://github.com/vitejs/vite-plugin-react",
       "scope": "development",
