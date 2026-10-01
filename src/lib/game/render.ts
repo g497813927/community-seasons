@@ -79,7 +79,11 @@ export class Renderer {
   previewAt: number | null = null;
   previewScene: SceneKind | null = null;
   constructor(public canvas: HTMLCanvasElement) {
-    this.ctx = canvas.getContext("2d", { alpha: false })!;
+    // Safari returns null once canvas memory is exhausted; fail soft so the
+    // error boundary can show a fallback instead of leaving a blank page.
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw new Error("Canvas 2D context is unavailable.");
+    this.ctx = ctx;
   }
   resize() {
     const rect = this.canvas.getBoundingClientRect();

@@ -10,6 +10,23 @@ export function resolveLocale(saved: string | null, preferred: readonly string[]
   return "en";
 }
 
+export const LOCALE_STORAGE_KEY = "community-seasons-locale";
+
+/** The saved in-game choice, else the browser's language preferences. Never throws. */
+export function readInitialLocale(): Locale {
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(LOCALE_STORAGE_KEY);
+  } catch {}
+  const preferred =
+    typeof navigator === "undefined"
+      ? []
+      : navigator.languages?.length
+        ? navigator.languages
+        : [navigator.language];
+  return resolveLocale(saved, preferred);
+}
+
 // Display text only. Game IDs, saved data, key bindings, and English messages
 // remain unchanged; translate at the point where a message is displayed.
 const ZH: Readonly<Record<string, string>> = {
