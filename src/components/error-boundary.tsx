@@ -4,7 +4,10 @@ import { LOCALE_STORAGE_KEY, readInitialLocale, type Locale } from "@/lib/game/i
 type CopyState = "idle" | "copied" | "selected";
 interface State {
   error: unknown;
-  componentStack: string;
+  // The report is built once when the error is caught and kept stable: a fresh
+  // timestamp per render would replace the <pre> text and wipe the clipboard
+  // fallback's selection.
+  report: string;
   copy: CopyState;
   locale: Locale;
 }
@@ -60,14 +63,16 @@ function describeFailure(error: unknown, componentStack: string): string {
 
 /** Last-resort screen: a render or effect error must never leave a blank page. */
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { error: null, componentStack: "", copy: "idle", locale: "en" };
+  state: State = { error: null, report: "", copy: "idle", locale: "en" };
   private details = createRef<HTMLPreElement>();
   static getDerivedStateFromError(error: unknown): Partial<State> {
+    const caught = error ?? new Error("Unknown error");
     // Same choice the game would have made: saved setting, then browser languages.
-    return { error: error ?? new Error("Unknown error"), locale: readInitialLocale() };
+    return { error: caught, locale: readInitialLocale(), report: describeFailure(caught, "") };
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
-    this.setState({ componentStack: info.componentStack ?? "" });
+    // Fold in the component stack now that it is available; frozen thereafter.
+    this.setState({ report: describeFailure(error, info.componentStack ?? "") });
     console.error("Community Seasons stopped unexpectedly.", error, info.componentStack);
   }
   private toggleLocale = () => {
@@ -99,10 +104,9 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   };
   render() {
     if (this.state.error === null) return this.props.children;
-    const { locale, copy } = this.state;
+    const { locale, copy, report } = this.state;
     const t = COPY[locale];
     const other: Locale = locale === "en" ? "zh-CN" : "en";
-    const report = describeFailure(this.state.error, this.state.componentStack);
     return (
       <main className="crash-screen" lang={locale}>
         <section className="crash-card" role="alert" aria-labelledby="crash-title">
