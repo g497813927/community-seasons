@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedFromLockfile": "sha256:6ad565b2aa41840400660b27c4545c4de9cfdf1437ead6756dc207a3e17e603a",
+  "generatedFromLockfile": "sha256:3c863d4e43c676c9192d873ae0bed9cc9efd16cea1e231773602a6fb2f7ac79d",
   "description": "Installed, locked project dependencies and their original license notices, including transitive and build dependencies. Production/development are npm dependency classifications, not a list of packages shipped to the browser. Optional packages not installed on this build platform are listed separately. External platform services and test tools outside this project are not included.",
   "packages": [
     {
@@ -837,7 +837,7 @@
     },
     {
       "name": "@types/react",
-      "version": "19.2.14",
+      "version": "19.3.0",
       "license": "MIT",
       "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped",
       "scope": "production",
@@ -3911,9 +3911,9 @@
     },
     {
       "name": "react",
-      "version": "19.2.6",
+      "version": "19.3.0",
       "license": "MIT",
-      "repository": "https://github.com/facebook/react",
+      "repository": "https://github.com/react/react",
       "scope": "production",
       "status": "complete",
       "notices": [

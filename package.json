@@ -44,7 +44,7 @@
     "@vitejs/plugin-react": "6.1.1",
     "@tailwindcss/postcss": "4.3.3",
     "tailwindcss": "4.2.1",
-    "react": "19.2.6",
+    "react": "19.3.0",
     "react-dom": "19.2.6",
     "playwright": "1.62.1"
   }
