@@ -45,7 +45,8 @@ test('current inventory covers every installed locked package version with exact
   const nativeBindings = inventory.packages.filter(p => p.name.startsWith('@rolldown/binding-'));
   assert.ok(nativeBindings.length > 0, 'the build platform needs a native Rolldown binding');
   for (const binding of nativeBindings) assert.equal(binding.status, 'complete');
-  assert.ok(inventory.packages.find(p => p.name === 'rolldown').notices.some(n => n.file === 'upstream/THIRD-PARTY-LICENSE'));
+  // Rolldown 1.2.11 ships THIRD-PARTY-LICENSE itself; older archives needed the upstream supplement.
+  assert.ok(inventory.packages.find(p => p.name === 'rolldown').notices.some(n => ['THIRD-PARTY-LICENSE', 'upstream/THIRD-PARTY-LICENSE'].includes(n.file)));
   assert.deepEqual(collectLicenses(app), inventory, 'generation must be deterministic without timestamps');
 });
 
@@ -115,7 +116,7 @@ test('repository metadata is normalized to safe public links without changing li
   for (const pkg of collectLicenses(root).packages) assert.equal(pkg.repository, 'https://github.com/owner/project');
 });
 
-for (const version of ['1.0.1', '1.0.3']) {
+for (const version of ['1.0.1', '1.0.3', '1.2.11']) {
   test(`Rolldown ${version} supplements use verified notices from the exact release`, t => {
     const root = fixture(t, [{ location: 'node_modules/@rolldown/binding-test', name: '@rolldown/binding-test', version,
       pkg: { repository: 'https://github.com/rolldown/rolldown' }, files: {} }]);
