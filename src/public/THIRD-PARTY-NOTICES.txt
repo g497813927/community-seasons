@@ -2,7 +2,7 @@ THIRD-PARTY NOTICES
 
 Installed, locked project dependencies and their original license notices, including transitive and build dependencies. Production/development are npm dependency classifications, not a list of packages shipped to the browser. Optional packages not installed on this build platform are listed separately. External platform services and test tools outside this project are not included.
 
-Lockfile: sha256:6ad565b2aa41840400660b27c4545c4de9cfdf1437ead6756dc207a3e17e603a
+Lockfile: sha256:4bf9cfc03405c49e86b2745cf9a1baf7ad1960f8b92761048235da05b9a3a711
 Packages: 355
 
 ==============================================================================
@@ -11847,7 +11847,7 @@ TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ==============================================================================
-typescript@5.9.3
+typescript@6.0.3
 Declared license: Apache-2.0
 Dependency classification: production
 Repository: https://github.com/microsoft/TypeScript
