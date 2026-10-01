@@ -110,11 +110,11 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             {t.switchTo}
           </button>
           <svg className="crash-mascot" viewBox="0 0 96 88" aria-hidden="true">
-            <path d="M34 18 24 4M62 18l10-14" />
+            <path className="crash-mascot-limb" d="M34 18 24 4M62 18l10-14" />
             <rect x="12" y="18" width="72" height="56" rx="12" />
             <rect className="crash-mascot-screen" x="22" y="28" width="52" height="36" rx="6" />
             <path className="crash-mascot-face" d="M37 42h.01M59 42h.01M38 55c6-5 14-5 20 0" />
-            <path d="M34 74v8M62 74v8" />
+            <path className="crash-mascot-limb" d="M34 74v8M62 74v8" />
           </svg>
           <h1 id="crash-title">{t.title}</h1>
           <p>{t.body}</p>

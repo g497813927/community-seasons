@@ -3703,10 +3703,15 @@ body {
   margin: 1.5rem auto 1rem;
   display: block;
   fill: #2f8fae;
-  stroke: #10272c;
+  /* Light outline and limbs: a dark stroke vanishes against the green card. */
+  stroke: #9fdcec;
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.crash-mascot-limb {
+  fill: none;
+  stroke-width: 4.5;
 }
 .crash-mascot-screen {
   fill: #1d3c4a;
