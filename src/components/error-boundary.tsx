@@ -126,12 +126,12 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
             <summary>{t.details}</summary>
             <p className="crash-details-note">{t.detailsNote}</p>
             {/* The report stays in English: it is meant for the developer. */}
-            <pre ref={this.details} lang="en" tabIndex={0} aria-label={t.reportLabel}>{report}</pre>
+            <pre ref={this.details} lang="en" tabIndex={0} role="region" aria-label={t.reportLabel}>{report}</pre>
             <button type="button" className="crash-copy" onClick={() => void this.copyDetails(report)}>
               {copy === "copied" ? t.copied : t.copyDetails}
             </button>
             <p className="crash-copy-status" aria-live="polite">
-              {copy === "selected" ? t.selected : null}
+              {copy === "selected" ? t.selected : copy === "copied" ? t.copied : null}
             </p>
           </details>
         </section>

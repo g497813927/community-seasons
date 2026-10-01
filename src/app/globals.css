@@ -3685,7 +3685,7 @@ body {
   min-width: 2.75rem;
   min-height: 2.75rem;
   padding: 0 0.9rem;
-  border: 1px solid var(--input, #52705a);
+  border: 1px solid var(--muted-foreground, #a6b9a9);
   border-radius: 999px;
   background: transparent;
   color: var(--foreground, #eeeede);
@@ -3788,6 +3788,16 @@ body {
   font-size: 0.9rem;
   cursor: pointer;
 }
+.crash-details summary::-webkit-details-marker {
+  display: none;
+}
+.crash-details summary::before {
+  content: "▸";
+  margin-inline-end: 0.4em;
+}
+.crash-details[open] summary::before {
+  content: "▾";
+}
 .crash-details summary:focus-visible,
 .crash-details pre:focus-visible {
   outline: 3px solid var(--ring, #eabc70);
@@ -3816,7 +3826,7 @@ body {
   width: 100%;
   min-height: 2.75rem;
   margin-top: 0.75rem;
-  border: 1px solid var(--input, #52705a);
+  border: 1px solid var(--muted-foreground, #a6b9a9);
   border-radius: 999px;
   background: transparent;
   color: var(--foreground, #eeeede);
