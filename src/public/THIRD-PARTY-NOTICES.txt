@@ -2,7 +2,7 @@ THIRD-PARTY NOTICES
 
 Installed, locked project dependencies and their original license notices, including transitive and build dependencies. Production/development are npm dependency classifications, not a list of packages shipped to the browser. Optional packages not installed on this build platform are listed separately. External platform services and test tools outside this project are not included.
 
-Lockfile: sha256:39cb3bf8b8e4f342f784410a5264ec01f15a383bd2ef4b70efa74e524fca3be5
+Lockfile: sha256:39c2eedde6c99824973267c75b8f7bebbf1239477413c33c3d2899383e6f8691
 Packages: 355
 
 ==============================================================================
@@ -6257,7 +6257,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 
 ==============================================================================
-ip-address@10.7.0
+ip-address@10.7.2
 Declared license: MIT
 Dependency classification: production
 Repository: https://github.com/beaugunderson/ip-address
