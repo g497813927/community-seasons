@@ -156,3 +156,11 @@ test("actual page resize observer repaints before returning, including paused an
     assert.equal(paints.length, 1);
   }
 });
+
+test("the renderer fails fast when the canvas has no 2D context", () => {
+  // Safari returns null once canvas memory is exhausted; the renderer must
+  // throw a clear error so the error boundary can show a fallback.
+  globalThis.window = { devicePixelRatio: 1 };
+  const canvas = { getContext: () => null, getBoundingClientRect: () => ({ width: 0, height: 0 }) };
+  assert.throws(() => new Renderer(canvas), /Canvas 2D context is unavailable\./);
+});
