@@ -23,7 +23,7 @@ updates:
         patterns:
           - "*"
   - package-ecosystem: "npm"
-    # Archived QA fixture already runs TypeScript 7 and has no compiler-API tests.
+    # Archived QA fixture already builds with TypeScript 7; its harness test imports src/'s TypeScript instead.
     directory: "/tests/qa/archive/phone-cart-fix-qa"
     schedule:
       interval: "weekly"
