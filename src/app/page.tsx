@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLazyRef } from "@/lib/use-lazy-ref";
-import { resolveLocale, translate, type Locale } from "@/lib/game/i18n";
+import { LOCALE_STORAGE_KEY, readInitialLocale, translate, type Locale } from "@/lib/game/i18n";
 import {
   act,
   createRun,
@@ -136,19 +136,6 @@ const keyMap: Record<string, Action> = {
   KeyW: "jump",
   KeyS: "slide",
 };
-function readInitialLocale(): Locale {
-  let saved: string | null = null;
-  try {
-    saved = localStorage.getItem("community-seasons-locale");
-  } catch {}
-  const preferred =
-    typeof navigator === "undefined"
-      ? []
-      : navigator.languages?.length
-        ? navigator.languages
-        : [navigator.language];
-  return resolveLocale(saved, preferred);
-}
 
 export default function Home() {
   const [graphicsReady, setGraphicsReady] = useState(false);
@@ -182,7 +169,7 @@ export default function Home() {
     document.documentElement.lang = next;
     document.title = `${translate(next, "Community Seasons")} — ${translate(next, "COMMUNITY IN MOTION")}`;
     try {
-      localStorage.setItem("community-seasons-locale", next);
+      localStorage.setItem(LOCALE_STORAGE_KEY, next);
     } catch {}
     if (game.current.mode === "running") canvasRef.current?.focus({ preventScroll: true });
   }
