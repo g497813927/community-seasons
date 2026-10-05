@@ -40,7 +40,7 @@
   "devDependencies": {
     "fast-check": "4.10.2",
     "typescript": "5.9.3",
-    "vite": "8.3.1",
+    "vite": "8.3.2",
     "@vitejs/plugin-react": "6.1.1",
     "@tailwindcss/postcss": "4.3.3",
     "tailwindcss": "4.2.1",
