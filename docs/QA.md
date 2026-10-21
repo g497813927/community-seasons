@@ -4,7 +4,7 @@
 
 ## Automated regression and fuzzing
 
-Use Node.js 24 (see the root `.nvmrc`) and run these commands from the repository root:
+Use Node.js 24.22.1 (see the root `.nvmrc`) and run these commands from the repository root:
 
 ```sh
 npm run setup

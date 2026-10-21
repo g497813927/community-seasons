@@ -18,7 +18,7 @@ Play in English or Simplified Chinese with keyboard/WASD or touch/swipe controls
 
 ## Quick start
 
-Install **Node.js 24** (the version in [`.nvmrc`](.nvmrc)), then run:
+Install **Node.js 24.22.1** (the version in [`.nvmrc`](.nvmrc)), then run:
 
 ```sh
 git clone https://github.com/g497813927/community-seasons.git

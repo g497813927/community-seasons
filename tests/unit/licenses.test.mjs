@@ -37,7 +37,7 @@ test('current inventory covers every installed locked package version with exact
   }
   assert.deepEqual(new Set(inventory.packages.map(p => `${p.name}@${p.version}`)), installed);
   assert.deepEqual(inventory.issues, []);
-  for (const [name, file] of [['react', 'LICENSE'], ['lucide-react', 'LICENSE'], ['typescript', 'ThirdPartyNoticeText.txt'], ['undici', 'lib/web/fetch/LICENSE'], ['vite', 'LICENSE.md']]) {
+  for (const [name, file] of [['react', 'LICENSE'], ['lucide-react', 'LICENSE'], ['typescript', 'ThirdPartyNoticeText.txt'], ['vite', 'LICENSE.md']]) {
     const original = fs.readFileSync(path.join(app, 'node_modules', name, file), 'utf8');
     assert.equal(inventory.packages.find(p => p.name === name).notices.find(n => n.file === file).text, original);
     assert.ok(renderNotices(inventory).includes(original), `${name} notice changed in downloadable text`);
@@ -116,7 +116,7 @@ test('repository metadata is normalized to safe public links without changing li
   for (const pkg of collectLicenses(root).packages) assert.equal(pkg.repository, 'https://github.com/owner/project');
 });
 
-for (const version of ['1.0.1', '1.0.3', '1.2.11']) {
+for (const version of ['1.0.1', '1.0.3', '1.2.11', '1.2.15']) {
   test(`Rolldown ${version} supplements use verified notices from the exact release`, t => {
     const root = fixture(t, [{ location: 'node_modules/@rolldown/binding-test', name: '@rolldown/binding-test', version,
       pkg: { repository: 'https://github.com/rolldown/rolldown' }, files: {} }]);

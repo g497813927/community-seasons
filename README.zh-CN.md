@@ -18,7 +18,7 @@
 
 ## 快速开始
 
-安装 **Node.js 24**（版本见 [`.nvmrc`](.nvmrc)），然后运行：
+安装 **Node.js 24.22.1**（版本见 [`.nvmrc`](.nvmrc)），然后运行：
 
 ```sh
 git clone https://github.com/g497813927/community-seasons.git

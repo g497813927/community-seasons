@@ -2,7 +2,7 @@
 
 [English](CI.md) | [简体中文](CI.zh-CN.md)
 
-[Build and QA 工作流](../.github/workflows/ci.yml) 会检查拉取请求、推送到 `main` 的提交，以及从 GitHub Actions 页面手动触发的运行。其 **Compile and test** 任务使用 Ubuntu 24.04 和 Node.js 24.14.1，限时 20 分钟。同一拉取请求或分支产生新运行时，会取消尚未完成的旧运行。
+[Build and QA 工作流](../.github/workflows/ci.yml) 会检查拉取请求、推送到 `main` 的提交，以及从 GitHub Actions 页面手动触发的运行。其 **Compile and test** 任务使用 Ubuntu 24.04 和 Node.js 24.22.1，限时 20 分钟。同一拉取请求或分支产生新运行时，会取消尚未完成的旧运行。
 
 ## 检查内容
 
@@ -47,7 +47,7 @@ Issue 检查器无需安装依赖。其解析器回归测试也会在 `npm test`
 
 准备任务仅将大小受限且已验证的数据传给独立发布任务。发布任务为 GitHub 自动提供、仅作用于当前仓库的 `GITHUB_TOKEN` 授予 `issues: write` 和 `contents: read`，并仅在评论步骤中显式提供该令牌。构建与产物准备任务保持只读权限。发布器先核对 GitHub Actions 机器人的公开身份，再查询评论，并只创建或更新该机器人自己带有对应标记的评论。日志中不输出 API 凭据或错误响应正文。
 
-在仓库根目录中使用 Node.js 24.14.1 复现 CI，先执行 `npm run setup`，再运行失败的命令。根目录 `.nvmrc` 选择 Node 24；`src/.nvmrc` 是较早的独立游戏版本配置，复现 CI 时请勿使用它。通过 `nvm install 24.14.1` 和 `nvm use 24.14.1` 可选择与 CI 完全相同的版本。浏览器检查需要先执行：
+在仓库根目录中使用 Node.js 24.22.1 复现 CI，先执行 `npm run setup`，再运行失败的命令。根目录 `.nvmrc` 和 `src/.nvmrc` 均指定与 CI 相同的版本。通过 `nvm install 24.22.1` 和 `nvm use 24.22.1` 可选择该版本。浏览器检查需要先执行：
 
 ```sh
 npx --no-install playwright install chromium webkit

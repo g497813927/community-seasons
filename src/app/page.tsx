@@ -698,7 +698,7 @@ export default function Home() {
     await leaderboardParticipation.current.join(rankedReceipt);
   }
   function changeLeaderboard(open: boolean, trigger?: HTMLButtonElement) {
-    if (open && (shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current ||
+    if (open && (!onToy || shareOpenRef.current || licensesOpenRef.current || helpOpenRef.current ||
       storeOpenRef.current || setupOpenRef.current || guideOpenRef.current ||
       startAfterCloudRef.current || game.current.review || rotateRequiredRef.current ||
       !["ready", "over"].includes(game.current.mode))) return;
@@ -1815,11 +1815,11 @@ export default function Home() {
               >
                 <CircleHelp size={15} /> {l("How to play", "操作指南")}
               </Button>
-              <Button variant="ghost" className="leaderboard-launcher"
+              {onToy && <Button variant="ghost" className="leaderboard-launcher"
                 onClick={(event) => changeLeaderboard(true, event.currentTarget)}
                 aria-haspopup="dialog" aria-expanded={leaderboardOpen}>
                 <Trophy size={15} aria-hidden="true" /> {l("Leaderboard", "排行榜")}
-              </Button>
+              </Button>}
               {onToy && (
                 <CloudSaveStatus
                   locale={locale}
@@ -1901,11 +1901,11 @@ export default function Home() {
                   <Button className="run-button" onClick={start} disabled={cloudBusy}>
                     {t("Run again")} <RotateCcw />
                   </Button>
-                  <Button variant="outline" className="run-button leaderboard-result-launcher"
+                  {onToy && <Button variant="outline" className="run-button leaderboard-result-launcher"
                     onClick={(event) => changeLeaderboard(true, event.currentTarget)}
                     aria-haspopup="dialog" aria-expanded={leaderboardOpen}>
-                    {!rankConsented && onToy ? l("Join leaderboard", "参与排行榜") : l("Leaderboard", "排行榜")} <Trophy aria-hidden="true" />
-                  </Button>
+                    {!rankConsented ? l("Join leaderboard", "参与排行榜") : l("Leaderboard", "排行榜")} <Trophy aria-hidden="true" />
+                  </Button>}
                   {onToy && <p className="leaderboard-run-status" role="status">
                     {rankEligibility === "submitted" ? l("Score posted to leaderboard", "成绩已提交至排行榜") :
                       rankEligibility === "pending" ? l("Posting your score…", "正在提交成绩…") :
@@ -2163,7 +2163,7 @@ export default function Home() {
           <span>{t("MAKE ROOM FOR RESPECT.")}</span>
         </div>
       </section>
-      {cloudState.conflict && (
+      {onToy && cloudState.conflict && (
         <CloudSaveDialog
           open={
             graphicsReady &&
@@ -2192,12 +2192,12 @@ export default function Home() {
         returnFocus={helpDetailRef.current === "guide" ? helpReturnFocus : undefined} />
       <LicensesDialog open={licensesOpen} onOpenChange={changeLicenses} locale={locale}
         returnFocus={helpReturnFocus} />
-      <LeaderboardDialog open={leaderboardOpen} onOpenChange={changeLeaderboard} locale={locale}
+      {onToy && <LeaderboardDialog open={leaderboardOpen} onOpenChange={changeLeaderboard} locale={locale}
         returnFocus={() => leaderboardButtonRef.current ?? false}
         available={onToy} load={loadLeaderboard.current}
         consented={rankConsented} preference={rankPreference} join={joinLeaderboard}
         decline={() => leaderboardParticipation.current.decline()}
-        score={rankedReceipt?.score ?? null} eligibility={rankEligibility} />
+        score={rankedReceipt?.score ?? null} eligibility={rankEligibility} />}
       <PostReviewDialog
         review={hud.review}
         ended={hud.mode === "over"}

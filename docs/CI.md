@@ -2,7 +2,7 @@
 
 [English](CI.md) | [简体中文](CI.zh-CN.md)
 
-The [Build and QA workflow](../.github/workflows/ci.yml) checks pull requests, pushes to `main`, and manual runs from GitHub's Actions tab. Its **Compile and test** job uses Ubuntu 24.04 and Node.js 24.14.1, with a 20-minute limit. A new run cancels an older run for the same pull request or branch.
+The [Build and QA workflow](../.github/workflows/ci.yml) checks pull requests, pushes to `main`, and manual runs from GitHub's Actions tab. Its **Compile and test** job uses Ubuntu 24.04 and Node.js 24.22.1, with a 20-minute limit. A new run cancels an older run for the same pull request or branch.
 
 ## What runs
 
@@ -47,7 +47,7 @@ No personal token, bot account setup, environment secret or separate credential 
 
 Preparation passes only bounded, validated data to a separate publishing job. That job grants GitHub's automatic, repository-scoped `GITHUB_TOKEN` `issues: write` plus `contents: read`, and supplies it explicitly only to the comment step. The build and artifact-preparation jobs retain read-only permissions. The publisher verifies the public GitHub Actions bot identity before deduplicating comments and uses only comment-listing and own-comment create/update operations. API credentials and response error bodies are never logged.
 
-Run CI reproduction commands from the repository root with Node.js 24.14.1 and `npm run setup`. The root `.nvmrc` selects Node 24; `src/.nvmrc` is an older standalone-game pin, so do not use it for CI-parity runs. Use `nvm install 24.14.1` and `nvm use 24.14.1` for the exact CI version. For browser checks, first run:
+Run CI reproduction commands from the repository root with Node.js 24.22.1 and `npm run setup`. The root `.nvmrc` and `src/.nvmrc` both select the same version as CI. Use `nvm install 24.22.1` and `nvm use 24.22.1` to select it. For browser checks, first run:
 
 ```sh
 npx --no-install playwright install chromium webkit

@@ -14,12 +14,12 @@ const json = (file) => JSON.parse(fs.readFileSync(file, "utf8"));
 // also explicitly references THIRD-PARTY-LICENSE, omitted from its npm archive
 // before 1.2.11 (identical copies are not duplicated).
 // Vendored upstream release files keep normal generation offline and auditable.
-const supplements = ["1.0.1", "1.0.3", "1.2.11"].flatMap((version) => [
+const supplements = ["1.0.1", "1.0.3", "1.2.11", "1.2.15"].flatMap((version) => [
   { name: /^@rolldown\/binding-/, version, files: ["LICENSE", "THIRD-PARTY-LICENSE"] },
   { name: /^rolldown$/, version, files: ["THIRD-PARTY-LICENSE"] },
 ]);
 // All exact upstream releases contain byte-identical notices, verified before
-// adding 1.0.3 and 1.2.11. Keep each release's originals and attribution alongside the script.
+// adding 1.0.3, 1.2.11 and 1.2.15. Keep each release's originals and attribution alongside the script.
 const supplementHashes = {
   LICENSE: "23ecfff35a5a2e80d92142f75228912c3b1abc4b5a8337a821ff4397e2f9f734",
   "THIRD-PARTY-LICENSE": "a877291d800ed43692f3f9ae09d8e01cc6f7293ad39d43896059c188ffbb8b7c",

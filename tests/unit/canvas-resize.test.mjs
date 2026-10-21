@@ -116,7 +116,7 @@ function visit(node) {
 visit(ast);
 assert.ok(resizeCallback, "game page must observe the canvas layout");
 const callbackSource = ts.transpileModule(`const resizeCanvas = ${resizeCallback};`, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, alwaysStrict: true },
 }).outputText;
 
 test("actual page resize observer repaints before returning, including paused and home frames", () => {
@@ -124,7 +124,7 @@ test("actual page resize observer repaints before returning, including paused an
     const { renderer, rect, resets } = setup();
     renderer.resize();
     resets.length = 0;
-    const state = { mode, flash: 0 };
+    const state = { mode, flash: 0, skin: "classic", outfit: { hat: null, shoes: null, effect: null } };
     const paints = [];
     renderer.render = (...args) => paints.push(args);
     const context = {
@@ -136,6 +136,8 @@ test("actual page resize observer repaints before returning, including paused an
       drawnRun: null,
       drawnMode: null,
       drawnLocale: null,
+      drawnSkin: null,
+      drawnOutfit: null,
       drawnFlash: -1,
     };
     vm.createContext(context);
@@ -150,6 +152,8 @@ test("actual page resize observer repaints before returning, including paused an
     assert.equal(context.drawnRun, state);
     assert.equal(context.drawnMode, mode);
     assert.equal(context.drawnLocale, locale);
+    assert.equal(context.drawnSkin, state.skin);
+    assert.equal(context.drawnOutfit, state.outfit);
     assert.equal(context.drawnFlash, state.flash);
     assert.equal(context.needsRedraw, false);
     vm.runInContext("resizeCanvas()", context);

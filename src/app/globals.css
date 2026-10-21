@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./ui-state-variants.css";
 @custom-variant dark (&:is(.dark *));
 @theme inline {
   --color-background: var(--background);
