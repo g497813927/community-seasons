@@ -36,7 +36,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.14.1
+          node-version: 24.22.1
 
       - name: Select current Dependabot dependency update
         id: prepare
@@ -79,7 +79,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.14.1
+          node-version: 24.22.1
 
       - name: Commit both notices atomically to the current dependency update
         env:
@@ -108,7 +108,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24.14.1
+          node-version: 24.22.1
 
       - name: Run full CI on the validated current Dependabot branch
         env:
