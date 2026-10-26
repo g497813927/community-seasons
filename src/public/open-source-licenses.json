@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedFromLockfile": "sha256:37b1684b55bf200370c1cdab329081fe29fba3e1fc89a09313f5e49594e0df47",
+  "generatedFromLockfile": "sha256:7cdf74172deb0d83b4d880ee0e14030db6cc3e7a1a8ea4fb0e97ddbd3c0a34b5",
   "description": "Installed, locked project dependencies and their original license notices, including transitive and build dependencies. Production/development are npm dependency classifications, not a list of packages shipped to the browser. Optional packages not installed on this build platform are listed separately. External platform services and test tools outside this project are not included.",
   "packages": [
     {
@@ -200,7 +200,7 @@
       ]
     },
     {
-      "name": "@rolldown/binding-darwin-arm64",
+      "name": "@rolldown/binding-linux-x64-gnu",
       "version": "1.2.15",
       "license": "MIT",
       "repository": "https://github.com/rolldown/rolldown",
@@ -262,7 +262,7 @@
       ]
     },
     {
-      "name": "@tailwindcss/oxide-darwin-arm64",
+      "name": "@tailwindcss/oxide-linux-x64-gnu",
       "version": "4.3.3",
       "license": "MIT",
       "repository": "https://github.com/tailwindlabs/tailwindcss",
@@ -333,7 +333,7 @@
     },
     {
       "name": "@vitejs/plugin-react",
-      "version": "6.1.1",
+      "version": "6.1.2",
       "license": "MIT",
       "repository": "https://github.com/vitejs/vite-plugin-react",
       "scope": "development",
@@ -430,20 +430,6 @@
       ]
     },
     {
-      "name": "fsevents",
-      "version": "2.3.3",
-      "license": "MIT",
-      "repository": "https://github.com/fsevents/fsevents",
-      "scope": "development",
-      "status": "complete",
-      "notices": [
-        {
-          "file": "LICENSE",
-          "text": "MIT License\n-----------\n\nCopyright (C) 2010-2020 by Philipp Dunkel, Ben Noordhuis, Elan Shankar, Paul Miller\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN\nTHE SOFTWARE.\n"
-        }
-      ]
-    },
-    {
       "name": "graceful-fs",
       "version": "4.2.11",
       "license": "ISC",
@@ -500,7 +486,7 @@
       ]
     },
     {
-      "name": "lightningcss-darwin-arm64",
+      "name": "lightningcss-linux-x64-gnu",
       "version": "1.32.0",
       "license": "MPL-2.0",
       "repository": "https://github.com/parcel-bundler/lightningcss",
@@ -514,7 +500,7 @@
       ]
     },
     {
-      "name": "lightningcss-darwin-arm64",
+      "name": "lightningcss-linux-x64-gnu",
       "version": "1.33.0",
       "license": "MPL-2.0",
       "repository": "https://github.com/parcel-bundler/lightningcss",
@@ -864,6 +850,10 @@
       "version": "1.2.15"
     },
     {
+      "name": "@rolldown/binding-darwin-arm64",
+      "version": "1.2.15"
+    },
+    {
       "name": "@rolldown/binding-darwin-x64",
       "version": "1.2.15"
     },
@@ -892,10 +882,6 @@
       "version": "1.2.15"
     },
     {
-      "name": "@rolldown/binding-linux-x64-gnu",
-      "version": "1.2.15"
-    },
-    {
       "name": "@rolldown/binding-linux-x64-musl",
       "version": "1.2.15"
     },
@@ -913,6 +899,10 @@
     },
     {
       "name": "@tailwindcss/oxide-android-arm64",
+      "version": "4.3.3"
+    },
+    {
+      "name": "@tailwindcss/oxide-darwin-arm64",
       "version": "4.3.3"
     },
     {
@@ -936,10 +926,6 @@
       "version": "4.3.3"
     },
     {
-      "name": "@tailwindcss/oxide-linux-x64-gnu",
-      "version": "4.3.3"
-    },
-    {
       "name": "@tailwindcss/oxide-linux-x64-musl",
       "version": "4.3.3"
     },
@@ -960,11 +946,23 @@
       "version": "0.10.2"
     },
     {
+      "name": "fsevents",
+      "version": "2.3.3"
+    },
+    {
       "name": "lightningcss-android-arm64",
       "version": "1.32.0"
     },
     {
       "name": "lightningcss-android-arm64",
+      "version": "1.33.0"
+    },
+    {
+      "name": "lightningcss-darwin-arm64",
+      "version": "1.32.0"
+    },
+    {
+      "name": "lightningcss-darwin-arm64",
       "version": "1.33.0"
     },
     {
@@ -1005,14 +1003,6 @@
     },
     {
       "name": "lightningcss-linux-arm64-musl",
-      "version": "1.33.0"
-    },
-    {
-      "name": "lightningcss-linux-x64-gnu",
-      "version": "1.32.0"
-    },
-    {
-      "name": "lightningcss-linux-x64-gnu",
       "version": "1.33.0"
     },
     {
