@@ -38,7 +38,7 @@
     "qa:share": "node scripts/vercel-qa.mjs share"
   },
   "devDependencies": {
-    "fast-check": "4.10.2",
+    "fast-check": "4.10.3",
     "typescript": "6.0.3",
     "vite": "8.3.5",
     "@vitejs/plugin-react": "6.1.2",
